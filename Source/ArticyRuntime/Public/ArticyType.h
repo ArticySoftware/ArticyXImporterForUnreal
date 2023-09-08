@@ -48,6 +48,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
 	FString TechnicalName;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
+	bool IsInvalidProperty = false;
 };
 
 USTRUCT(BlueprintType)
@@ -94,4 +97,7 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
 	FString TechnicalName;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
+	bool IsInvalidType = false;
 };

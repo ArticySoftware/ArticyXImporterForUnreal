@@ -4,6 +4,8 @@
 
 #include "ArticyType.h"
 
+#include "ArticyTypeSystem.h"
+
 FArticyEnumValueInfo FArticyType::GetEnumValue(int Value) const
 {
 	for (const auto EnumInfo : EnumValues)
@@ -45,12 +47,31 @@ TArray<FArticyPropertyInfo> FArticyType::GetProperties() const
 
 TArray<FArticyPropertyInfo> FArticyType::GetPropertiesInFeature(const FString& FeatureName) const
 {
-	// TODO: Implement this functionality
-	return {};
+	// Return most precise match
+	FArticyType FeatureType = UArticyTypeSystem::Get()->GetArticyType(TechnicalName + "." + FeatureName);
+	if (FeatureType.IsInvalidType)
+	{
+		FeatureType = UArticyTypeSystem::Get()->GetArticyType(LocaKey_DisplayName + "." + FeatureName);
+	}
+	if (FeatureType.IsInvalidType)
+	{
+		FeatureType = UArticyTypeSystem::Get()->GetArticyType(FeatureName);
+	}
+	return FeatureType.Properties;
 }
 
 FArticyPropertyInfo FArticyType::GetProperty(const FString& PropertyName) const
 {
+	// Find most precise match for property
+	
+	for (const auto PropertyInfo : Properties)
+	{
+		if (PropertyInfo.TechnicalName.Equals(PropertyName))
+		{
+			return PropertyInfo;
+		}
+	}
+
 	for (const auto PropertyInfo : Properties)
 	{
 		if (PropertyInfo.LocaKey_DisplayName.Equals(PropertyName))
@@ -58,7 +79,11 @@ FArticyPropertyInfo FArticyType::GetProperty(const FString& PropertyName) const
 			return PropertyInfo;
 		}
 	}
-	return {};
+
+	// Invalid property placeholder
+	FArticyPropertyInfo InvalidProperty;
+	InvalidProperty.IsInvalidProperty = true;
+	return InvalidProperty;
 }
 
 FString FArticyType::LocalizeString(const FString& Input)

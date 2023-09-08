@@ -239,11 +239,44 @@ void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FS
 	{
 		Object = DB->GetObjectByName(*ObjectName, FCString::Atod(*ObjectInstance));
 	}
-
+	
 	if (!Object)
 	{
 		OutSuccess = false;
 		return;
+	}
+
+	TArray<FString> SourceParts;
+	PropertyName.ParseIntoArray(SourceParts, TEXT("."));
+
+	for (int Depth = 1; Depth < SourceParts.Num(); Depth++)
+	{
+		// Check object children
+		const auto& Children = Object->GetChildren();
+		for (const auto& Child : Children)
+		{
+			if (auto* ChildPtr = Child.Get())
+			{
+				if (SourceParts[Depth].StartsWith(TEXT("0x")))
+				{
+					if (ChildPtr->GetId() == ArticyHelpers::HexToUint64(SourceParts[Depth]))
+					{
+						Object = ChildPtr;
+					}
+				}
+				else if (ChildPtr->GetTechnicalName().IsEqual(FName(SourceParts[Depth])))
+				{
+					Object = ChildPtr;
+				}
+			}
+		}
+
+		// Check if the object is valid after iteration
+		if (!Object)
+		{
+			OutSuccess = false;
+			return;
+		}
 	}
 
 	if (bRequestType)
@@ -286,21 +319,66 @@ void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FS
 	}
 }
 
-void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FString& PropertyName, FString& OutString,
-	bool& OutSuccess)
+void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FString& PropertyName, FString& OutString, bool& OutSuccess)
 {
 	UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get();
 	FArticyType TypeData = TypeSystem->GetArticyType(TypeName);
 	FArticyPropertyInfo PropertyInfo{};
 	bool bFoundProperty = false;
-	
-	for (const auto& Property : TypeData.Properties)
+
+	// Split the PropertyName to check for feature prefix
+	TArray<FString> NameParts;
+	PropertyName.ParseIntoArray(NameParts, TEXT("."));
+
+	// Handle feature prefix
+	if (NameParts.Num() > 1 && TypeData.Features.Contains(NameParts[0]))
 	{
-		if (Property.TechnicalName.Equals(PropertyName))
+		const auto& FeatureName = NameParts[0];
+		const auto& ActualPropertyName = NameParts[1];
+
+		// Get properties of the specific feature
+		const auto& FeatureProperties = TypeData.GetPropertiesInFeature(FeatureName);
+
+		for (const auto& Property : FeatureProperties)
 		{
-			PropertyInfo = Property;
-			bFoundProperty = true;
-			break;
+			if (Property.TechnicalName.Equals(ActualPropertyName))
+			{
+				PropertyInfo = Property;
+				bFoundProperty = true;
+				break;
+			}
+		}
+
+		for (const auto& Property : FeatureProperties)
+		{
+			if (Property.LocaKey_DisplayName.Equals(ActualPropertyName))
+			{
+				PropertyInfo = Property;
+				bFoundProperty = true;
+				break;
+			}
+		}
+	}
+	else  // Search within all properties
+	{
+		for (const auto& Property : TypeData.Properties)
+		{
+			if (Property.TechnicalName.Equals(PropertyName))
+			{
+				PropertyInfo = Property;
+				bFoundProperty = true;
+				break;
+			}
+		}
+
+		for (const auto& Property : TypeData.Properties)
+		{
+			if (Property.LocaKey_DisplayName.Equals(PropertyName))
+			{
+				PropertyInfo = Property;
+				bFoundProperty = true;
+				break;
+			}
 		}
 	}
 
@@ -313,6 +391,7 @@ void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FStrin
 	OutString = PropertyInfo.PropertyType;
 	OutSuccess = true;
 }
+
 
 FString UArticyTextExtension::ExecuteMethod(const FText& Method, const TArray<FString>& Args) const
 {
@@ -356,7 +435,6 @@ FString UArticyTextExtension::ExecuteMethod(const FText& Method, const TArray<FS
 
 EArticyObjectType UArticyTextExtension::GetObjectType(UArticyVariable** Object) const
 {
-	// TODO: Use type system
 	if (Cast<UArticyBool>(*Object))
 	{
 		return EArticyObjectType::UArticyBool;

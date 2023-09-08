@@ -21,10 +21,14 @@ UArticyTypeSystem* UArticyTypeSystem::Get()
 
 FArticyType UArticyTypeSystem::GetArticyType(const FString& TypeName) const
 {
+	// Look for type information
 	if (Types.Contains(TypeName))
 	{
 		return Types[TypeName];
 	}
 
-	return {};
+	// Not found, return invalid type
+	FArticyType InvalidType;
+	InvalidType.IsInvalidType = true;
+	return InvalidType;
 }
