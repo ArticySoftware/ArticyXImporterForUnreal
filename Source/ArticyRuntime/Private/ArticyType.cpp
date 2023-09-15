@@ -8,29 +8,38 @@
 
 FArticyEnumValueInfo FArticyType::GetEnumValue(int Value) const
 {
-	for (const auto EnumInfo : EnumValues)
+	for (const auto& EnumInfo : EnumValues)
 	{
 		if (EnumInfo.Value == Value)
-		{
 			return EnumInfo;
-		}
 	}
 	return {};
 }
 
 FArticyEnumValueInfo FArticyType::GetEnumValue(const FString& ValueName) const
 {
-	for (const auto EnumInfo : EnumValues)
+	for (const auto& EnumInfo : EnumValues)
 	{
 		if (EnumInfo.LocaKey_DisplayName.Equals(ValueName))
-		{
 			return EnumInfo;
-		}
 	}
 	return {};
 }
 
-FString FArticyType::GetFeatureDisplayName(const FString& FeatureName) const
+FArticyPropertyInfo FArticyType::GetProperty(const FString& PropertyName) const
+{
+	for (const auto& PropertyInfo : Properties)
+	{
+		if (PropertyInfo.TechnicalName.Equals(PropertyName) ||
+			PropertyInfo.LocaKey_DisplayName.Equals(PropertyName))
+			return PropertyInfo;
+	}
+	FArticyPropertyInfo InvalidProperty;
+	InvalidProperty.IsInvalidProperty = true;
+	return InvalidProperty;
+}
+
+FString FArticyType::GetFeatureDisplayName(const FString& FeatureName)
 {
 	return LocalizeString(FeatureName);
 }
@@ -60,32 +69,6 @@ TArray<FArticyPropertyInfo> FArticyType::GetPropertiesInFeature(const FString& F
 	return FeatureType.Properties;
 }
 
-FArticyPropertyInfo FArticyType::GetProperty(const FString& PropertyName) const
-{
-	// Find most precise match for property
-	
-	for (const auto PropertyInfo : Properties)
-	{
-		if (PropertyInfo.TechnicalName.Equals(PropertyName))
-		{
-			return PropertyInfo;
-		}
-	}
-
-	for (const auto PropertyInfo : Properties)
-	{
-		if (PropertyInfo.LocaKey_DisplayName.Equals(PropertyName))
-		{
-			return PropertyInfo;
-		}
-	}
-
-	// Invalid property placeholder
-	FArticyPropertyInfo InvalidProperty;
-	InvalidProperty.IsInvalidProperty = true;
-	return InvalidProperty;
-}
-
 FString FArticyType::LocalizeString(const FString& Input)
 {
 	const FText MissingEntry = FText::FromString("<MISSING STRING TABLE ENTRY>");
@@ -110,70 +93,45 @@ FString FArticyType::LocalizeString(const FString& Input)
 	return Input;
 }
 
+void FArticyType::MergeProperties(const FArticyType& Other, bool isChild)
+{
+	HasTemplate |= Other.HasTemplate;
+	IsEnum |= Other.IsEnum;
+
+	#define MERGE_IF_EMPTY(field) if (field.IsEmpty()) field = Other.field;
+	#define MERGE_IF_NOT_EMPTY(field) if (!Other.field.IsEmpty()) field = Other.field;
+
+	if(isChild)
+	{
+		MERGE_IF_NOT_EMPTY(CPPType);
+		MERGE_IF_NOT_EMPTY(DisplayName);
+		MERGE_IF_NOT_EMPTY(LocaKey_DisplayName);
+		MERGE_IF_NOT_EMPTY(TechnicalName);
+		MERGE_IF_NOT_EMPTY(EnumValues);
+		MERGE_IF_NOT_EMPTY(Features);
+		MERGE_IF_NOT_EMPTY(Properties);
+	}
+	else
+	{
+		MERGE_IF_EMPTY(CPPType);
+		MERGE_IF_EMPTY(DisplayName);
+		MERGE_IF_EMPTY(LocaKey_DisplayName);
+		MERGE_IF_EMPTY(TechnicalName);
+		MERGE_IF_EMPTY(EnumValues);
+		MERGE_IF_EMPTY(Features);
+		MERGE_IF_EMPTY(Properties);
+	}
+
+	#undef MERGE_IF_EMPTY
+	#undef MERGE_IF_NOT_EMPTY
+}
+
 void FArticyType::MergeChild(const FArticyType& Child)
 {
-	HasTemplate |= Child.HasTemplate;
-	IsEnum |= Child.IsEnum;
-	if (!Child.CPPType.IsEmpty())
-	{
-		CPPType = Child.CPPType;
-	}
-	if (!Child.DisplayName.IsEmpty())
-	{
-		DisplayName = Child.DisplayName;
-	}
-	if (!Child.LocaKey_DisplayName.IsEmpty())
-	{
-		LocaKey_DisplayName = Child.LocaKey_DisplayName;
-	}
-	if (!Child.TechnicalName.IsEmpty())
-	{
-		TechnicalName = Child.TechnicalName;
-	}
-	if (!Child.EnumValues.IsEmpty())
-	{
-		EnumValues = Child.EnumValues;
-	}
-	if (!Child.Features.IsEmpty())
-	{
-		Features = Child.Features;
-	}
-	if (!Child.Properties.IsEmpty())
-	{
-		Properties = Child.Properties;
-	}
+	MergeProperties(Child, true);
 }
 
 void FArticyType::MergeParent(const FArticyType& Parent)
 {
-	HasTemplate |= Parent.HasTemplate;
-	IsEnum |= Parent.IsEnum;
-	if (CPPType.IsEmpty())
-	{
-		CPPType = Parent.CPPType;
-	}
-	if (DisplayName.IsEmpty())
-	{
-		DisplayName = Parent.DisplayName;
-	}
-	if (LocaKey_DisplayName.IsEmpty())
-	{
-		LocaKey_DisplayName = Parent.LocaKey_DisplayName;
-	}
-	if (TechnicalName.IsEmpty())
-	{
-		TechnicalName = Parent.TechnicalName;
-	}
-	if (EnumValues.IsEmpty())
-	{
-		EnumValues = Parent.EnumValues;
-	}
-	if (Features.IsEmpty())
-	{
-		Features = Parent.Features;
-	}
-	if (Properties.IsEmpty())
-	{
-		Properties = Parent.Properties;
-	}
+	MergeProperties(Parent, false);
 }

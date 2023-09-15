@@ -30,20 +30,44 @@ class ARTICYRUNTIME_API UArticyTextExtension : public UObject
 public:
 	static UArticyTextExtension* Get();
 	
-	template<typename... Types>
-	FText Resolve
-	(
-		const FText &Format,
-		Types... Args
-	) const;
+	template<typename ... Args>
+	FText Resolve(const FText& Format, Args... args) const
+	{
+		TArray<FString> ArgumentValues = {FString::Printf(TEXT("%s"), args)...};
 
-	template<typename ... Types>
-	FText ResolveAdvance
-	(
-		const FText& Format,
-		TMap<FString, TFunction<FString(Types...)>> CallbackMap,
-		Types... Args
-	) const;
+		FString FormattedString = ReplacePlaceholders(Format.ToString(), ArgumentValues);
+
+		FormattedString = ProcessTokens(FormattedString, [&](const FString& SourceName, const FString& Formatting) -> FString {
+			FString SourceValue = GetSource(SourceName);
+			if (!Formatting.IsEmpty())
+			{
+				return FormatNumber(SourceValue, Formatting);
+			}
+			return SourceValue.IsEmpty() ? TEXT("") : SourceValue;
+		});
+
+		return FText::FromString(FormattedString);
+	}
+
+	template<typename ... Args>
+	FText ResolveAdvance(const FText& Format, TMap<FString, TFunction<FString(Args...)>> CallbackMap, Args... args) const
+	{
+		TArray<FString> ArgumentValues = {FString::Printf(TEXT("%s"), args)...};
+
+		FString FormattedString = ReplacePlaceholders(Format.ToString(), ArgumentValues);
+
+		FormattedString = ProcessTokens(FormattedString, [&](const FString& SourceName, const FString&) -> FString {
+			TFunction<FString(Args...)> Callback;
+			if (CallbackMap.Contains(SourceName))
+			{
+				Callback = CallbackMap[SourceName];
+				return Callback(args...);
+			}
+			return TEXT("");
+		});
+
+		return FText::FromString(FormattedString);
+	}
 
 	void AddUserMethod(const FString& MethodName, FArticyUserMethodCallback Callback);
 
@@ -58,125 +82,9 @@ protected:
 	FString ResolveBoolean(const FString &SourceName, const bool Value) const;
 	FString LocalizeString(const FString &Input) const;
 	static void SplitInstance(const FString& InString, FString& OutName, FString& OutInstanceNumber);
+	static FString ReplacePlaceholders(const FString& Input, const TArray<FString>& ArgumentValues);
+	static FString ProcessTokens(const FString& Input, TFunction<FString(const FString&, const FString&)> TokenHandler);
 
 	TMap<FString, FArticyUserMethodCallback> UserMethodMap;
 };
 
-template<typename ... Types>
-FText UArticyTextExtension::Resolve(const FText& Format, Types... Args) const
-{
-	TArray<FString> ArgumentValues = {FString::Printf(TEXT("%s"), Args)...};
-    
-	FString FormattedString = Format.ToString();
-
-	// Regular placeholder replacement
-	for (int32 ArgIndex = 0; ArgIndex < ArgumentValues.Num(); ++ArgIndex)
-	{
-		const FString Placeholder = FString::Printf(TEXT("{%d}"), ArgIndex);
-		FormattedString = FormattedString.Replace(*Placeholder, *ArgumentValues[ArgIndex]);
-	}
-
-	// Token replacement
-	while (true)
-	{
-		const int32 TokenStartIndex = FormattedString.Find(TEXT("["), ESearchCase::CaseSensitive);
-		if (TokenStartIndex == INDEX_NONE)
-			break;
-
-		const int32 TokenEndIndex = FormattedString.Find(TEXT("]"), ESearchCase::CaseSensitive, ESearchDir::FromStart, TokenStartIndex);
-		if (TokenEndIndex == INDEX_NONE)
-			break;
-
-		FString Token = FormattedString.Mid(TokenStartIndex + 1, TokenEndIndex - TokenStartIndex - 1);
-		FString FullToken = FormattedString.Mid(TokenStartIndex, TokenEndIndex - TokenStartIndex + 1);
-		FString SourceName, Formatting;
-		
-		Token.Split(TEXT(":"), &SourceName, &Formatting);
-		if (SourceName.IsEmpty())
-		{
-			SourceName = Token;
-		}
-		
-		if (!SourceName.IsEmpty())
-		{
-			// Get value from source
-			FString SourceValue = GetSource(SourceName);
-            
-			if (!Formatting.IsEmpty())
-			{
-				// Custom format the SourceValue based on the rules of C#'s custom numeric format strings
-				FString FormattedValue = FormatNumber(SourceValue, Formatting);
-				FormattedString = FormattedString.Replace(*FullToken, *FormattedValue);
-			}
-			else
-			{
-				FormattedString = FormattedString.Replace(*FullToken, *SourceValue);
-			}
-		}
-		else
-		{
-			// Remove invalid token if source name is empty
-			FormattedString = FormattedString.Replace(*FullToken, TEXT(""));
-		}
-	}
-
-	return FText::FromString(FormattedString);
-}
-
-template<typename ... Types>
-FText UArticyTextExtension::ResolveAdvance(const FText& Format, TMap<FString, TFunction<FString(Types...)>> CallbackMap, Types... Args) const
-{
-	TArray<FString> ArgumentValues = {FString::Printf(TEXT("%s"), Args)...};
-    
-	FString FormattedString = Format.ToString();
-
-	// Regular placeholder replacement
-	for (int32 ArgIndex = 0; ArgIndex < ArgumentValues.Num(); ++ArgIndex)
-	{
-		const FString Placeholder = FString::Printf(TEXT("{%d}"), ArgIndex);
-		FormattedString = FormattedString.Replace(*Placeholder, *ArgumentValues[ArgIndex]);
-	}
-
-	// Token replacement
-	while (true)
-	{
-		const int32 TokenStartIndex = FormattedString.Find(TEXT("["), ESearchCase::CaseSensitive);
-		if (TokenStartIndex == INDEX_NONE)
-			break;
-
-		const int32 TokenEndIndex = FormattedString.Find(TEXT("]"), ESearchCase::CaseSensitive, ESearchDir::FromStart, TokenStartIndex);
-		if (TokenEndIndex == INDEX_NONE)
-			break;
-
-		FString Token = FormattedString.Mid(TokenStartIndex + 1, TokenEndIndex - TokenStartIndex - 1);
-		FString FullToken = FormattedString.Mid(TokenStartIndex, TokenEndIndex - TokenStartIndex + 1);
-		FString SourceName, Formatting;
-		
-		Token.Split(TEXT(":"), &SourceName, &Formatting);
-		if (SourceName.IsEmpty())
-		{
-			SourceName = Token;
-		}
-
-		if (!SourceName.IsEmpty())
-		{
-			TFunction<FString(Types...)> Callback;
-			if (CallbackMap.Contains(SourceName))
-			{
-				Callback = CallbackMap[SourceName];
-				FString ReplacementValue = Callback(Args...);
-				FormattedString = FormattedString.Replace(*FullToken, *ReplacementValue);
-			}
-			else
-			{
-				FormattedString = FormattedString.Replace(*FullToken, TEXT(""));
-			}
-		}
-		else
-		{
-			FormattedString = FormattedString.Replace(*FullToken, TEXT(""));
-		}
-	}
-
-	return FText::FromString(FormattedString);
-}

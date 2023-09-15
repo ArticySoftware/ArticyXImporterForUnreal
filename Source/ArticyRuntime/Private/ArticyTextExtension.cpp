@@ -19,78 +19,65 @@ UArticyTextExtension* UArticyTextExtension::Get()
 	return ArticyTextExtension.Get();
 }
 
-// Retrieve string from specified source
 FString UArticyTextExtension::GetSource(const FString& SourceName) const
 {
+	if (SourceName.IsEmpty())
+	{
+		return TEXT("");
+	}
+
 	// Split the SourceName by dots
 	TArray<FString> SourceParts;
 	SourceName.ParseIntoArray(SourceParts, TEXT("."));
-	FString RemValue = TEXT("");
-	FString Result = TEXT("");
-	bool bSuccess = false;
-
-	if (SourceParts.Num() > 0)
+	if (SourceParts.Num() == 0)
 	{
-		FString MethodName = SourceParts[0];
-        
-		FString Parameters;
-		for (int32 Index = 1; Index < SourceParts.Num(); ++Index)
-		{
-			if (!Parameters.IsEmpty())
-			{
-				Parameters += TEXT(",");
-			}
-			Parameters += SourceParts[Index];
-		}
-        
-		if (Parameters.Contains(TEXT("(")) && Parameters.Contains(TEXT(")")))
-		{
-			FString Method;
-			FString ArgsString;
-			Parameters.Split(TEXT("("), &Method, &ArgsString);
-
-			ArgsString.RemoveFromEnd(TEXT(")"));
-			TArray<FString> Args;
-			ArgsString.ParseIntoArray(Args, TEXT(","), true);
-
-			// Execute the method
-			return ExecuteMethod(FText::FromString(Method), Args);
-		}
-	}
-	else
-	{
-		// No source
-		return Result;
+		return TEXT("");
 	}
 
-	if (SourceParts.Num() > 1)
+	const FString MethodName = SourceParts[0];
+	FString Parameters;
+	FString RemValue;
+
+	// Construct Parameters and RemValue
+	for (int32 Index = 1; Index < SourceParts.Num(); ++Index)
 	{
-		for (int32 Index = 1; Index < SourceParts.Num(); ++Index)
+		if (!Parameters.IsEmpty())
 		{
-			if (!RemValue.IsEmpty())
-			{
-				RemValue += TEXT(".");
-			}
-			RemValue += SourceParts[Index];
+			Parameters += TEXT(",");
+			RemValue += TEXT(".");
 		}
+		Parameters += SourceParts[Index];
+		RemValue += SourceParts[Index];
+	}
+
+	// Check if Parameters represent a method
+	if (Parameters.Contains(TEXT("(")) && Parameters.Contains(TEXT(")")))
+	{
+		FString Method;
+		FString ArgsString;
+		Parameters.Split(TEXT("("), &Method, &ArgsString);
+		ArgsString.RemoveFromEnd(TEXT(")"));
+		TArray<FString> Args;
+		ArgsString.ParseIntoArray(Args, TEXT(","), true);
+
+		// Execute the method
+		return ExecuteMethod(FText::FromString(Method), Args);
 	}
 
 	// Process types
-	if (SourceParts[0].StartsWith(TEXT("$Type.")))
+	if (MethodName.StartsWith(TEXT("$Type.")))
 	{
-		const FString TypeName = SourceParts[0].Mid(6);
+		const FString TypeName = MethodName.Mid(6);
+		bool bSuccess = false;
+		FString Result;
 		GetTypeProperty(TypeName, RemValue, Result, bSuccess);
-		
-		if (bSuccess)
-		{
-			return Result;
-		}
-
-		return SourceName;
+		return bSuccess ? Result : SourceName;
 	}
 
 	// Process Global Variables
-	const FArticyGvName GvName = FArticyGvName(FName(SourceParts[0]), FName(RemValue));
+	const FArticyGvName GvName = FArticyGvName(FName(MethodName), FName(RemValue));
+	bool bSuccess = false;
+	FString Result;
 	GetGlobalVariable(SourceName, GvName, Result, bSuccess);
 	if (bSuccess)
 	{
@@ -101,18 +88,13 @@ FString UArticyTextExtension::GetSource(const FString& SourceName) const
 	bool bRequestType = false;
 	if (RemValue.EndsWith(TEXT(".$Type")))
 	{
-		RemValue = RemValue.Left(RemValue.Len() - 6);
+		RemValue = RemValue.LeftChop(6);  // Using LeftChop is more efficient than Left + Len
 		bRequestType = true;
 	}
 
 	// Process Objects & Script Properties
-	GetObjectProperty(SourceName, SourceParts[0], RemValue, bRequestType, Result, bSuccess);
-	if (bSuccess)
-	{
-		return Result;
-	}
-	
-	return SourceName;
+	GetObjectProperty(SourceName, MethodName, RemValue, bRequestType, Result, bSuccess);
+	return bSuccess ? Result : SourceName;
 }
 
 // Process SourceValue with NumberFormat according to C# Custom Number Formatting rules
@@ -180,51 +162,41 @@ FString UArticyTextExtension::FormatNumber(const FString& SourceValue, const FSt
 // Process Global Variables
 void UArticyTextExtension::GetGlobalVariable(const FString& SourceName, FArticyGvName GvName, FString& OutString, bool& OutSuccess) const
 {
+	// Get the GV set
 	const auto DB = UArticyDatabase::Get(this);
-	const auto GlobalVariables = DB->GetGVs();
-	const auto Set = GlobalVariables->GetNamespace(GvName.GetNamespace());
+	const auto Gvs = DB->GetGVs();
+	const auto Set = Gvs->GetNamespace(GvName.GetNamespace());
+	
 	if (!Set)
 	{
 		OutSuccess = false;
 		return;
 	}
-	
-	UArticyVariable** Variable = Set->GetPropPtr<UArticyVariable*>(GvName.GetVariable());
-	switch (GetObjectType(Variable))
+
+	// Handle according to type
+	switch (UArticyVariable** Variable = Set->GetPropPtr<UArticyVariable*>(GvName.GetVariable()); GetObjectType(Variable))
 	{
 	case EArticyObjectType::UArticyBool:
-		{
-			const auto boolValue = GlobalVariables->GetBoolVariable(GvName, OutSuccess);
-			if (OutSuccess)
-			{
-				OutString = ResolveBoolean(SourceName, boolValue);
-			}
-			break;
-		}
+		OutString = ResolveBoolean(SourceName, Gvs->GetBoolVariable(GvName, OutSuccess));
+		break;
 	case EArticyObjectType::UArticyInt:
-		{
-			OutString = FString::FromInt(GlobalVariables->GetIntVariable(GvName, OutSuccess));
-			break;
-		}
+		OutString = FString::FromInt(Gvs->GetIntVariable(GvName, OutSuccess));
+		break;
 	case EArticyObjectType::UArticyString:
-		{
-			OutString = GlobalVariables->GetStringVariable(GvName, OutSuccess);
-			break;
-		}
+		OutString = Gvs->GetStringVariable(GvName, OutSuccess);
+		break;
 	default:
-		{
-			OutSuccess = false;
-			break;
-		}
+		OutSuccess = false;
+		break;
 	}
 }
 
 void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FString& NameOrId, const FString& PropertyName, const bool bRequestType, FString& OutString, bool& OutSuccess) const
 {
-	// Get the object
 	const auto DB = UArticyDatabase::Get(this);
-	UArticyObject* Object;
+	UArticyObject* Object = nullptr;
 
+	// Split and get object based on input type
 	FString ObjectName, ObjectInstance;
 	SplitInstance(NameOrId, ObjectName, ObjectInstance);
 	if (NameOrId.StartsWith(TEXT("0x")))
@@ -239,7 +211,7 @@ void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FS
 	{
 		Object = DB->GetObjectByName(*ObjectName, FCString::Atod(*ObjectInstance));
 	}
-	
+
 	if (!Object)
 	{
 		OutSuccess = false;
@@ -251,27 +223,25 @@ void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FS
 
 	for (int Depth = 1; Depth < SourceParts.Num(); Depth++)
 	{
-		// Check object children
 		const auto& Children = Object->GetChildren();
-		for (const auto& Child : Children)
+		const auto FoundChild = Children.FindByPredicate([&](const TWeakObjectPtr<UArticyObject>& ChildPtr)
 		{
-			if (auto* ChildPtr = Child.Get())
+			if (ChildPtr.IsValid())
 			{
-				if (SourceParts[Depth].StartsWith(TEXT("0x")))
+				if (SourceParts[Depth].StartsWith(TEXT("0x")) && ChildPtr->GetId() == ArticyHelpers::HexToUint64(SourceParts[Depth]))
 				{
-					if (ChildPtr->GetId() == ArticyHelpers::HexToUint64(SourceParts[Depth]))
-					{
-						Object = ChildPtr;
-					}
+					return true;
 				}
-				else if (ChildPtr->GetTechnicalName().IsEqual(FName(SourceParts[Depth])))
+				if (ChildPtr->GetTechnicalName().IsEqual(FName(SourceParts[Depth])))
 				{
-					Object = ChildPtr;
+					return true;
 				}
 			}
-		}
+			return false;
+		});
+		
+		Object = FoundChild ? FoundChild->Get() : nullptr;
 
-		// Check if the object is valid after iteration
 		if (!Object)
 		{
 			OutSuccess = false;
@@ -286,37 +256,26 @@ void UArticyTextExtension::GetObjectProperty(const FString& SourceName, const FS
 		return;
 	}
 
-	// Handle based on data type
-	switch (ExpressoType PropertyType {Object, PropertyName}; PropertyType.Type) {
+	ExpressoType PropertyType {Object, PropertyName};
+	switch (PropertyType.Type) 
+	{
 	case ExpressoType::Bool:
-		{
-			OutString = ResolveBoolean(SourceName, PropertyType.GetBool());
-			OutSuccess = true;
-			break;
-		}
+		OutString = ResolveBoolean(SourceName, PropertyType.GetBool());
+		break;
 	case ExpressoType::Int:
-		{
-			OutString = FString::FromInt(PropertyType.GetInt());
-			OutSuccess = true;
-			break;
-		}
+		OutString = FString::FromInt(PropertyType.GetInt());
+		break;
 	case ExpressoType::Float:
-		{
-			OutString = FString::SanitizeFloat(PropertyType.GetFloat());
-			OutSuccess = true;
-			break;
-		}
+		OutString = FString::SanitizeFloat(PropertyType.GetFloat());
+		break;
 	case ExpressoType::String:
-		{
-			OutString = PropertyType.GetString();
-			OutSuccess = true;
-			break;
-		}
+		OutString = PropertyType.GetString();
+		break;
 	default:
-		{
-			OutSuccess = false;
-		}
+		OutSuccess = false;
+		return;
 	}
+	OutSuccess = true;
 }
 
 void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FString& PropertyName, FString& OutString, bool& OutSuccess)
@@ -330,55 +289,25 @@ void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FStrin
 	TArray<FString> NameParts;
 	PropertyName.ParseIntoArray(NameParts, TEXT("."));
 
+	TArray<FArticyPropertyInfo> RelevantProperties;
+
 	// Handle feature prefix
 	if (NameParts.Num() > 1 && TypeData.Features.Contains(NameParts[0]))
 	{
-		const auto& FeatureName = NameParts[0];
-		const auto& ActualPropertyName = NameParts[1];
-
-		// Get properties of the specific feature
-		const auto& FeatureProperties = TypeData.GetPropertiesInFeature(FeatureName);
-
-		for (const auto& Property : FeatureProperties)
-		{
-			if (Property.TechnicalName.Equals(ActualPropertyName))
-			{
-				PropertyInfo = Property;
-				bFoundProperty = true;
-				break;
-			}
-		}
-
-		for (const auto& Property : FeatureProperties)
-		{
-			if (Property.LocaKey_DisplayName.Equals(ActualPropertyName))
-			{
-				PropertyInfo = Property;
-				bFoundProperty = true;
-				break;
-			}
-		}
+		RelevantProperties = TypeData.GetPropertiesInFeature(NameParts[0]);
 	}
-	else  // Search within all properties
+	else
 	{
-		for (const auto& Property : TypeData.Properties)
-		{
-			if (Property.TechnicalName.Equals(PropertyName))
-			{
-				PropertyInfo = Property;
-				bFoundProperty = true;
-				break;
-			}
-		}
+		RelevantProperties = TypeData.Properties;
+	}
 
-		for (const auto& Property : TypeData.Properties)
+	for (const auto& Property : RelevantProperties)
+	{
+		if (Property.TechnicalName.Equals(NameParts.Last()) || Property.LocaKey_DisplayName.Equals(NameParts.Last()))
 		{
-			if (Property.LocaKey_DisplayName.Equals(PropertyName))
-			{
-				PropertyInfo = Property;
-				bFoundProperty = true;
-				break;
-			}
+			PropertyInfo = Property;
+			bFoundProperty = true;
+			break;
 		}
 	}
 
@@ -392,44 +321,33 @@ void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FStrin
 	OutSuccess = true;
 }
 
-
 FString UArticyTextExtension::ExecuteMethod(const FText& Method, const TArray<FString>& Args) const
 {
-	if (Method.ToString() == TEXT("if"))
+	const FString MethodStr = Method.ToString();
+
+	if (Args.Num() >= 3)
 	{
-		if (Args.Num() >= 3)
+		// Handle internal methods
+		if (MethodStr == TEXT("if") || MethodStr == TEXT("not"))
 		{
 			const FText ResolveResult = Resolve(FText::FromString(Args[0]), *Args[1], TEXT("0"));
-            
+
+			// Flip args for not vs if
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
-				return Args[2];
+				return (MethodStr == TEXT("if")) ? Args[2] : Args[3];
 			}
-			return Args[3];
+			return (MethodStr == TEXT("if")) ? Args[3] : Args[2];
 		}
 	}
-	else if (Method.ToString() == TEXT("not"))
+
+	// Handle user methods
+	if (UserMethodMap.Contains(MethodStr))
 	{
-		if (Args.Num() >= 3)
-		{
-			const FText ResolveResult = Resolve(FText::FromString(Args[0]), *Args[1], TEXT("0"));
-            
-			if (ResolveResult.ToString() == TEXT("1"))
-			{
-				return Args[3];
-			}
-			return Args[2];
-		}
+		const FArticyUserMethodCallback Callback = UserMethodMap[MethodStr];
+		return Callback(Args);
 	}
-	else
-	{
-		if (UserMethodMap.Contains(Method.ToString()))
-		{
-			const FArticyUserMethodCallback Callback = UserMethodMap[Method.ToString()];
-			return Callback(Args);
-		}
-	}
-    
+
 	return TEXT("");
 }
 
@@ -542,6 +460,49 @@ void UArticyTextExtension::SplitInstance(const FString& InString, FString& OutNa
 		OutName = InString;
 		OutInstanceNumber = TEXT("0");
 	}
+}
+
+// Helper function to replace placeholders with given arguments
+FString UArticyTextExtension::ReplacePlaceholders(const FString& Input, const TArray<FString>& ArgumentValues)
+{
+	FString Output = Input;
+	for (int32 ArgIndex = 0; ArgIndex < ArgumentValues.Num(); ++ArgIndex)
+	{
+		const FString Placeholder = FString::Printf(TEXT("{%d}"), ArgIndex);
+		Output = Output.Replace(*Placeholder, *ArgumentValues[ArgIndex]);
+	}
+	return Output;
+}
+
+// Helper function to process tokens
+FString UArticyTextExtension::ProcessTokens(const FString& Input, TFunction<FString(const FString&, const FString&)> TokenHandler)
+{
+	FString Output = Input;
+
+	while (true)
+	{
+		const int32 TokenStartIndex = Output.Find(TEXT("["), ESearchCase::CaseSensitive);
+		if (TokenStartIndex == INDEX_NONE)
+			break;
+
+		const int32 TokenEndIndex = Output.Find(TEXT("]"), ESearchCase::CaseSensitive, ESearchDir::FromStart, TokenStartIndex);
+		if (TokenEndIndex == INDEX_NONE)
+			break;
+
+		FString Token = Output.Mid(TokenStartIndex + 1, TokenEndIndex - TokenStartIndex - 1);
+		FString FullToken = Output.Mid(TokenStartIndex, TokenEndIndex - TokenStartIndex + 1);
+		FString SourceName, Formatting;
+
+		Token.Split(TEXT(":"), &SourceName, &Formatting);
+		if (SourceName.IsEmpty())
+		{
+			SourceName = Token;
+		}
+
+		FString Replacement = TokenHandler(SourceName, Formatting);
+		Output = Output.Replace(*FullToken, *Replacement);
+	}
+	return Output;
 }
 
 void UArticyTextExtension::AddUserMethod(const FString& MethodName, const FArticyUserMethodCallback Callback)

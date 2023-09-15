@@ -61,13 +61,13 @@ struct ARTICYRUNTIME_API FArticyType
 public:
 	FArticyEnumValueInfo GetEnumValue(int Value) const;
 	FArticyEnumValueInfo GetEnumValue(const FString& ValueName) const;
-	FString GetFeatureDisplayName(const FString& FeatureName) const;
+	static FString GetFeatureDisplayName(const FString& FeatureName);
 	FString GetFeatureDisplayNameLocaKey(const FString& FeatureName) const;
 	TArray<FArticyPropertyInfo> GetProperties() const;
 	TArray<FArticyPropertyInfo> GetPropertiesInFeature(const FString& FeatureName) const;
 	FArticyPropertyInfo GetProperty(const FString& PropertyName) const;
 	static FString LocalizeString(const FString& Input);
-
+	
 	void MergeChild(const FArticyType& Child);
 	void MergeParent(const FArticyType& Parent);
 	
@@ -100,4 +100,7 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
 	bool IsInvalidType = false;
+
+protected:
+	void MergeProperties(const FArticyType& Other, bool isChild);
 };
