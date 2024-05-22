@@ -61,6 +61,7 @@ public class ArticyEditor : ModuleRules
 				"GraphEditor",
 				"AudioEditor",
 				"ApplicationCore",
+				"ArticyRuntime",
 #if UE_5_0_OR_LATER
 				"ToolMenus",
 #endif
