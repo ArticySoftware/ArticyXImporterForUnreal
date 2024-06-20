@@ -19,7 +19,7 @@
 #include "StringTableGenerator.h"
 #include "BuildToolParser/BuildToolParser.h"
 #include "Serialization/JsonSerializer.h"
-#include "HAL/PlatformFileManager.h"
+#include "HAL/PlatformFilemanager.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Factories/SoundFactory.h"
