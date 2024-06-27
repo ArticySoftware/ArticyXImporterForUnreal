@@ -250,7 +250,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category="Language")
 	FString LanguageName;
 	UPROPERTY(VisibleAnywhere, Category="Language")
-	bool IsVoiceOver;
+	bool IsVoiceOver = false;
 
 	void ImportFromJson(const TSharedPtr<FJsonObject>& JsonRoot);
 };

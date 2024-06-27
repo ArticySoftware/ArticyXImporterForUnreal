@@ -22,7 +22,7 @@ public:
 	FString TechnicalName;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-	int Value;
+	int Value = 0;
 };
 
 USTRUCT(BlueprintType)
