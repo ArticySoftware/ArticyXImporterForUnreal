@@ -1,4 +1,4 @@
-﻿//  
+//  
 // Copyright (c) 2024 articy Software GmbH & Co. KG. All rights reserved.  
 //
 

@@ -90,6 +90,8 @@ class ARTICYRUNTIME_API UArticyVariable : public UObject
 	GENERATED_BODY()
 
 public:
+	typedef void* UnderlyingType;
+	
 	/**
 	 * This delegate is broadcast every time the (layer zero) value of this variable changes.
 	 * A reference to the instance of the variable is passed as parameter.
@@ -411,11 +413,11 @@ UCLASS()
 class ARTICYRUNTIME_API UArticyBaseVariableSet : public UObject, public IArticyReflectable
 {
 	GENERATED_BODY()
+
 public:
 	UPROPERTY(VisibleAnywhere, Category = "ArticyGlobalVariables")
 	TArray<UArticyVariable*> Variables;
 
-public:
 	/**
 	 * This delegate is broadcast every time a variable inside this namespace changes.
 	 * A reference to the instance of the changed variable is passed as parameter.
@@ -461,12 +463,11 @@ public:
 		}
 		return articyVars;
 	}
-	
-private:
 
 	UFUNCTION()
 	void BroadcastOnVariableChanged(UArticyVariable* Variable);
 
+private:
 	template <typename Type>
 	friend void UArticyVariable::Init(UArticyBaseVariableSet* Set, UArticyGlobalVariables* const NewStore, const FName& Name, const typename Type::UnderlyingType& NewValue);
 };
@@ -672,3 +673,52 @@ const VariablePayloadType& UArticyGlobalVariables::GetVariableValue(const FName 
 	static VariablePayloadType empty = VariablePayloadType();
 	return empty;
 }
+
+USTRUCT(BlueprintType)
+struct FArticyVariableData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FString VariableName;  // The variable's name.
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FString VariableTypeClass;  // Fully qualified type name, e.g., "UArticyBool".
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FString FullName;  // E.g., "Namespace.VariableName".
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FString DefaultValue;  // Serialized default value.
+};
+
+USTRUCT(BlueprintType)
+struct FArticyNamespaceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FString NamespaceName;  // Name of the namespace.
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TArray<FArticyVariableData> Variables;  // Variables in this namespace.
+};
+
+UCLASS(BlueprintType)
+class ARTICYRUNTIME_API UArticyGlobalVariablesData : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TMap<FString, FArticyNamespaceData> Namespaces;  // Namespaces and their variables.
+};
+
+USTRUCT(BlueprintType)
+struct FArticyNamespaceVariables
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NamespaceVariables")
+	TMap<FString, UArticyVariable*> Variables;
+};
