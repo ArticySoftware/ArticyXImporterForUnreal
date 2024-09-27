@@ -107,7 +107,7 @@ ExpressoType::ExpressoType(const UArticyPrimitive* Object)
 	}
 
 	// Make sure to use the full 64-bit ID
-	StringValue = FString::Printf(TEXT("%llu_%d"), Object->GetId(), Object->GetCloneId());
+	StringValue = FString::Printf(TEXT("%llu_%d"), Object->GetId().Get(), Object->GetCloneId());
 }
 
 /**
@@ -1080,18 +1080,38 @@ bool ExpressoType::operator>=(const ExpressoType& Other) const { return !(*this 
  * @param MethodProvider The method provider used in the evaluation.
  * @return The result of the evaluation.
  */
-bool UArticyExpressoScripts::Evaluate(const int& ConditionFragmentHash, UArticyGlobalVariables* GV,
-	UObject* MethodProvider) const
+bool UArticyExpressoScripts::Evaluate(const int& ConditionFragmentHash, UArticyGlobalVariables* GV, UObject* MethodProvider) const
 {
 	SetGV(GV);
 	UserMethodsProvider = MethodProvider;
 
-	auto condition = Conditions.Find(ConditionFragmentHash);
-	bool result = ensure(condition) && (*condition)();
+	const FString* SerializedCondition = SerializedScripts.FindByPredicate(
+		[ConditionFragmentHash](const FString& Script) {
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Script);
+			if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+			{
+				return JsonObject->GetIntegerField(TEXT("Hash")) == ConditionFragmentHash;
+			}
+			return false;
+		});
 
-	// Clear methods provider
+	bool result = false;
+
+	if (SerializedCondition)
+	{
+		TSharedPtr<FJsonObject> JsonObject;
+		TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*SerializedCondition);
+		if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+		{
+			FString Content = JsonObject->GetStringField(TEXT("Content"));
+			result = UArticyScriptInterpreter::EvaluateCondition(Content, GV);
+		}
+	}
+
 	UserMethodsProvider = nullptr;
 	SetGV(nullptr);
+
 	return result;
 }
 
@@ -1105,24 +1125,37 @@ bool UArticyExpressoScripts::Evaluate(const int& ConditionFragmentHash, UArticyG
  * @param MethodProvider The method provider used in the execution.
  * @return True if the execution was successful, false otherwise.
  */
-bool UArticyExpressoScripts::Execute(const int& InstructionFragmentHash, UArticyGlobalVariables* GV,
-	UObject* MethodProvider) const
+bool UArticyExpressoScripts::Execute(const int& InstructionFragmentHash, UArticyGlobalVariables* GV, UObject* MethodProvider) const
 {
 	SetGV(GV);
 	UserMethodsProvider = MethodProvider;
 
-	bool result = false;
-	auto instruction = Instructions.Find(InstructionFragmentHash);
-	if (ensure(instruction))
+	const FString* SerializedInstruction = SerializedScripts.FindByPredicate(
+		[InstructionFragmentHash](const FString& Script) {
+			TSharedPtr<FJsonObject> JsonObject;
+			TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Script);
+			if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+			{
+				return JsonObject->GetIntegerField(TEXT("Hash")) == InstructionFragmentHash;
+			}
+			return false;
+		});
+
+	if (SerializedInstruction)
 	{
-		(*instruction)();
-		result = true;
+		TSharedPtr<FJsonObject> JsonObject;
+		TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(*SerializedInstruction);
+		if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+		{
+			FString Content = JsonObject->GetStringField(TEXT("Content"));
+			UArticyScriptInterpreter::ExecuteInstruction(Content, GV);
+		}
 	}
 
-	// Clear methods provider
 	UserMethodsProvider = nullptr;
 	SetGV(nullptr);
-	return result;
+
+	return true;
 }
 
 /**

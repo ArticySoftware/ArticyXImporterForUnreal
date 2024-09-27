@@ -7,6 +7,7 @@
 #include "Internationalization/Regex.h"
 #include "ArticyObject.h"
 #include "ArticyDatabase.h"
+#include "ArticyScriptInterpreter.h"
 
 #include "ArticyExpressoScripts.generated.h"
 
@@ -941,6 +942,8 @@ public:
      */
     virtual UArticyGlobalVariables* GetGV() { return nullptr; }
 
+    TArray<FString> SerializedScripts;
+
 protected:
 
     /**
@@ -1363,6 +1366,11 @@ protected:
      * @return True for empty or comment-only conditions.
      */
     static bool ConditionOrTrue(void /*JustAComment*/) { return true; }
+
+    static bool ConditionOrTrue(const FString& Condition, const UArticyGlobalVariables* Globals)
+    {
+        return UArticyScriptInterpreter::EvaluateCondition(Condition, Globals);
+    }
 
     /**
      * @brief Cache of the current methods provider set during evaluation.

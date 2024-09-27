@@ -152,43 +152,21 @@ void GenerateExpressoScripts(CodeFileGenerator* header, const UArticyImportData*
 	header->Line("#pragma warning(disable: 4883) //<disable \"optimization cannot be applied due to function size\" compile error.");
 	header->Line("#endif");
 	header->Method("", CodeGenerator::GetExpressoScriptsClassname(Data), "", [&]
+	{
+		const auto fragments = Data->GetScriptFragments();
+		for (const auto& script : fragments)
 		{
-			const auto fragments = Data->GetScriptFragments();
-			for (auto script : fragments)
-			{
-				if (script.OriginalFragment.IsEmpty())
-					continue;
+			if (script.OriginalFragment.IsEmpty())
+				continue;
 
+			FString serializedScript = FString::Printf(TEXT("{\"Type\": \"%s\", \"Hash\": %d, \"Content\": \"%s\"}"),
+				script.bIsInstruction ? TEXT("Instruction") : TEXT("Condition"),
+				GetTypeHash(script.OriginalFragment),
+				*script.ParsedFragment.Replace(TEXT("\""), TEXT("\\\""))); // Escape quotes for JSON
 
-				int cleanScriptHash = GetTypeHash(script.OriginalFragment);
-
-				if (script.bIsInstruction)
-				{
-					header->Line(FString::Printf(TEXT("Instructions.Add(%d, [&]"), cleanScriptHash));
-					header->Line("{");
-					{
-						header->Line(script.ParsedFragment, false, true, 1);
-					}
-					header->Line("});");
-				}
-				else
-				{
-					header->Line(FString::Printf(TEXT("Conditions.Add(%d, [&]"), cleanScriptHash));
-					header->Line("{");
-					{
-						// The fragment might be empty or contain only a comment, so we need to wrap it in
-						// the ConditionOrTrue method
-						header->Line("return ConditionOrTrue(", false, true, 1);
-						// Now comes the fragment (in next line and indented)
-						header->Line(script.ParsedFragment, false, true, 2);
-						// Make sure there is a final semicolon
-						// We put it into the next line, since the fragment might contain a line-comment
-						header->Line(");", false, true, 1);
-					}
-					header->Line("});");
-				}
-			}
-		});
+			header->Line(FString::Printf(TEXT("SerializedScripts.Add(TEXT(\"%s\"));"), *serializedScript));
+		}
+	});
 	header->Line("#if !((defined(PLATFORM_PS4) && PLATFORM_PS4) || (defined(PLATFORM_PS5) && PLATFORM_PS5))");
 	header->Line("#pragma warning(pop)");
 	header->Line("#endif");
