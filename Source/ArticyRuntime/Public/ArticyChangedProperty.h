@@ -15,7 +15,7 @@ struct ARTICYRUNTIME_API FArticyChangedProperty
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-	UArticyBaseObject* ObjectReference;
+	UArticyBaseObject* ObjectReference = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
 	FName Property;
