@@ -519,7 +519,7 @@ void UArticyFlowPlayer::SetCursorToStartNode()
 {
     // This ensure Flowplayer construction whithout Throwing
     // error message when setup in Actor construction with C++
-    if (StartOn.NoneSet)
+    if (StartOn.GetId().IsNull())
     {
         return;
     }
