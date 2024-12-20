@@ -18,7 +18,7 @@ public:
 	void SetObjectReference(IArticyReflectable* object);
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-	UArticyBaseObject* ObjectReference;
+	UArticyBaseObject* ObjectReference = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
 	FName Property;
