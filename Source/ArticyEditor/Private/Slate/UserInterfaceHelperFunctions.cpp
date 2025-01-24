@@ -374,7 +374,7 @@ const bool UserInterfaceHelperFunctions::ShowObjectInArticy(const FArticyId Arti
 	TArray<FAssetData> OutAssetData;
 
 #if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >0
-	AssetRegistryModule.Get().GetAssetsByClass(UArticyPackage::StaticClass()->GetClassPathName(), OutAssetData, false);
+	AssetRegistryModule.Get().GetAssetsByClass(UArticyImportData::StaticClass()->GetClassPathName(), OutAssetData, false);
 #else
 	AssetRegistryModule.Get().GetAssetsByClass(UArticyImportData::StaticClass()->GetFName(), OutAssetData, false);
 #endif
