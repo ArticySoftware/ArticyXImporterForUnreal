@@ -14,7 +14,7 @@
  *
  * This class adds a custom button to the Articy ID property widget, providing additional functionality for interacting with Articy objects.
  */
-class FArticyButtonCustomization : public IArticyIdPropertyWidgetCustomization
+class FArticyButtonCustomization final : public IArticyIdPropertyWidgetCustomization
 {
 public:
 	/**
@@ -62,7 +62,7 @@ private:
  *
  * This class is responsible for creating and managing instances of Articy button customizations.
  */
-class FArticyButtonCustomizationFactory : public IArticyIdPropertyWidgetCustomizationFactory
+class FArticyButtonCustomizationFactory final : public IArticyIdPropertyWidgetCustomizationFactory
 {
 public:
 	/**

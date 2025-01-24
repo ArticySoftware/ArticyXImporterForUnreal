@@ -112,11 +112,7 @@ TValue IArticyReflectable::SetProp(FName Property, TValue Value, int32 ArrayInde
 	{
 		FArticyChangedProperty ChangedProperty;
 		ChangedProperty.Property = Property;
-		auto ObjectReference = Cast<UArticyBaseObject>(this);
-		if (ObjectReference)
-		{
-			ChangedProperty.ObjectReference = ObjectReference;
-		}
+		ChangedProperty.SetObjectReference(this);
 
 		(*valPtr) = Value;
 

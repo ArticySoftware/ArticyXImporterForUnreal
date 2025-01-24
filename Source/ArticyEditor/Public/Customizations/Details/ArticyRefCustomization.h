@@ -7,8 +7,6 @@
 #include "CoreMinimal.h"
 #include <IPropertyTypeCustomization.h>
 #include "ArticyRef.h"
-#include "Slate/SArticyIdProperty.h"
-#include "Slate/SArticyRefProperty.h"
 #include "ArticyObject.h"
 
 /**
@@ -17,7 +15,7 @@
  *
  * This class provides custom UI elements and functionality for editing ArticyRef properties, including class restrictions and value display.
  */
-class FArticyRefCustomization : public IPropertyTypeCustomization
+class FArticyRefCustomization final : public IPropertyTypeCustomization
 {
 public:
 	/**
@@ -55,7 +53,6 @@ private:
 	/** Widget for the ArticyRef property. */
 	TSharedPtr<SWidget> ArticyRefPropertyWidget;
 
-private:
 	/**
 	 * @brief Retrieves the class restriction for the ArticyRef property.
 	 *

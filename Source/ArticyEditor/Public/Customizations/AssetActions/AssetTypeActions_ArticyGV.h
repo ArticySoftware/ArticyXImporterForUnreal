@@ -8,12 +8,12 @@
 #include "ArticyGlobalVariables.h"
 
 /**
- * @class FAssetTypeActions_ArticyGV
+ * @class FAssetTypeActions_ArticyGv
  * @brief Implements actions for handling Articy global variables in the editor.
  *
  * This class provides the functionality to manage and display Articy global variable assets within the Unreal Editor.
  */
-class FAssetTypeActions_ArticyGV : public FAssetTypeActions_Base
+class FAssetTypeActions_ArticyGv final : public FAssetTypeActions_Base
 {
 public:
 	/**

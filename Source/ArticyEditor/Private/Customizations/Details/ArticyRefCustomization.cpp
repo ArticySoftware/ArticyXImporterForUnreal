@@ -11,6 +11,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Slate/UserInterfaceHelperFunctions.h"
 #include "EditorCategoryUtils.h"
+#include "Slate/SArticyRefProperty.h"
 
 /**
  * @brief Creates a shared instance of FArticyRefCustomization.

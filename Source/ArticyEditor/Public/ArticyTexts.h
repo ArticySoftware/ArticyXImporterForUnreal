@@ -23,7 +23,7 @@ struct ARTICYEDITOR_API FArticyTextDef
 
     /** The associated VO (Voice Over) asset */
     UPROPERTY(VisibleAnywhere, Category = "Text")
-    FString VOAsset = "";
+    FString VoAsset = "";
 
     /**
      * Imports text definition data from a JSON value.

@@ -209,43 +209,39 @@ $(function(){initNavTree('d9/d9a/_articy_reflectable_8h_source.html','../../'); 
 <div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    {</div>
 <div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>        <a class="code hl_struct" href="../../d9/dfa/struct_f_articy_changed_property.html">FArticyChangedProperty</a> ChangedProperty;</div>
 <div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>        ChangedProperty.Property = Property;</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>        <span class="keyword">auto</span> ObjectReference = Cast&lt;UArticyBaseObject&gt;(<span class="keyword">this</span>);</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>        <span class="keywordflow">if</span> (ObjectReference)</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>        {</div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>            ChangedProperty.ObjectReference = ObjectReference;</div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>        }</div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span> </div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>        (*valPtr) = Value;</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>        ChangedProperty.SetObjectReference(<span class="keyword">this</span>);</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span> </div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>        (*valPtr) = Value;</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>        ReportChanged.Broadcast(ChangedProperty);</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>        <span class="keywordflow">return</span> (*valPtr);</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>    }</div>
 <div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span> </div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>        ReportChanged.Broadcast(ChangedProperty);</div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>        <span class="keywordflow">return</span> (*valPtr);</div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>    }</div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span> </div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>    <span class="keywordflow">return</span> Value;</div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>}</div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span>    <span class="keywordflow">return</span> Value;</div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>}</div>
 </div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span> </div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> TValue&gt;</div>
-<div class="foldopen" id="foldopen00131" data-start="{" data-end="}">
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno"><a class="line" href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">  131</a></span>TValue&amp; <a class="code hl_function" href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">IArticyReflectable::GetProp</a>(FName Property, int32 ArrayIndex)</div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>{</div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>    TValue* valPtr = <a class="code hl_function" href="../../d9/d2d/class_i_articy_reflectable.html#a2d26ae8b51ee363bd0cb59ecca1ab98e">GetPropPtr&lt;TValue&gt;</a>(Property, ArrayIndex);</div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>    <span class="keywordflow">if</span>(valPtr)</div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>        <span class="keywordflow">return</span> (*valPtr);</div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span> </div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>    <span class="keyword">static</span> TValue Empty;</div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>    <span class="keywordflow">return</span> Empty;</div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>}</div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span> </div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> TValue&gt;</div>
+<div class="foldopen" id="foldopen00127" data-start="{" data-end="}">
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno"><a class="line" href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">  127</a></span>TValue&amp; <a class="code hl_function" href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">IArticyReflectable::GetProp</a>(FName Property, int32 ArrayIndex)</div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>{</div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>    TValue* valPtr = <a class="code hl_function" href="../../d9/d2d/class_i_articy_reflectable.html#a2d26ae8b51ee363bd0cb59ecca1ab98e">GetPropPtr&lt;TValue&gt;</a>(Property, ArrayIndex);</div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>    <span class="keywordflow">if</span>(valPtr)</div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>        <span class="keywordflow">return</span> (*valPtr);</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span> </div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>    <span class="keyword">static</span> TValue Empty;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>    <span class="keywordflow">return</span> Empty;</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>}</div>
 </div>
 <div class="ttc" id="aclass_i_articy_reflectable_html"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html">IArticyReflectable</a></div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:24</div></div>
 <div class="ttc" id="aclass_i_articy_reflectable_html_a02ec10d0499c887f922cb7e54cb25470"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a02ec10d0499c887f922cb7e54cb25470">IArticyReflectable::GetProperty</a></div><div class="ttdeci">FProperty * GetProperty(FName Property) const</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:58</div></div>
 <div class="ttc" id="aclass_i_articy_reflectable_html_a128174b5fb40fe508b5132bbc52935e6"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a128174b5fb40fe508b5132bbc52935e6">IArticyReflectable::GetProp</a></div><div class="ttdeci">const TValue &amp; GetProp(FName Property, int32 ArrayIndex=0) const</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:38</div></div>
 <div class="ttc" id="aclass_i_articy_reflectable_html_a2d26ae8b51ee363bd0cb59ecca1ab98e"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a2d26ae8b51ee363bd0cb59ecca1ab98e">IArticyReflectable::GetPropPtr</a></div><div class="ttdeci">TValue * GetPropPtr(FName Property, int32 ArrayIndex=0) const</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:46</div></div>
 <div class="ttc" id="aclass_i_articy_reflectable_html_a68a18bdfb8ef020e698675a568eae929"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a68a18bdfb8ef020e698675a568eae929">IArticyReflectable::HasProperty</a></div><div class="ttdeci">static bool HasProperty(const UClass *Class, const FName &amp;Property)</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:70</div></div>
-<div class="ttc" id="aclass_i_articy_reflectable_html_a9fd86a7121f7ccb7d618bc1a23e347ef"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">IArticyReflectable::GetProp</a></div><div class="ttdeci">TValue &amp; GetProp(FName Property, int32 ArrayIndex=0)</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:131</div></div>
+<div class="ttc" id="aclass_i_articy_reflectable_html_a9fd86a7121f7ccb7d618bc1a23e347ef"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#a9fd86a7121f7ccb7d618bc1a23e347ef">IArticyReflectable::GetProp</a></div><div class="ttdeci">TValue &amp; GetProp(FName Property, int32 ArrayIndex=0)</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:127</div></div>
 <div class="ttc" id="aclass_i_articy_reflectable_html_afddb8d3baa43d24956a8f888bc948f3d"><div class="ttname"><a href="../../d9/d2d/class_i_articy_reflectable.html#afddb8d3baa43d24956a8f888bc948f3d">IArticyReflectable::SetProp</a></div><div class="ttdeci">TValue SetProp(FName Property, TValue Value, int32 ArrayIndex=0)</div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:108</div></div>
 <div class="ttc" id="aclass_u_articy_reflectable_html"><div class="ttname"><a href="../../d9/da2/class_u_articy_reflectable.html">UArticyReflectable</a></div><div class="ttdef"><b>Definition</b> ArticyReflectable.h:16</div></div>
-<div class="ttc" id="astruct_f_articy_changed_property_html"><div class="ttname"><a href="../../d9/dfa/struct_f_articy_changed_property.html">FArticyChangedProperty</a></div><div class="ttdef"><b>Definition</b> ArticyChangedProperty.h:13</div></div>
+<div class="ttc" id="astruct_f_articy_changed_property_html"><div class="ttname"><a href="../../d9/dfa/struct_f_articy_changed_property.html">FArticyChangedProperty</a></div><div class="ttdef"><b>Definition</b> ArticyChangedProperty.h:14</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

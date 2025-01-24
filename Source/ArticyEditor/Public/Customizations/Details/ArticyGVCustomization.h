@@ -6,8 +6,6 @@
 
 #include "CoreMinimal.h"
 #include "IDetailCustomization.h"
-#include "Slate/GV/SArticyGlobalVariablesDebugger.h"
-#include "DetailLayoutBuilder.h"
 
 /**
  * @class FArticyGVCustomization

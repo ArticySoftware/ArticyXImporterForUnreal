@@ -145,6 +145,14 @@ Static Public Member Functions</h2></td></tr>
 <p>Ensures that the Articy import data asset is valid and available. Generates a new import data asset if necessary.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname"><a class="el" href="../../d3/da9/class_u_articy_import_data.html">UArticyImportData</a></td><td>A pointer to a pointer of the Articy import data object. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The result of the ensure operation.</dd></dl>
+<p>Ensures that the Articy import data asset is valid and available. Generates a new import data asset if necessary.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
     <tr><td class="paramname">ImportData</td><td>A pointer to a pointer of the Articy import data object. </td></tr>
   </table>
   </dd>
@@ -178,7 +186,7 @@ Static Public Member Functions</h2></td></tr>
 <p>Forces a complete reimport of the Articy data, resetting all hashes and package definitions.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">ImportData</td><td>The Articy import data object to reimport. </td></tr>
+    <tr><td class="paramname"><a class="el" href="../../d3/da9/class_u_articy_import_data.html">UArticyImportData</a></td><td>The Articy import data object to reimport. </td></tr>
   </table>
   </dd>
 </dl>
@@ -219,6 +227,14 @@ Static Public Member Functions</h2></td></tr>
 <p>Regenerates assets from the given Articy import data.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname"><a class="el" href="../../d3/da9/class_u_articy_import_data.html">UArticyImportData</a></td><td>The Articy import data object from which assets are regenerated. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>-1 if the operation failed.</dd></dl>
+<p>Regenerates assets from the given Articy import data.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
     <tr><td class="paramname">ImportData</td><td>The Articy import data object from which assets are regenerated. </td></tr>
   </table>
   </dd>
@@ -249,6 +265,14 @@ Static Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<p>Reimports changes from the Articy data without resetting all data.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname"><a class="el" href="../../d3/da9/class_u_articy_import_data.html">UArticyImportData</a></td><td>The Articy import data object to reimport. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The number of changes reimported, or -1 if the operation failed.</dd></dl>
 <p>Reimports changes from the Articy data without resetting all data.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">

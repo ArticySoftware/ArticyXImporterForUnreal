@@ -30,23 +30,19 @@ class UArticyImportData;
 //
 // Ex. "My text has <b>bold</b> words." to "My text has <b>bold</> words."
 FString ConvertUnityMarkupToUnreal(const FString& Input);
+FString DecodeHtmlEntities(const FString& Input);
 
 /**
  * Base class for predefined type information.
  */
-struct ArticyPredefinedTypeBase
+struct FArticyPredefinedTypeBase
 {
-public:
-	ArticyPredefinedTypeBase(FString TypeName, FString PropTypeName, FString DefaultValue) : CppType(TypeName), CppPropertyType(PropTypeName), CppDefaultValue(DefaultValue) { }
-	virtual ~ArticyPredefinedTypeBase() = default;
+	FArticyPredefinedTypeBase(const FString& TypeName, const FString& PropTypeName, const FString& DefaultValue) : CppType(TypeName), CppPropertyType(PropTypeName), CppDefaultValue(DefaultValue) { }
+	virtual ~FArticyPredefinedTypeBase() = default;
 
-public:
-	UPROPERTY(VisibleAnywhere, Category = "PredefinedTypeInfo")
-	const FString CppType = "";
-	UPROPERTY(VisibleAnywhere, Category = "PredefinedTypeInfo")
-	const FString CppPropertyType = "";
-	UPROPERTY(VisibleAnywhere, Category = "PredefinedTypeInfo")
-	const FString CppDefaultValue = "";
+	FString CppType = "";
+	FString CppPropertyType = "";
+	FString CppDefaultValue = "";
 
 	virtual void SetProp(FName Property, PROP_SETTER_PARAMS) { ensureMsgf(false, TEXT("SetProp not implemented in derived class!")); }
 	virtual void SetArray(FName ArrayProperty, ARRAY_SETTER_PARAMS) { ensureMsgf(false, TEXT("SetProp not implemented in derived class!")); }
@@ -60,43 +56,38 @@ public:
  * using UArticyObject->setProp.
  */
 template<typename Type, typename PropType = Type>
-struct ArticyPredefinedTypeInfo : public ArticyPredefinedTypeBase
+struct ArticyPredefinedTypeInfo : FArticyPredefinedTypeBase
 {
-public:
-	ArticyPredefinedTypeInfo(FString TypeName, FString PropTypeName, FString DefaultValue, PropType(*Deserializer)(PROP_SETTER_PARAMS))
-		: ArticyPredefinedTypeBase(TypeName, PropTypeName, DefaultValue), Deserializer(Deserializer)
+	ArticyPredefinedTypeInfo(const FString& TypeName, const FString& PropTypeName, const FString& DefaultValue, PropType(*Deserializer)(PROP_SETTER_PARAMS))
+		: FArticyPredefinedTypeBase(TypeName, PropTypeName, DefaultValue), Deserializer(Deserializer)
 	{ }
 
-	virtual ~ArticyPredefinedTypeInfo() = default;
-
-public:
+	virtual ~ArticyPredefinedTypeInfo() override = default;
 
 	typedef PropType(*TDeserializer)(PROP_SETTER_PARAMS);
 	/** The deserializer used to deserialize JSON to PropType. */
 	TDeserializer Deserializer = nullptr;
 
-public:
-
 	/** This is used to set a property of type PropType. */
-	void SetProp(FName Property, PROP_SETTER_PARAMS) override
+	virtual void SetProp(const FName Property, PROP_SETTER_PARAMS) override
 	{
 		if (ensure(Deserializer))
 			Model->SetProp<PropType>(Property, Deserializer(PROP_SETTER_ARGS));
 	}
 
 	/** This is used to set an array property with ItemType = PropType. */
-	void SetArray(FName ArrayProperty, ARRAY_SETTER_PARAMS) override
+	virtual void SetArray(FName ArrayProperty, ARRAY_SETTER_PARAMS) override
 	{
 		if (!ensure(Deserializer))
 			return;
 
-		static TArray<PropType> propArray;
+		static TArray<PropType> PropArray;
 
-		propArray.Reset(JsonArray.Num());
+		PropArray.Reset(JsonArray.Num());
 		for (auto j : JsonArray)
-			propArray.Add(Deserializer(Model, Path, j, PackageName));
+			PropArray.Add(Deserializer(Model, Path, j, PackageName));
 
-		Model->SetProp(ArrayProperty, propArray);
+		Model->SetProp(ArrayProperty, PropArray);
 	}
 };
 
@@ -105,25 +96,23 @@ public:
  * It defines a default Deserializer.
  */
 template<typename Type, typename PropType = Type>
-struct ArticyObjectTypeInfo : ArticyPredefinedTypeInfo<Type, PropType>
+struct ArticyObjectTypeInfo final : ArticyPredefinedTypeInfo<Type, PropType>
 {
-public:
 	ArticyObjectTypeInfo(FString TypeName, FString PropTypeName) : ArticyPredefinedTypeInfo<Type, PropType>(TypeName, PropTypeName, TEXT("nullptr"), [](PROP_SETTER_PARAMS)
 		{
-			auto val = NewObject<Type>(Model);
-			val->InitFromJson(Json);
+			auto Val = NewObject<Type>(Model);
+			Val->InitFromJson(Json);
 
-			UObject* raw = val;
-			auto prim = Cast<UArticyPrimitive>(raw);
-			if (prim)
-				Model->AddSubobject(prim);
+			UObject* Raw = Val;
+			if (const auto Prim = Cast<UArticyPrimitive>(Raw))
+				Model->AddSubobject(Prim);
 
-			return val;
+			return Val;
 		}) {
-		static_assert(std::is_base_of<UArticyBaseObject, Type>::value, "ArticyObjectTypeInfo might only be used for UArticyBaseObject!");
+		static_assert(std::is_base_of_v<UArticyBaseObject, Type>, "ArticyObjectTypeInfo might only be used for UArticyBaseObject!");
 	}
 
-	virtual ~ArticyObjectTypeInfo() = default;
+	virtual ~ArticyObjectTypeInfo() override = default;
 };
 
 /**
@@ -131,17 +120,16 @@ public:
  */
 struct FArticyPredefTypes
 {
-public:
 	FArticyPredefTypes();
 
-	static TMap<FName, ArticyPredefinedTypeBase*>& Get() { return StaticInstance.Types; }
+	static TMap<FName, FArticyPredefinedTypeBase*>& Get() { return StaticInstance.Types; }
 	static ArticyPredefinedTypeInfo<uint8>* GetEnum() { return StaticInstance.Enum.Get(); }
 	static bool IsPredefinedType(const FName& OriginalType);
 
 private:
 
 	/** All predefined types */
-	TMap<FName, ArticyPredefinedTypeBase*> Types;
+	TMap<FName, FArticyPredefinedTypeBase*> Types;
 	/** Generic type for enums, only used for setting enum properties (as uint8) */
 	TSharedPtr<ArticyPredefinedTypeInfo<uint8>> Enum;
 

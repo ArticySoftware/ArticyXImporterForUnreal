@@ -30,7 +30,7 @@ public:
 	 *
 	 * @param InModule The ArticyEditorModule instance for which console commands are defined.
 	 */
-	FArticyEditorConsoleCommands(const FArticyEditorModule& InModule)
+	explicit FArticyEditorConsoleCommands(const FArticyEditorModule& InModule)
 		: Module(InModule)
 
 		, ReimportCommand(
@@ -53,10 +53,9 @@ public:
 
 		if (ImportData)
 		{
-			const auto factory = NewObject<UArticyJSONFactory>();
-			if (factory)
+			if (const auto Factory = NewObject<UArticyJSONFactory>())
 			{
-				factory->Reimport(ImportData);
+				Factory->Reimport(ImportData);
 				//GC will destroy factory
 			}
 		}

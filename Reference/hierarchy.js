@@ -4,12 +4,6 @@ var hierarchy =
       [ "AArticyFlowDebugger", "d9/d65/class_a_articy_flow_debugger.html", null ]
     ] ],
     [ "ArticyLocalizerGenerator", "d0/d07/class_articy_localizer_generator.html", null ],
-    [ "ArticyPredefinedTypeBase", "dd/d77/struct_articy_predefined_type_base.html", [
-      [ "ArticyPredefinedTypeInfo< Type, Type >", "dd/d9d/struct_articy_predefined_type_info.html", [
-        [ "ArticyObjectTypeInfo< Type, PropType >", "d3/d5c/struct_articy_object_type_info.html", null ]
-      ] ],
-      [ "ArticyPredefinedTypeInfo< Type, PropType >", "dd/d9d/struct_articy_predefined_type_info.html", null ]
-    ] ],
     [ "ArticyShadowState< Type >", "da/d0b/struct_articy_shadow_state.html", null ],
     [ "ArticyTypeGenerator", "d5/dea/class_articy_type_generator.html", null ],
     [ "BuildToolParser", "d6/da7/class_build_tool_parser.html", null ],
@@ -20,7 +14,7 @@ var hierarchy =
     [ "ExpressoScriptsGenerator", "d8/d0d/class_expresso_scripts_generator.html", null ],
     [ "ExpressoType", "d2/d4e/struct_expresso_type.html", null ],
     [ "FADIHierarchy", "dc/dda/struct_f_a_d_i_hierarchy.html", null ],
-    [ "FADISettings", "dc/df1/struct_f_a_d_i_settings.html", null ],
+    [ "FAdiSettings", "d7/d20/struct_f_adi_settings.html", null ],
     [ "FAIDScriptMethod", "d2/d88/struct_f_a_i_d_script_method.html", null ],
     [ "FAIDScriptMethodParameter", "d7/d9c/struct_f_a_i_d_script_method_parameter.html", null ],
     [ "FAIDUserMethods", "dd/d9c/struct_f_a_i_d_user_methods.html", null ],
@@ -54,6 +48,12 @@ var hierarchy =
     [ "FArticyObjectShadow", "df/d38/struct_f_articy_object_shadow.html", null ],
     [ "FArticyPackageDef", "dc/d7e/struct_f_articy_package_def.html", null ],
     [ "FArticyPackageDefs", "d5/d1d/struct_f_articy_package_defs.html", null ],
+    [ "FArticyPredefinedTypeBase", "d6/db6/struct_f_articy_predefined_type_base.html", [
+      [ "ArticyPredefinedTypeInfo< Type, Type >", "dd/d9d/struct_articy_predefined_type_info.html", [
+        [ "ArticyObjectTypeInfo< Type, PropType >", "d3/d5c/struct_articy_object_type_info.html", null ]
+      ] ],
+      [ "ArticyPredefinedTypeInfo< Type, PropType >", "dd/d9d/struct_articy_predefined_type_info.html", null ]
+    ] ],
     [ "FArticyPredefTypes", "dc/dd4/struct_f_articy_predef_types.html", null ],
     [ "FArticyProjectDef", "d4/d0b/struct_f_articy_project_def.html", null ],
     [ "FArticyPropertyDef", "db/d89/struct_f_articy_property_def.html", null ],
@@ -72,26 +72,26 @@ var hierarchy =
     [ "FArticyTexts", "da/d2a/struct_f_articy_texts.html", null ],
     [ "FArticyType", "de/dec/struct_f_articy_type.html", null ],
     [ "FAssetEditorToolkit", null, [
-      [ "FArticyGVEditor", "d9/d9c/class_f_articy_g_v_editor.html", null ]
+      [ "FArticyGvEditor", "d5/d94/class_f_articy_gv_editor.html", null ]
     ] ],
     [ "FAssetTypeActions_Base", null, [
       [ "FAssetTypeActions_ArticyAlterativeGV", "d6/d77/class_f_asset_type_actions___articy_alterative_g_v.html", null ],
-      [ "FAssetTypeActions_ArticyGV", "df/d7d/class_f_asset_type_actions___articy_g_v.html", null ]
+      [ "FAssetTypeActions_ArticyGv", "db/d63/class_f_asset_type_actions___articy_gv.html", null ]
     ] ],
     [ "FArticyObjectDefinitions::FClassInfo", "da/d64/struct_f_articy_object_definitions_1_1_f_class_info.html", null ],
     [ "ArticyImporterHelpers::FCompareArticyNodeXLocation", "d9/de1/struct_articy_importer_helpers_1_1_f_compare_articy_node_x_location.html", null ],
     [ "FEditorUndoClient", null, [
-      [ "FArticyGVEditor", "d9/d9c/class_f_articy_g_v_editor.html", null ]
+      [ "FArticyGvEditor", "d5/d94/class_f_articy_gv_editor.html", null ]
     ] ],
     [ "FGCObject", null, [
-      [ "FArticyGVEditor", "d9/d9c/class_f_articy_g_v_editor.html", null ]
+      [ "FArticyGvEditor", "d5/d94/class_f_articy_gv_editor.html", null ]
     ] ],
     [ "FGlobalVariablesSizeData", "d3/df2/struct_f_global_variables_size_data.html", null ],
     [ "FGraphPanelPinFactory", null, [
       [ "FArticyRefPinFactory", "d5/d12/class_f_articy_ref_pin_factory.html", null ]
     ] ],
     [ "FNotifyHook", null, [
-      [ "FArticyGVEditor", "d9/d9c/class_f_articy_g_v_editor.html", null ]
+      [ "FArticyGvEditor", "d5/d94/class_f_articy_gv_editor.html", null ]
     ] ],
     [ "FReimportHandler", null, [
       [ "UArticyJSONFactory", "d0/dd9/class_u_articy_j_s_o_n_factory.html", null ]

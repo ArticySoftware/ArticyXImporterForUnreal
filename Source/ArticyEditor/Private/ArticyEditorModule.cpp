@@ -24,12 +24,13 @@
 #include "Widgets/Images/SImage.h"
 #include "IDirectoryWatcher.h"
 #include "Customizations/ArticyPinFactory.h"
-#include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
+#include "Customizations/AssetActions/AssetTypeActions_ArticyGv.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Customizations/Details/ArticyRefCustomization.h"
+#include "Slate/GV/SArticyGlobalVariablesDebugger.h"
 
 #if ENGINE_MAJOR_VERSION >= 5
 // In UE5, you use the ToolMenus API to extend the UI
@@ -182,7 +183,7 @@ void FArticyEditorModule::RegisterArticyToolbar()
 
 		// Add buttons
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands);
-		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGVDebugger, PluginCommands);
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands);
 	}
 #else 
 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
@@ -221,7 +222,7 @@ TSharedRef<SWidget> FArticyEditorModule::OnGenerateArticyToolsMenu() const
 void FArticyEditorModule::RegisterAssetTypeActions()
 {
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGV()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGv()));
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyAlterativeGV()));
 }
 
@@ -238,7 +239,7 @@ void FArticyEditorModule::RegisterPluginCommands()
 		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyWindow),
 		FCanExecuteAction());
 
-	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyGVDebugger,
+	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyGvDebugger,
 		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyGVDebugger),
 		FCanExecuteAction());
 }

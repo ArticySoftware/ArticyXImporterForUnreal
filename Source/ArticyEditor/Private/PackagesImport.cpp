@@ -387,7 +387,7 @@ bool FArticyPackageDef::GetIsIncluded() const
 void FArticyPackageDefs::ImportFromJson(
 	const UArticyArchiveReader& Archive,
 	const TArray<TSharedPtr<FJsonValue>>* Json,
-	FADISettings& Settings)
+	FAdiSettings& Settings)
 {
 	if (!Json)
 		return;

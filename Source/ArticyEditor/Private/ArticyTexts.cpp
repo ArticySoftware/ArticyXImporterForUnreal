@@ -28,7 +28,7 @@ void FArticyTextDef::ImportFromJson(const TSharedPtr<FJsonValue>& Json)
 
     JSON_TRY_STRING(JsonObject, Text);
     Text = ConvertUnityMarkupToUnreal(Text);
-    JSON_TRY_STRING(JsonObject, VOAsset);
+    JSON_TRY_STRING(JsonObject, VoAsset);
 }
 
 /**

@@ -17,7 +17,7 @@
  *
  * This class provides filtering functionality to restrict class selections to a given class and its children or require an exact class match.
  */
-class FArticyRefClassFilter : public IClassViewerFilter
+class FArticyRefClassFilter final : public IClassViewerFilter
 {
 public:
 	/**
@@ -26,7 +26,7 @@ public:
 	 * @param GivenClass The class to filter by.
 	 * @param bInRequiresExactClass Whether an exact class match is required.
 	 */
-	FArticyRefClassFilter(UClass* GivenClass = UArticyObject::StaticClass(), bool bInRequiresExactClass = false);
+	explicit FArticyRefClassFilter(UClass* GivenClass = UArticyObject::StaticClass(), bool bInRequiresExactClass = false);
 
 	virtual bool IsClassAllowed(const FClassViewerInitializationOptions& InInitOptions, const UClass* InClass, TSharedRef< FClassViewerFilterFuncs > InFilterFuncs) override
 	{
@@ -53,7 +53,7 @@ public:
  *
  * This class provides customization for the Articy ID properties, including custom widgets and behavior for displaying and editing Articy IDs.
  */
-class FArticyIdCustomization : public IPropertyTypeCustomization
+class FArticyIdCustomization final : public IPropertyTypeCustomization
 {
 public:
 	/**
@@ -91,7 +91,6 @@ private:
 	TSharedPtr<SArticyIdProperty> ArticyIdPropertyWidget; ///< Widget for displaying and editing the Articy ID.
 	bool bShouldCustomize = true; ///< Whether customization is enabled for the Articy ID.
 
-private:
 	UClass* GetClassRestriction() const;
 	bool IsExactClass() const;
 	bool IsReadOnly() const;

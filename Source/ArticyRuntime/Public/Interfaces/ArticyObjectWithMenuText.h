@@ -29,7 +29,7 @@ public:
 		return GetStringText(Cast<UObject>(this), PropName, &BackupText);
 	}
 
-	virtual const FText GetMenuText() const
+	virtual FText GetMenuText() const
 	{
 		return const_cast<IArticyObjectWithMenuText*>(this)->GetMenuText();
 	}

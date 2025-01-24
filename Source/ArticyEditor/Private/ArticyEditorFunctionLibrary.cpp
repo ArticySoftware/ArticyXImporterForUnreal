@@ -23,11 +23,11 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 {
 	const EImportDataEnsureResult Result = EnsureImportDataAsset(&ImportData);
 	// if we generated the import data asset we will cause a full reimport, so stop here
-	if (Result == EImportDataEnsureResult::Generation)
+	if (Result == Generation)
 	{
 		return 0;
 	}
-	if (Result == EImportDataEnsureResult::Failure)
+	if (Result == Failure)
 	{
 		return -1;
 	}

@@ -102,11 +102,6 @@ public:
 		return (Cast<UArticyAsset>(AssetObject))->LoadAsSoundWave();
 	}
 
-	virtual USoundWave* GetVOAsset() const
-	{
-		return const_cast<IArticyObjectWithText*>(this)->GetVOAsset();
-	}
-
 	virtual FText ResolveText(UObject* Outer, const FText* SourceText)
 	{
 		return ArticyHelpers::ResolveText(Outer, SourceText);

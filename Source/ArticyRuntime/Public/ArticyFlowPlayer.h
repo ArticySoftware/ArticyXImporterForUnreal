@@ -9,6 +9,7 @@
 #include "ArticyGlobalVariables.h"
 #include "ArticyRef.h"
 #include "Components/BillboardComponent.h"
+#include "Containers/Queue.h"
 #include "ArticyFlowPlayer.generated.h"
 
 class IArticyNode;

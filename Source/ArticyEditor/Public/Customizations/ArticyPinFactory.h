@@ -16,7 +16,7 @@
  * It checks the pin's type and creates the appropriate custom pin widget if the pin type
  * matches FArticyRef or FArticyId.
  */
-class FArticyRefPinFactory : public FGraphPanelPinFactory
+class FArticyRefPinFactory final : public FGraphPanelPinFactory
 {
 public:
 

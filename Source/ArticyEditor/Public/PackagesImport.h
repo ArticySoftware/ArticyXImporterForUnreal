@@ -14,7 +14,7 @@
 
 
 class UArticyImportData;
-struct FADISettings;
+struct FAdiSettings;
 
 /**
  * Represents a model definition in Articy with properties for asset reference, category, and JSON strings for properties and templates.
@@ -321,7 +321,7 @@ public:
 	 * @param Json A pointer to the JSON array containing the package definitions.
 	 * @param Settings A reference to the FADISettings object.
 	 */
-	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FADISettings& Settings);
+	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FAdiSettings& Settings);
 
 	/**
 	 * Validates the import of package definitions from a JSON array.

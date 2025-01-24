@@ -9,6 +9,9 @@
 #include "ArticyTypeSystem.h"
 #include "CodeFileGenerator.h"
 #include "CodeGenerator.h"
+#include "ISourceControlModule.h"
+#include "ISourceControlProvider.h"
+#include "SourceControlHelpers.h"
 #include "Internationalization/StringTableRegistry.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformFilemanager.h"
@@ -60,14 +63,8 @@ void ArticyLocalizerGenerator::GenerateCode(const UArticyImportData* Data, FStri
                 });
         });
 
-    // Path to the DefaultGame.ini
-    FString IniFilePath = FPaths::ProjectConfigDir() + FString(TEXT("DefaultGame.ini"));
-    FString SectionName = FString(TEXT("/Script/UnrealEd.ProjectPackagingSettings"));
-    FString KeyName = FString(TEXT("+DirectoriesToAlwaysCook"));
-    FString NewValueToAdd = FString(TEXT("(Path=\"/Game/ArticyContent\")"));
-
-    // Modify the INI file
-    ModifyIniFile(IniFilePath, SectionName, KeyName, NewValueToAdd);
+    AddIniKeyValue(TEXT("+DirectoriesToAlwaysCook"), TEXT("(Path=\"/Game/ArticyContent\")"));
+    AddIniKeyValue(TEXT("+DirectoriesToAlwaysStageAsUFS"), TEXT("(Path=\"ArticyContent/Generated\")"));
 }
 
 void ArticyLocalizerGenerator::IterateLocalizationDirectories(CodeFileGenerator* Header, const FString& LocalizationRoot)
@@ -106,6 +103,39 @@ void ArticyLocalizerGenerator::IterateLocalizationDirectories(CodeFileGenerator*
     }
 }
 
+void ArticyLocalizerGenerator::AddIniKeyValue(const FString& Key, const FString& Value)
+{
+    // Path to the DefaultGame.ini
+    FString IniFilePath = FPaths::ProjectConfigDir() + FString(TEXT("DefaultGame.ini"));
+    FString SectionName = FString(TEXT("/Script/UnrealEd.ProjectPackagingSettings"));
+
+    IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+    ISourceControlModule& SCModule = ISourceControlModule::Get();
+
+    bool bCheckOutEnabled = false;
+    if (SCModule.IsEnabled())
+    {
+        bCheckOutEnabled = ISourceControlModule::Get().GetProvider().UsesCheckout();
+    }
+
+    // Try to check out the file if it exists
+    bool bFileExisted = false;
+    if (PlatformFile.FileExists(*IniFilePath) && bCheckOutEnabled)
+    {
+        USourceControlHelpers::CheckOutFile(*IniFilePath);
+        bFileExisted = true;
+    }
+
+    // Modify the INI file
+    ModifyIniFile(IniFilePath, SectionName, Key, Value);
+
+    // Mark the file for addition if it is newly created
+    if (!bFileExisted && SCModule.IsEnabled())
+    {
+        USourceControlHelpers::MarkFileForAdd(*IniFilePath);
+    }
+}
+
 void ArticyLocalizerGenerator::IterateStringTables(CodeFileGenerator* Header, const FString& DirectoryPath, bool Indent)
 {
     IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
@@ -140,16 +170,28 @@ void ArticyLocalizerGenerator::IterateStringTables(CodeFileGenerator* Header, co
  */
 void ArticyLocalizerGenerator::ModifyIniFile(const FString& IniFilePath, const FString& SectionName, const FString& KeyName, const FString& NewValue)
 {
-	// Read the INI file
-	FString OldValue;
-	GConfig->GetString(*SectionName, *KeyName, OldValue, IniFilePath);
+    // Read the INI file to check the current value of the key
+    TArray<FString> Values;
+    if (!GConfig->GetArray(*SectionName, *KeyName, Values, IniFilePath))
+    {
+        // If the key doesn't exist, initialize an empty array
+        Values.Empty();
+    }
 
-	// Check if the directory is already present
-	if (!OldValue.Contains(NewValue))
-	{
-		// Modify the INI file
-		FString CombinedValue = OldValue + NewValue;
-		GConfig->SetString(*SectionName, *KeyName, *CombinedValue, IniFilePath);
-		GConfig->Flush(false, IniFilePath);
-	}
+    // Check if the value already exists in the array
+    if (!Values.Contains(NewValue))
+    {
+        // Add the new value
+        Values.Add(NewValue);
+
+        // Write the updated values back to the INI file
+        GConfig->SetArray(*SectionName, *KeyName, Values, IniFilePath);
+
+        // Flush the changes to disk
+        GConfig->Flush(true, IniFilePath);
+
+        // Force the editor to reload the INI file
+        GConfig->UnloadFile(IniFilePath);
+        GConfig->LoadFile(IniFilePath);
+    }
 }

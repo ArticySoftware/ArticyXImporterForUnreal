@@ -35,7 +35,7 @@ public:
 	 *
 	 * @param InObject The ArticyObject to be customized.
 	 */
-	FArticyIdPropertyWidgetCustomizationBuilder(const UArticyObject* InObject) : ArticyObject(InObject)
+	explicit FArticyIdPropertyWidgetCustomizationBuilder(const UArticyObject* InObject) : ArticyObject(InObject)
 	{}
 
 	/**
@@ -141,7 +141,7 @@ public:
 	/**
 	 * @brief Unregisters an ArticyIdPropertyWidget customization factory.
 	 *
-	 * @param Factory A pointer to the customization factory to be unregistered.
+	 * @param IArticyIdPropertyWidgetCustomizationFactory A pointer to the customization factory to be unregistered.
 	 */
 	void UnregisterArticyIdPropertyWidgetCustomizationFactory(const IArticyIdPropertyWidgetCustomizationFactory*);
 

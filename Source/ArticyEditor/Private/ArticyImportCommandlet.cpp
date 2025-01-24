@@ -30,14 +30,24 @@ int32 UArticyImportCommandlet::Main(const FString& Params)
         }
     }
 
+    GIsRunningUnattendedScript = true;
+
+    int32 Outcome;
     // Execute the appropriate process based on the flags set
     if (CompleteReimport)
     {
-        return FArticyEditorFunctionLibrary::ForceCompleteReimport();  // Perform complete reimport
+        Outcome = FArticyEditorFunctionLibrary::ForceCompleteReimport();  // Perform complete reimport
     }
-    if (RegenerateAssets)
+    else if (RegenerateAssets)
     {
-        return FArticyEditorFunctionLibrary::RegenerateAssets();  // Regenerate assets
+        Outcome = FArticyEditorFunctionLibrary::RegenerateAssets();  // Regenerate assets
     }
-    return FArticyEditorFunctionLibrary::ReimportChanges();  // Default to reimporting changes
+    else
+    {
+        Outcome = FArticyEditorFunctionLibrary::ReimportChanges();  // Default to reimporting changes
+    }
+
+    GIsRunningUnattendedScript = false;
+    
+    return Outcome;
 }

@@ -249,7 +249,7 @@ FString CreateOpenTag(const TArray<TagInfo>& currentTags)
  */
 FString ConvertUnityMarkupToUnreal(const FString& Input)
 {
-	// Updated pattern to match more complex tags with attributes
+	// Regex pattern to match tags (start and end)
 	static FRegexPattern Pattern(TEXT("<\\/(.+?)>|<(\\w+)([^>]*?)>"));
 
 	// Create a matcher to search the input
@@ -324,22 +324,154 @@ FString ConvertUnityMarkupToUnreal(const FString& Input)
 	}
 
 	// Create the final result string
-	FString result = strings;
-
-	// Static map for replacing HTML entities
-	static TMap<FString, FString> replacements = {
-		{TEXT("&lt;"), TEXT("<")},
-		{TEXT("&gt;"), TEXT(">")},
-		{TEXT("&quot;"), TEXT("\"")},
-		{TEXT("&apos;"), TEXT("\"")}
-	};
-
-	// Replace each occurrence of HTML entities in the final result
-	for (const TPair<FString, FString>& pair : replacements)
-	{
-		result = result.Replace(*pair.Key, *pair.Value);
-	}
+	const FString result = DecodeHtmlEntities(strings);
 
 	// Return the final result
 	return result;
 }
+
+FString DecodeHtmlEntities(const FString& Input)
+{
+    FString DecodedString = Input;
+
+    // 1. Replace standard named HTML entities
+	static const TMap<FString, FString> HtmlEntities = {
+		// Basic entities
+		{TEXT("&lt;"), TEXT("<")},
+		{TEXT("&gt;"), TEXT(">")},
+		{TEXT("&amp;"), TEXT("&")},
+		{TEXT("&quot;"), TEXT("\"")},
+		{TEXT("&apos;"), TEXT("'")},
+		{TEXT("&nbsp;"), TEXT("\u00A0")}, // Non-breaking space
+
+		// Currency symbols
+		{TEXT("&cent;"), TEXT("\u00A2")}, // ¢
+		{TEXT("&pound;"), TEXT("\u00A3")}, // £
+		{TEXT("&yen;"), TEXT("\u00A5")}, // ¥
+		{TEXT("&euro;"), TEXT("\u20AC")}, // €
+		{TEXT("&copy;"), TEXT("\u00A9")}, // ©
+		{TEXT("&reg;"), TEXT("\u00AE")}, // ®
+
+		// Math symbols
+		{TEXT("&times;"), TEXT("\u00D7")}, // ×
+		{TEXT("&divide;"), TEXT("\u00F7")}, // ÷
+		{TEXT("&plusmn;"), TEXT("\u00B1")}, // ±
+		{TEXT("&le;"), TEXT("\u2264")}, // ≤
+		{TEXT("&ge;"), TEXT("\u2265")}, // ≥
+	    {TEXT("&ne;"), TEXT("\u2260")}, // ≠
+	    {TEXT("&infin;"), TEXT("\u221E")}, // ∞
+
+	    // Greek letters
+	    {TEXT("&alpha;"), TEXT("\u03B1")}, // α
+	    {TEXT("&beta;"), TEXT("\u03B2")}, // β
+	    {TEXT("&gamma;"), TEXT("\u03B3")}, // γ
+	    {TEXT("&delta;"), TEXT("\u03B4")}, // δ
+	    {TEXT("&epsilon;"), TEXT("\u03B5")}, // ε
+	    {TEXT("&pi;"), TEXT("\u03C0")}, // π
+	    {TEXT("&sigma;"), TEXT("\u03C3")}, // σ
+	    {TEXT("&omega;"), TEXT("\u03C9")}, // ω
+
+	    // Arrows
+	    {TEXT("&larr;"), TEXT("\u2190")}, // ←
+	    {TEXT("&uarr;"), TEXT("\u2191")}, // ↑
+	    {TEXT("&rarr;"), TEXT("\u2192")}, // →
+	    {TEXT("&darr;"), TEXT("\u2193")}, // ↓
+	    {TEXT("&harr;"), TEXT("\u2194")}, // ↔
+		{TEXT("&rArr;"), TEXT("\u21D2")}, // ⇒
+		{TEXT("&lArr;"), TEXT("\u21D0")}, // ⇐
+
+		// Punctuation
+		{TEXT("&hellip;"), TEXT("\u2026")}, // …
+		{TEXT("&middot;"), TEXT("\u00B7")}, // ·
+		{TEXT("&laquo;"), TEXT("\u00AB")}, // «
+		{TEXT("&raquo;"), TEXT("\u00BB")}, // »
+		{TEXT("&ldquo;"), TEXT("\u201C")}, // “
+		{TEXT("&rdquo;"), TEXT("\u201D")}, // ”
+		{TEXT("&lsquo;"), TEXT("\u2018")}, // ‘
+		{TEXT("&rsquo;"), TEXT("\u2019")}, // ’
+		{TEXT("&ndash;"), TEXT("\u2013")}, // –
+		{TEXT("&mdash;"), TEXT("\u2014")}, // —
+
+		// Fractions
+		{TEXT("&frac14;"), TEXT("\u00BC")}, // ¼
+		{TEXT("&frac12;"), TEXT("\u00BD")}, // ½
+		{TEXT("&frac34;"), TEXT("\u00BE")}, // ¾
+
+		// Miscellaneous symbols
+		{TEXT("&para;"), TEXT("\u00B6")}, // ¶
+		{TEXT("&sect;"), TEXT("\u00A7")}, // §
+		{TEXT("&dagger;"), TEXT("\u2020")}, // †
+		{TEXT("&Dagger;"), TEXT("\u2021")}, // ‡
+		{TEXT("&bull;"), TEXT("\u2022")}, // •
+		{TEXT("&trade;"), TEXT("\u2122")}, // ™
+		{TEXT("&spades;"), TEXT("\u2660")}, // ♠
+		{TEXT("&clubs;"), TEXT("\u2663")}, // ♣
+		{TEXT("&hearts;"), TEXT("\u2665")}, // ♥
+		{TEXT("&diams;"), TEXT("\u2666")}, // ♦
+	};
+	
+    for (const auto& EntityPair : HtmlEntities)
+    {
+        DecodedString = DecodedString.Replace(*EntityPair.Key, *EntityPair.Value);
+    }
+
+    // 2. Decode numeric character references (decimal and hex)
+    static const FRegexPattern NumericEntityPattern(TEXT(R"(&#(x[0-9A-Fa-f]+|\d+);)"));
+
+    FRegexMatcher Matcher(NumericEntityPattern, DecodedString);
+
+    FString FinalString;
+    int32 LastPosition = 0;
+
+    while (Matcher.FindNext())
+    {
+        // Append text before the entity
+        FinalString += DecodedString.Mid(LastPosition, Matcher.GetMatchBeginning() - LastPosition);
+
+        // Extract entity value
+        FString Entity = Matcher.GetCaptureGroup(1);
+        int32 CodePoint = 0;
+
+        if (Entity.StartsWith(TEXT("x")) || Entity.StartsWith(TEXT("X")))
+        {
+            // Hexadecimal numeric entity
+            FString HexPart = Entity.Mid(1);
+            CodePoint = FParse::HexNumber(*HexPart);
+        }
+        else
+        {
+            // Decimal numeric entity
+            CodePoint = FCString::Atoi(*Entity);
+        }
+
+        // Convert Unicode code point to TCHAR
+        if (CodePoint > 0)
+        {
+            if (CodePoint <= 0xFFFF) // Basic Multilingual Plane (BMP)
+            {
+                FinalString.AppendChar(static_cast<TCHAR>(CodePoint));
+            }
+            else
+            {
+                // Convert code point outside BMP to UTF-16 surrogate pair
+                int32 HighSurrogate = ((CodePoint - 0x10000) >> 10) + 0xD800;
+                int32 LowSurrogate = ((CodePoint - 0x10000) & 0x3FF) + 0xDC00;
+
+                FinalString.AppendChar(static_cast<TCHAR>(HighSurrogate));
+                FinalString.AppendChar(static_cast<TCHAR>(LowSurrogate));
+            }
+        }
+
+        // Update last position
+        LastPosition = Matcher.GetMatchEnding();
+    }
+
+    // Append remaining text after the last entity
+    if (LastPosition < DecodedString.Len())
+    {
+        FinalString += DecodedString.Mid(LastPosition);
+    }
+
+    return FinalString;
+}
+

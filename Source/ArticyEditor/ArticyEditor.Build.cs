@@ -2,6 +2,7 @@
 // Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
+using System.Collections.Generic;
 using UnrealBuildTool;
 
 /**
@@ -21,7 +22,7 @@ public class ArticyEditor : ModuleRules
      *
      * @param Target The target rules for the module.
      */
-    public ArticyEditor(ReadOnlyTargetRules Target) : base(Target)
+    public ArticyEditor(ReadOnlyTargetRules target) : base(target)
     {
         // Set precompiled header usage to explicit or shared
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
@@ -31,7 +32,7 @@ public class ArticyEditor : ModuleRules
 
         // Add public include paths required for this module
         PublicIncludePaths.AddRange(
-            new string[]
+            new List<string>
             {
                 // ... add public include paths required here ...
             }
@@ -39,7 +40,7 @@ public class ArticyEditor : ModuleRules
 
         // Add private include paths required for this module
         PrivateIncludePaths.AddRange(
-            new string[]
+            new List<string>
             {
                 // ... add other private include paths required here ...
             }
@@ -47,7 +48,7 @@ public class ArticyEditor : ModuleRules
 
         // Add public dependencies that are statically linked with this module
         PublicDependencyModuleNames.AddRange(
-            new string[]
+            new List<string>
             {
                 "Core",
                 "ArticyRuntime",
@@ -61,7 +62,7 @@ public class ArticyEditor : ModuleRules
 
         // Add private dependencies that are statically linked with this module
         PrivateDependencyModuleNames.AddRange(
-            new string[]
+            new List<string>
             {
                 "Projects",
                 "InputCore",
@@ -89,7 +90,7 @@ public class ArticyEditor : ModuleRules
 
         // Add any modules that this module loads dynamically
         DynamicallyLoadedModuleNames.AddRange(
-            new string[]
+            new List<string>
             {
                 // ... add any modules that your module loads dynamically here ...
             }

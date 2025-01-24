@@ -23,7 +23,7 @@ public:
 	/**
 	 * @brief Destructor for FArticyPluginSettingsCustomization.
 	 */
-	~FArticyPluginSettingsCustomization();
+	virtual ~FArticyPluginSettingsCustomization() override;
 
 	/**
 	 * @brief Creates a shared instance of FArticyPluginSettingsCustomization.

@@ -20,17 +20,16 @@ public:
 	 * Initializes the command set with context and style information.
 	 */
 	FArticyEditorCommands()
-		: TCommands<FArticyEditorCommands>(TEXT("ArticyImporter"), NSLOCTEXT("Contexts", "ArticyImporter", "ArticyImporter Plugin"), NAME_None, FArticyEditorStyle::GetStyleSetName())
+		: TCommands(TEXT("ArticyImporter"), NSLOCTEXT("Contexts", "ArticyImporter", "ArticyImporter Plugin"), NAME_None, FArticyEditorStyle::GetStyleSetName())
 	{
 	}
 
 	/** Registers the commands used by this command set. */
 	virtual void RegisterCommands() override;
 
-public:
 	/** Command for opening the Articy Importer window. */
 	TSharedPtr<FUICommandInfo> OpenArticyImporter;
 
 	/** Command for opening the Articy Global Variables Debugger. */
-	TSharedPtr<FUICommandInfo> OpenArticyGVDebugger;
+	TSharedPtr<FUICommandInfo> OpenArticyGvDebugger;
 };

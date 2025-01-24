@@ -20,7 +20,7 @@ var searchData=
   ['registergraphpinfactory_17',['RegisterGraphPinFactory',['../da/db5/class_f_articy_editor_module.html#a59e9af940d9b8722075c1f5ac63c5982',1,'FArticyEditorModule']]],
   ['registerplugincommands_18',['RegisterPluginCommands',['../da/db5/class_f_articy_editor_module.html#a47ede317f388751b5749a92ed4e152d7',1,'FArticyEditorModule']]],
   ['registerpluginsettings_19',['RegisterPluginSettings',['../da/db5/class_f_articy_editor_module.html#a87e5485c163402d49fba309f3bd6dd61',1,'FArticyEditorModule']]],
-  ['registertabspawners_20',['RegisterTabSpawners',['../d9/d9c/class_f_articy_g_v_editor.html#ab224376a482223cef2963d5ea40bf5fc',1,'FArticyGVEditor']]],
+  ['registertabspawners_20',['RegisterTabSpawners',['../d5/d94/class_f_articy_gv_editor.html#a4d38ad8eed74630243502d30d47983ef',1,'FArticyGvEditor']]],
   ['registertooltabs_21',['RegisterToolTabs',['../da/db5/class_f_articy_editor_module.html#afc4262b84c2c9989231d1b82e1cb345c',1,'FArticyEditorModule']]],
   ['reimport_22',['Reimport',['../de/da8/class_f_articy_editor_console_commands.html#a035d701760d1a2b7b006b3c100e3c13c',1,'FArticyEditorConsoleCommands::Reimport()'],['../d0/dd9/class_u_articy_j_s_o_n_factory.html#afc6666a47fb8aa6c3e3df890e062f8d8',1,'UArticyJSONFactory::Reimport()']]],
   ['reimportchanges_23',['ReimportChanges',['../db/dad/class_f_articy_editor_function_library.html#a942b42870d7ab404ee8dc6d856461b1f',1,'FArticyEditorFunctionLibrary']]],
@@ -36,7 +36,7 @@ var searchData=
   ['restorecachedfiles_33',['RestoreCachedFiles',['../d8/d15/class_code_generator.html#af4b28a2afb31402d8dd31ee85c015618',1,'CodeGenerator']]],
   ['retrievearticyid_34',['RetrieveArticyId',['../d7/d2a/class_f_articy_id_customization.html#abc39aea538da5594e75a97f086532d0d',1,'FArticyIdCustomization']]],
   ['retrievearticyref_35',['RetrieveArticyRef',['../db/db8/class_f_articy_ref_customization.html#a80f60d7b924d170a4d371f5e5551efbf',1,'FArticyRefCustomization']]],
-  ['retrieveclass_36',['RetrieveClass',['../d2/d17/namespace_articy_importer_helpers.html#ab6b943349ec572c4dcc86a9768814d50',1,'ArticyImporterHelpers']]],
+  ['retrieveclass_36',['RetrieveClass',['../d2/d17/namespace_articy_importer_helpers.html#ac7537d20bbea08196f8ef1d1df5c0f3c',1,'ArticyImporterHelpers']]],
   ['retrievepreviewimage_37',['RetrievePreviewImage',['../dc/d11/namespace_user_interface_helper_functions.html#a8f1bd181da7323b7591882620e1baa09',1,'UserInterfaceHelperFunctions']]],
   ['retrievespeakerpreviewimage_38',['RetrieveSpeakerPreviewImage',['../dc/d11/namespace_user_interface_helper_functions.html#a1d5d203e280eb9b930838499d7535ddd',1,'UserInterfaceHelperFunctions']]]
 ];

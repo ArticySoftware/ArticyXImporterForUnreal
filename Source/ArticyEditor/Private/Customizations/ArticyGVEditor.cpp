@@ -12,14 +12,14 @@
 /**
  * @brief Tab identifier for Articy Global Variables editor.
  */
-const FName FArticyGVEditor::ArticyGVTab(TEXT("ArticyGVTab"));
+const FName FArticyGvEditor::ArticyGvTab(TEXT("ArticyGVTab"));
 
 /**
  * @brief Destructor for FArticyGVEditor.
  *
  * This destructor unregisters the editor from the undo system.
  */
-FArticyGVEditor::~FArticyGVEditor()
+FArticyGvEditor::~FArticyGvEditor()
 {
 	GEditor->UnregisterForUndo(this);
 }
@@ -33,7 +33,7 @@ FArticyGVEditor::~FArticyGVEditor()
  * @param InitToolkitHost The toolkit host for integration.
  * @param ObjectToEdit The ArticyGlobalVariables object to be edited.
  */
-void FArticyGVEditor::InitArticyGVEditor(const EToolkitMode::Type Mode, const TSharedPtr<IToolkitHost>& InitToolkitHost, UArticyGlobalVariables* ObjectToEdit)
+void FArticyGvEditor::InitArticyGvEditor(const EToolkitMode::Type Mode, const TSharedPtr<IToolkitHost>& InitToolkitHost, UArticyGlobalVariables* ObjectToEdit)
 {
 	check(ObjectToEdit)
 
@@ -61,7 +61,7 @@ void FArticyGVEditor::InitArticyGVEditor(const EToolkitMode::Type Mode, const TS
 			->Split
 			(
 				FTabManager::NewStack()
-				->AddTab(ArticyGVTab, ETabState::OpenedTab)->SetHideTabWell(false)
+				->AddTab(ArticyGvTab, ETabState::OpenedTab)->SetHideTabWell(false)
 			)
 		);
 
@@ -78,7 +78,7 @@ void FArticyGVEditor::InitArticyGVEditor(const EToolkitMode::Type Mode, const TS
  *
  * @param Collector The reference collector.
  */
-void FArticyGVEditor::AddReferencedObjects(FReferenceCollector& Collector)
+void FArticyGvEditor::AddReferencedObjects(FReferenceCollector& Collector)
 {
 }
 
@@ -87,7 +87,7 @@ void FArticyGVEditor::AddReferencedObjects(FReferenceCollector& Collector)
  *
  * @return The color scale used for world-centric tabs.
  */
-FLinearColor FArticyGVEditor::GetWorldCentricTabColorScale() const
+FLinearColor FArticyGvEditor::GetWorldCentricTabColorScale() const
 {
 	return FLinearColor(0.3f, 0.2f, 0.5f, 0.5f);
 }
@@ -97,7 +97,7 @@ FLinearColor FArticyGVEditor::GetWorldCentricTabColorScale() const
  *
  * @return The FName identifier for the toolkit.
  */
-FName FArticyGVEditor::GetToolkitFName() const
+FName FArticyGvEditor::GetToolkitFName() const
 {
 	return FName("ArticyGVEditor");
 }
@@ -107,7 +107,7 @@ FName FArticyGVEditor::GetToolkitFName() const
  *
  * @return The base name of the toolkit.
  */
-FText FArticyGVEditor::GetBaseToolkitName() const
+FText FArticyGvEditor::GetBaseToolkitName() const
 {
 	return LOCTEXT("AppLabel", "ArticyGVEditor");
 }
@@ -117,7 +117,7 @@ FText FArticyGVEditor::GetBaseToolkitName() const
  *
  * @return The prefix for world-centric tab titles.
  */
-FString FArticyGVEditor::GetWorldCentricTabPrefix() const
+FString FArticyGvEditor::GetWorldCentricTabPrefix() const
 {
 	return LOCTEXT("WorldCentricTabPrefix", "ArticyGV ").ToString();
 }
@@ -129,7 +129,7 @@ FString FArticyGVEditor::GetWorldCentricTabPrefix() const
  *
  * @param InTabManager The tab manager for registering tab spawners.
  */
-void FArticyGVEditor::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
+void FArticyGvEditor::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
 {
 	WorkspaceMenuCategory = InTabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("WorkspaceMenu_ArticyGVEditor", "Articy Global Variables Editor"));
 	auto WorkspaceMenuCategoryRef = WorkspaceMenuCategory.ToSharedRef();
@@ -137,7 +137,7 @@ void FArticyGVEditor::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabMa
 	// Registers toolbar
 	FAssetEditorToolkit::RegisterTabSpawners(InTabManager);
 
-	InTabManager->RegisterTabSpawner(ArticyGVTab, FOnSpawnTab::CreateSP(this, &FArticyGVEditor::SpawnTab_ArticyGV))
+	InTabManager->RegisterTabSpawner(ArticyGvTab, FOnSpawnTab::CreateSP(this, &FArticyGvEditor::SpawnTab_ArticyGv))
 		.SetDisplayName(LOCTEXT("ArticyGVTab", "Details"))
 		.SetIcon(FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.16", "ArticyImporter.ArticyImporter.8"))
 		.SetGroup(WorkspaceMenuCategoryRef);
@@ -148,7 +148,7 @@ void FArticyGVEditor::RegisterTabSpawners(const TSharedRef<FTabManager>& InTabMa
  *
  * @return The referencer name.
  */
-FString FArticyGVEditor::GetReferencerName() const
+FString FArticyGvEditor::GetReferencerName() const
 {
 	return TEXT("FArticyGVEditor");
 }
@@ -161,9 +161,9 @@ FString FArticyGVEditor::GetReferencerName() const
  * @param Args The arguments for spawning the tab.
  * @return A shared reference to the created SDockTab.
  */
-TSharedRef<SDockTab> FArticyGVEditor::SpawnTab_ArticyGV(const FSpawnTabArgs& Args) const
+TSharedRef<SDockTab> FArticyGvEditor::SpawnTab_ArticyGv(const FSpawnTabArgs& Args) const
 {
-	check(Args.GetTabId() == ArticyGVTab);
+	check(Args.GetTabId() == ArticyGvTab);
 
 	TSharedRef<SDockTab> DockTab = SNew(SDockTab).Label(LOCTEXT("ArticyGVEditorTitle", "Articy Global Variables"));
 	if (GlobalVariablesWidget.IsValid())

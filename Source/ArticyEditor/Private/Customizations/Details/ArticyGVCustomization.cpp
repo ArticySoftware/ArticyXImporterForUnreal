@@ -8,6 +8,7 @@
 #include "DetailWidgetRow.h"
 #include "Delegates/Delegate.h"
 #include "ArticyEditorModule.h"
+#include "DetailLayoutBuilder.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Slate/GV/SArticyGlobalVariablesDebugger.h"
 #include "Runtime/Launch/Resources/Version.h"

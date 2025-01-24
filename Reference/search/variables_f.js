@@ -1,7 +1,7 @@
 var searchData=
 [
   ['self_0',['self',['../dd/d06/class_u_articy_expresso_scripts.html#a40f50bcdb2b75940f3adffec774d83bf',1,'UArticyExpressoScripts']]],
-  ['set_5fusescriptsupport_1',['set_UseScriptSupport',['../dc/df1/struct_f_a_d_i_settings.html#ab51606fff5394a5bf8dfb29d280e8e95',1,'FADISettings']]],
+  ['set_5fusescriptsupport_1',['set_UseScriptSupport',['../d7/d20/struct_f_adi_settings.html#a9b442b83f61418ba6fe5b05795b984cb',1,'FAdiSettings']]],
   ['setter_2',['Setter',['../d8/d0e/struct_expresso_type_1_1_definition.html#a9e0fc15aa25cc7db84331996be2d3465',1,'ExpressoType::Definition']]],
   ['shadowlevel_3',['ShadowLevel',['../df/d38/struct_f_articy_object_shadow.html#a608ea1eb22eebace2e16632735ce6bd0',1,'FArticyObjectShadow']]],
   ['shadowlevellimit_4',['ShadowLevelLimit',['../d4/d8d/class_u_articy_flow_player.html#a3fd5a42e238cd9c4673e03f2a1a7b9f8',1,'UArticyFlowPlayer']]],

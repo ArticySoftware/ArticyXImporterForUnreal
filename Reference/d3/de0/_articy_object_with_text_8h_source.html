@@ -202,16 +202,11 @@ $(function(){initNavTree('d3/de0/_articy_object_with_text_8h_source.html','../..
 <div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>        <span class="keywordflow">return</span> (Cast&lt;UArticyAsset&gt;(AssetObject))-&gt;LoadAsSoundWave();</div>
 <div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>    }</div>
 <div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>    <span class="keyword">virtual</span> USoundWave* GetVOAsset()<span class="keyword"> const</span></div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span><span class="keyword">    </span>{</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>        <span class="keywordflow">return</span> <span class="keyword">const_cast&lt;</span><a class="code hl_class" href="../../d8/db0/class_i_articy_object_with_text.html">IArticyObjectWithText</a>*<span class="keyword">&gt;</span>(<span class="keyword">this</span>)-&gt;GetVOAsset();</div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>    <span class="keyword">virtual</span> FText ResolveText(UObject* Outer, <span class="keyword">const</span> FText* SourceText)</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>    {</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>        <span class="keywordflow">return</span> ArticyHelpers::ResolveText(Outer, SourceText);</div>
 <div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>    }</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span> </div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    <span class="keyword">virtual</span> FText ResolveText(UObject* Outer, <span class="keyword">const</span> FText* SourceText)</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>    {</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>        <span class="keywordflow">return</span> ArticyHelpers::ResolveText(Outer, SourceText);</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>    }</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>};</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>};</div>
 </div>
 <div class="ttc" id="aclass_i_articy_object_with___base_html"><div class="ttname"><a href="../../df/d1c/class_i_articy_object_with___base.html">IArticyObjectWith_Base</a></div><div class="ttdef"><b>Definition</b> ArticyObjectWith_Base.h:27</div></div>
 <div class="ttc" id="aclass_i_articy_object_with_text_html"><div class="ttname"><a href="../../d8/db0/class_i_articy_object_with_text.html">IArticyObjectWithText</a></div><div class="ttdef"><b>Definition</b> ArticyObjectWithText.h:23</div></div>

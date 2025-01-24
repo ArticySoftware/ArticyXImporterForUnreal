@@ -39,6 +39,14 @@ private:
     ~ArticyLocalizerGenerator() {}
 
     /**
+     * @brief Adds a key-value pair to the DefaultGame.ini
+     * 
+     * @param Key Key to add .
+     * @param Value Value to add.
+     */
+    static void AddIniKeyValue(const FString& Key, const FString& Value);
+
+    /**
      * @brief Iterates through string tables in a given directory and generates code for each.
      *
      * This function finds CSV files in the specified directory and generates
