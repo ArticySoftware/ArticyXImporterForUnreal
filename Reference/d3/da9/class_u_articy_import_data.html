@@ -142,9 +142,9 @@ const <a class="el" href="../../db/dd1/struct_f_articy_g_v_info.html">FArticyGVI
 <tr class="memitem:a14bcba1037b5d52da77a30c82f4e84c6" id="r_a14bcba1037b5d52da77a30c82f4e84c6"><td class="memItemLeft" align="right" valign="top"><a id="a14bcba1037b5d52da77a30c82f4e84c6" name="a14bcba1037b5d52da77a30c82f4e84c6"></a>
 const <a class="el" href="../../dc/dda/struct_f_a_d_i_hierarchy.html">FADIHierarchy</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>GetHierarchy</b> () const</td></tr>
 <tr class="separator:a14bcba1037b5d52da77a30c82f4e84c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ace787df44715f1e2584c4402edf96ab2" id="r_ace787df44715f1e2584c4402edf96ab2"><td class="memItemLeft" align="right" valign="top"><a id="ace787df44715f1e2584c4402edf96ab2" name="ace787df44715f1e2584c4402edf96ab2"></a>
-const <a class="el" href="../../d2/dcb/struct_f_articy_object_definitions.html">FArticyObjectDefinitions</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>GetObjectDefs</b> () const</td></tr>
-<tr class="separator:ace787df44715f1e2584c4402edf96ab2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46119f3db3796c16e61a8939b73bd288" id="r_a46119f3db3796c16e61a8939b73bd288"><td class="memItemLeft" align="right" valign="top"><a id="a46119f3db3796c16e61a8939b73bd288" name="a46119f3db3796c16e61a8939b73bd288"></a>
+<a class="el" href="../../d2/dcb/struct_f_articy_object_definitions.html">FArticyObjectDefinitions</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>GetObjectDefs</b> ()</td></tr>
+<tr class="separator:a46119f3db3796c16e61a8939b73bd288"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0cac22dc696a668d1100fd60b04a755c" id="r_a0cac22dc696a668d1100fd60b04a755c"><td class="memItemLeft" align="right" valign="top"><a id="a0cac22dc696a668d1100fd60b04a755c" name="a0cac22dc696a668d1100fd60b04a755c"></a>
 const <a class="el" href="../../d5/d1d/struct_f_articy_package_defs.html">FArticyPackageDefs</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>GetPackageDefs</b> () const</td></tr>
 <tr class="separator:a0cac22dc696a668d1100fd60b04a755c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -186,6 +186,8 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetInitialImportCompl
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:abe359f89a5812c3d76e79e888c47f17c" id="r_abe359f89a5812c3d76e79e888c47f17c"><td class="memItemLeft" align="right" valign="top">static const TWeakObjectPtr&lt; <a class="el" href="../../d3/da9/class_u_articy_import_data.html">UArticyImportData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abe359f89a5812c3d76e79e888c47f17c">GetImportData</a> ()</td></tr>
 <tr class="separator:abe359f89a5812c3d76e79e888c47f17c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2431a99f8d80bb0387730b7eec8bf14e" id="r_a2431a99f8d80bb0387730b7eec8bf14e"><td class="memItemLeft" align="right" valign="top">static int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2431a99f8d80bb0387730b7eec8bf14e">ProcessStrings</a> (<a class="el" href="../../db/d37/class_string_table_generator.html">StringTableGenerator</a> *CsvOutput, TMap&lt; FString, <a class="el" href="../../da/d2a/struct_f_articy_texts.html">FArticyTexts</a> &gt; &amp;Data, const TPair&lt; FString, <a class="el" href="../../df/dc5/struct_f_articy_language_def.html">FArticyLanguageDef</a> &gt; &amp;Language)</td></tr>
+<tr class="separator:a2431a99f8d80bb0387730b7eec8bf14e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -425,6 +427,50 @@ class&#160;</td><td class="memItemRight" valign="bottom"><b>FArticyEditorFunctio
 </table>
 </div><div class="memdoc">
 <p>Initializes properties after construction. </p>
+
+</div>
+</div>
+<a id="a2431a99f8d80bb0387730b7eec8bf14e" name="a2431a99f8d80bb0387730b7eec8bf14e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2431a99f8d80bb0387730b7eec8bf14e">&#9670;&#160;</a></span>ProcessStrings()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int UArticyImportData::ProcessStrings </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="../../db/d37/class_string_table_generator.html">StringTableGenerator</a> *</td>          <td class="paramname"><span class="paramname"><em>CsvOutput</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">TMap&lt; FString, <a class="el" href="../../da/d2a/struct_f_articy_texts.html">FArticyTexts</a> &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>Data</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const TPair&lt; FString, <a class="el" href="../../df/dc5/struct_f_articy_language_def.html">FArticyLanguageDef</a> &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>Language</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Processes strings and writes them to a CSV output.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">CsvOutput</td><td>The CSV output generator. </td></tr>
+    <tr><td class="paramname">Data</td><td>The map of strings and their associated text data. </td></tr>
+    <tr><td class="paramname">Language</td><td>The language information. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The number of processed strings. </dd></dl>
 
 </div>
 </div>

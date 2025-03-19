@@ -15,7 +15,7 @@
  * @param Data The import data used for code generation.
  * @param OutFile The output filename for the generated code.
  */
-void InterfacesGenerator::GenerateCode(const UArticyImportData* Data, FString& OutFile)
+void InterfacesGenerator::GenerateCode(UArticyImportData* Data, FString& OutFile)
 {
 	OutFile = CodeGenerator::GetGeneratedInterfacesFilename(Data);
 	CodeFileGenerator(OutFile + ".h", true, [&](CodeFileGenerator* header)

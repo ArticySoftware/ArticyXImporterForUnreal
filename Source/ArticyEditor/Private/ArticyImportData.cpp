@@ -751,7 +751,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	// Create string tables
 	if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
 	{
-		const auto& ObjectDefsText = GetObjectDefs().GetTexts();
+		auto& ObjectDefsText = GetObjectDefs().GetTexts();
 		for (const auto& Language : Languages.Languages)
 		{
 			StringTableGenerator(TEXT("ARTICY"), Language.Key, [&](StringTableGenerator* CsvOutput)
@@ -764,7 +764,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	for (const auto& Language : Languages.Languages)
 	{
 		// Handle packages
-		for (const auto& Package : GetPackageDefs().GetPackages())
+		for (auto& Package : GetPackageDefs().GetPackages())
 		{
 			const FString PackageName = Package.GetName();
 			const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
@@ -875,7 +875,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
  * @param Language The language information.
  * @return The number of processed strings.
  */
-int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
+int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
 {
 	int Counter = 0;
 

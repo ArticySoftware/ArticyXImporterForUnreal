@@ -22,7 +22,7 @@ public:
 	 * @param Data The import data used for code generation.
 	 * @param OutFile The output filename for the generated code.
 	 */
-	static void GenerateCode(const UArticyImportData* Data, FString& OutFile);
+	static void GenerateCode(UArticyImportData* Data, FString& OutFile);
 
 private:
 	InterfacesGenerator() {};

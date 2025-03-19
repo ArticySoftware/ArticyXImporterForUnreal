@@ -429,7 +429,7 @@ public:
 	const FArticyProjectDef& GetProject() const { return Project; }
 	const FArticyGVInfo& GetGlobalVars() const { return GlobalVariables; }
 	const FADIHierarchy& GetHierarchy() const { return Hierarchy; }
-	const FArticyObjectDefinitions& GetObjectDefs() const { return ObjectDefinitions; }
+	FArticyObjectDefinitions& GetObjectDefs() { return ObjectDefinitions; }
 	const FArticyPackageDefs& GetPackageDefs() const { return PackageDefs; }
 
 	TArray<TSoftObjectPtr<UArticyPackage>>& GetPackages() { return ImportedPackages; }
@@ -453,6 +453,8 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyLanguages Languages;
+
+	static int ProcessStrings(StringTableGenerator* CsvOutput, TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
 
 protected:
 
@@ -492,5 +494,4 @@ private:
 	TMap<FArticyId, FArticyIdArray> ParentChildrenCache;
 
 	void ImportAudioAssets(const FString& BaseContentDir);
-	int ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
 };

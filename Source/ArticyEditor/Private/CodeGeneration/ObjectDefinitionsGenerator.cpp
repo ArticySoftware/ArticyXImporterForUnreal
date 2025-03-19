@@ -15,7 +15,7 @@
  * @param Data The import data used for code generation.
  * @param OutFile The output filename for the generated code.
  */
-void ObjectDefinitionsGenerator::GenerateCode(const UArticyImportData* Data, FString& OutFile)
+void ObjectDefinitionsGenerator::GenerateCode(UArticyImportData* Data, FString& OutFile)
 {
 	OutFile = CodeGenerator::GetGeneratedTypesFilename(Data);
 	CodeFileGenerator(OutFile + ".h", true, [&](CodeFileGenerator* header)

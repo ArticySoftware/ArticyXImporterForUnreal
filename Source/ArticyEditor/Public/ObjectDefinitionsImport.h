@@ -58,7 +58,7 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      * @param OptionalConstraints An optional array of template constraints.
      */
-    void ImportFromJson(const TSharedPtr<FJsonObject> JsonProperty, const UArticyImportData* Data, const TArray<FArticyTemplateConstraint>* OptionalConstraints = nullptr);
+    void ImportFromJson(const TSharedPtr<FJsonObject> JsonProperty, UArticyImportData* Data, const TArray<FArticyTemplateConstraint>* OptionalConstraints = nullptr);
 
     /**
      * Generates code for the property definition using CodeFileGenerator.
@@ -66,7 +66,7 @@ public:
      * @param header A reference to the CodeFileGenerator.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void GenerateCode(CodeFileGenerator& header, const UArticyImportData* Data) const;
+    void GenerateCode(CodeFileGenerator& header, UArticyImportData* Data) const;
 
     /**
      * Gathers script fragments from JSON and adds them to the UArticyImportData.
@@ -119,7 +119,7 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      * @return The C++ type as a string.
      */
-    FString GetCppType(const UArticyImportData* Data) const;
+    FString GetCppType(UArticyImportData* Data) const;
 
 private:
     UPROPERTY(VisibleAnywhere, Category = "ObjectProperty")
@@ -177,7 +177,7 @@ public:
      * @param JsonObject A shared pointer to the JSON object containing the feature definition.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, const UArticyImportData* Data);
+    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, UArticyImportData* Data);
 
     /**
      * Generates definition code for the template feature using CodeFileGenerator.
@@ -185,7 +185,7 @@ public:
      * @param header A reference to the CodeFileGenerator.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void GenerateDefCode(CodeFileGenerator& header, const UArticyImportData* Data) const;
+    void GenerateDefCode(CodeFileGenerator& header, UArticyImportData* Data) const;
 
     /**
      * Generates property code for the template feature using CodeFileGenerator.
@@ -281,7 +281,7 @@ public:
      * @param JsonObject A shared pointer to the JSON object containing the template definition.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, const UArticyImportData* Data);
+    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, UArticyImportData* Data);
 
     /**
      * Generates feature definitions in the header file using CodeFileGenerator.
@@ -289,7 +289,7 @@ public:
      * @param header A reference to the CodeFileGenerator.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void GenerateFeaturesDefs(CodeFileGenerator& header, const UArticyImportData* Data) const;
+    void GenerateFeaturesDefs(CodeFileGenerator& header, UArticyImportData* Data) const;
 
     /**
      * Generates property definitions in the header file using CodeFileGenerator.
@@ -379,7 +379,7 @@ public:
      * @param JsonObjDef A shared pointer to the JSON object containing the object definition.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, const UArticyImportData* Data);
+    void ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, UArticyImportData* Data);
 
     /**
      * Checks if a property is already defined in the base class.
@@ -388,7 +388,7 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      * @return True if the property is a base property, false otherwise.
      */
-    bool IsBaseProperty(FName Property, const UArticyImportData* Data) const;
+    bool IsBaseProperty(FName Property, UArticyImportData* Data) const;
 
     /**
      * Generates code for the object definition using CodeFileGenerator.
@@ -396,7 +396,7 @@ public:
      * @param header A reference to the CodeFileGenerator.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void GenerateCode(CodeFileGenerator& header, const UArticyImportData* Data) const;
+    void GenerateCode(CodeFileGenerator& header, UArticyImportData* Data) const;
 
     /**
      * Find all script fragments, add them to the UArticyImportData, and replace them with an id.
@@ -417,7 +417,7 @@ public:
     void InitializeModel(
         UArticyPrimitive* Model,
         const FArticyModelDef& Values,
-        const UArticyImportData* Data,
+        UArticyImportData* Data,
         const FString& PackageName) const;
 
     /**
@@ -435,7 +435,7 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      * @return The C++ base classes as a string.
      */
-    FString GetCppBaseClasses(const UArticyImportData* Data) const;
+    FString GetCppBaseClasses(UArticyImportData* Data) const;
 
     /**
      * Returns the original type of the object definition.
@@ -492,7 +492,7 @@ public:
      * @param Json A pointer to the array of JSON values containing the object definitions.
      * @param Data A pointer to the UArticyImportData object.
      */
-    void ImportFromJson(const TArray<TSharedPtr<FJsonValue>>* Json, const UArticyImportData* Data);
+    void ImportFromJson(const TArray<TSharedPtr<FJsonValue>>* Json, UArticyImportData* Data);
 
     /**
      * Gather scripts from model definition and adds them to the UArticyImportData.
@@ -517,7 +517,7 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      * @param PackageName The name of the package.
      */
-    void InitializeModel(UArticyPrimitive* Model, const FArticyModelDef& Values, const UArticyImportData* Data, const FString& PackageName) const;
+    void InitializeModel(UArticyPrimitive* Model, const FArticyModelDef& Values, UArticyImportData* Data, const FString& PackageName) const;
 
     /**
      * Returns the C++ type of an object definition.
@@ -603,13 +603,6 @@ public:
      * @return A reference to the texts map.
      */
     TMap<FString, FArticyTexts>& GetTexts() { return Texts; }
-
-    /**
-     * Returns the texts map.
-     *
-     * @return A constant reference to the texts map.
-     */
-    const TMap<FString, FArticyTexts>& GetTexts() const { return Texts; }
 
     /**
      * Returns the feature definitions map.

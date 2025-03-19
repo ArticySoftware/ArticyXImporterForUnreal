@@ -99,6 +99,9 @@ var hierarchy =
     [ "FRichTextDecorator", null, [
       [ "FArticyRichTextDecorator", "d4/df3/class_f_articy_rich_text_decorator.html", null ]
     ] ],
+    [ "FRunnable", null, [
+      [ "FArticyBridgeClientRunnable", "db/dcb/class_f_articy_bridge_client_runnable.html", null ]
+    ] ],
     [ "GlobalVarsGenerator", "db/d57/class_global_vars_generator.html", null ],
     [ "IArticyConditionProvider", "de/d87/class_i_articy_condition_provider.html", [
       [ "UArticyCondition", "df/dc2/class_u_articy_condition.html", null ],
@@ -306,6 +309,7 @@ var hierarchy =
       [ "UADIHierarchyObject", "d7/ddf/class_u_a_d_i_hierarchy_object.html", null ],
       [ "UArticyArchiveReader", "d1/d16/class_u_articy_archive_reader.html", null ],
       [ "UArticyBaseVariableSet", "d7/d90/class_u_articy_base_variable_set.html", null ],
+      [ "UArticyBridgeClientCommands", "dd/dd0/class_u_articy_bridge_client_commands.html", null ],
       [ "UArticyCloneableObject", "de/d91/class_u_articy_cloneable_object.html", null ],
       [ "UArticyExpressoScripts", "dd/d06/class_u_articy_expresso_scripts.html", null ],
       [ "UArticyLocalizerSystem", "d4/db5/class_u_articy_localizer_system.html", null ],

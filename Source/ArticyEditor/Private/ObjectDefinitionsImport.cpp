@@ -23,7 +23,7 @@
  * @param JsonObject A shared pointer to the JSON object containing the template definition.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyTemplateDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, const UArticyImportData* Data)
+void FArticyTemplateDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, UArticyImportData* Data)
 {
     if (!JsonObject.IsValid())
         return;
@@ -50,7 +50,7 @@ void FArticyTemplateDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject
  * @param header A reference to the CodeFileGenerator.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyTemplateDef::GenerateFeaturesDefs(CodeFileGenerator& header, const UArticyImportData* Data) const
+void FArticyTemplateDef::GenerateFeaturesDefs(CodeFileGenerator& header, UArticyImportData* Data) const
 {
     for (const auto feat : Features)
         feat.GenerateDefCode(header, Data);
@@ -113,7 +113,7 @@ void FArticyTemplateDef::InitializeModel(UArticyPrimitive* Model, const FString&
  * @param JsonObjDef A shared pointer to the JSON object containing the object definition.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, const UArticyImportData* Data)
+void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, UArticyImportData* Data)
 {
     if (!JsonObjDef.IsValid())
         return;
@@ -170,7 +170,7 @@ void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, 
  * @param Data A pointer to the UArticyImportData object.
  * @return True if the property is a base property, false otherwise.
  */
-bool FArticyObjectDef::IsBaseProperty(FName Property, const UArticyImportData* Data) const
+bool FArticyObjectDef::IsBaseProperty(FName Property, UArticyImportData* Data) const
 {
     const auto& baseClass = FArticyObjectDefinitions::GetDefaultBaseClass(Class, Data);
     return IArticyReflectable::HasProperty(baseClass.StaticClass, Property);
@@ -182,7 +182,7 @@ bool FArticyObjectDef::IsBaseProperty(FName Property, const UArticyImportData* D
  * @param header A reference to the CodeFileGenerator.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyObjectDef::GenerateCode(CodeFileGenerator& header, const UArticyImportData* Data) const
+void FArticyObjectDef::GenerateCode(CodeFileGenerator& header, UArticyImportData* Data) const
 {
     if (FArticyPredefTypes::IsPredefinedType(GetOriginalType()))
     {
@@ -277,7 +277,7 @@ void FArticyObjectDef::GatherScripts(const FArticyModelDef& Vals, UArticyImportD
 void FArticyObjectDef::InitializeModel(
     UArticyPrimitive* Model,
     const FArticyModelDef& Vals,
-    const UArticyImportData* Data,
+    UArticyImportData* Data,
     const FString& PackageName) const
 {
     if (DefType == EObjectDefType::Enum)
@@ -349,7 +349,7 @@ FString FArticyObjectDef::GetCppType(const UArticyImportData* Data, const bool b
  * @param Data A pointer to the UArticyImportData object.
  * @return The C++ base classes as a string.
  */
-FString FArticyObjectDef::GetCppBaseClasses(const UArticyImportData* Data) const
+FString FArticyObjectDef::GetCppBaseClasses(UArticyImportData* Data) const
 {
     FString baseClasses;
 
@@ -403,7 +403,7 @@ const TArray<FArticyTemplateFeatureDef>& FArticyObjectDef::GetFeatures() const
  * @param Data A pointer to the UArticyImportData object.
  * @param OptionalConstraints An optional array of template constraints.
  */
-void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProperty, const UArticyImportData* Data, const TArray<FArticyTemplateConstraint>* OptionalConstraints)
+void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProperty, UArticyImportData* Data, const TArray<FArticyTemplateConstraint>* OptionalConstraints)
 {
     if (!JsonProperty.IsValid())
         return;
@@ -470,7 +470,7 @@ void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProper
  * @param header A reference to the CodeFileGenerator.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyPropertyDef::GenerateCode(CodeFileGenerator& header, const UArticyImportData* Data) const
+void FArticyPropertyDef::GenerateCode(CodeFileGenerator& header, UArticyImportData* Data) const
 {
     //generate a variable for each Property
     header.Variable(GetCppType(Data), Property.ToString(), FArticyObjectDefinitions::GetCppDefaultValue(Type), "", true,
@@ -569,7 +569,7 @@ void FArticyPropertyDef::InitializeModel(
  * @param Data A pointer to the UArticyImportData object.
  * @return The C++ type as a string.
  */
-FString FArticyPropertyDef::GetCppType(const UArticyImportData* Data) const
+FString FArticyPropertyDef::GetCppType(UArticyImportData* Data) const
 {
     auto type = Data->GetObjectDefs().GetCppType(Type, Data, true);
 
@@ -639,7 +639,7 @@ void FArticyEnumValue::ImportFromJson(const TPair<FString, TSharedPtr<FJsonValue
  * @param JsonObject A shared pointer to the JSON object containing the feature definition.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyTemplateFeatureDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, const UArticyImportData* Data)
+void FArticyTemplateFeatureDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject, UArticyImportData* Data)
 {
     if (!JsonObject.IsValid())
         return;
@@ -677,7 +677,7 @@ void FArticyTemplateFeatureDef::ImportFromJson(const TSharedPtr<FJsonObject> Jso
  * @param header A reference to the CodeFileGenerator.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyTemplateFeatureDef::GenerateDefCode(CodeFileGenerator& header, const UArticyImportData* Data) const
+void FArticyTemplateFeatureDef::GenerateDefCode(CodeFileGenerator& header, UArticyImportData* Data) const
 {
     if (!Data->GetObjectDefs().IsNewFeatureType(*GetCppType(Data, false)))
         return;
@@ -782,7 +782,7 @@ FString FArticyTemplateFeatureDef::GetCppType(const UArticyImportData* Data, boo
  * @param Json A pointer to the array of JSON values containing the object definitions.
  * @param Data A pointer to the UArticyImportData object.
  */
-void FArticyObjectDefinitions::ImportFromJson(const TArray<TSharedPtr<FJsonValue>>* Json, const UArticyImportData* Data)
+void FArticyObjectDefinitions::ImportFromJson(const TArray<TSharedPtr<FJsonValue>>* Json, UArticyImportData* Data)
 {
     Types.Reset();
     FeatureTypes.Reset();
@@ -856,7 +856,7 @@ void FArticyObjectDefinitions::GatherScripts(const FArticyModelDef& Values, UArt
 void FArticyObjectDefinitions::InitializeModel(
     UArticyPrimitive* Model,
     const FArticyModelDef& Values,
-    const UArticyImportData* Data,
+    UArticyImportData* Data,
     const FString& PackageName) const
 {
     auto def = Types.Find(Values.GetType());

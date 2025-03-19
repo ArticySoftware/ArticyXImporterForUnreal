@@ -49,7 +49,7 @@ void ArticyTypeGenerator::GenerateCode(const UArticyImportData* Data, FString& O
  *
  * @param Data The import data used to generate the Articy type asset.
  */
-void ArticyTypeGenerator::GenerateAsset(const UArticyImportData* Data)
+void ArticyTypeGenerator::GenerateAsset(UArticyImportData* Data)
 {
 	const auto ClassName = CodeGenerator::GetArticyTypeClassname(Data, true);
 	const auto AssetPackage = ArticyImporterHelpers::FindOrCreatePackage(ClassName);

@@ -7,6 +7,7 @@
 #include "CoreMinimal.h"
 #include "ArticyEditorFunctionLibrary.h"
 #include "ArticyImportData.h"
+#include "ArticyBridgeClient.h"
 
 #define LOCTEXT_NAMESPACE "ArticyImporter"
 
@@ -38,7 +39,9 @@ public:
 			*LOCTEXT("CommandText_Reimport", "Reimport articy data into Unreal").ToString(),
 			FConsoleCommandDelegate::CreateRaw(this, &FArticyEditorConsoleCommands::Reimport))
 
-	{}
+	{
+		UArticyBridgeClientCommands::RegisterConsoleCommands();
+	}
 
 	/**
 	 * @brief Reimports Articy data into Unreal Engine.

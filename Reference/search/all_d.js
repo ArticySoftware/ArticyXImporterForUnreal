@@ -14,5 +14,6 @@ var searchData=
   ['postinitproperties_11',['PostInitProperties',['../d3/da9/class_u_articy_import_data.html#a5966d83ca01a8b990151c1c07a95ec95',1,'UArticyImportData']]],
   ['print_12',['print',['../dd/d06/class_u_articy_expresso_scripts.html#a2a1f34f53c59cb51d61e9210f39ab913',1,'UArticyExpressoScripts::print(const FString &amp;Msg, ArgTypes... Args)'],['../dd/d06/class_u_articy_expresso_scripts.html#a82770bcc9dfd3350ce3b06a1354c9479',1,'UArticyExpressoScripts::print(const ExpressoType &amp;Msg, ArgTypes... Args)']]],
   ['printglobalvariable_13',['PrintGlobalVariable',['../db/d18/class_u_articy_global_variables.html#a5353eea5caed9c2d44ef9a13ad27a6b4',1,'UArticyGlobalVariables']]],
-  ['pushseen_14',['PushSeen',['../db/d18/class_u_articy_global_variables.html#a58a8678480924147e296646ca72b6f4a',1,'UArticyGlobalVariables']]]
+  ['processstrings_14',['ProcessStrings',['../d3/da9/class_u_articy_import_data.html#a2431a99f8d80bb0387730b7eec8bf14e',1,'UArticyImportData']]],
+  ['pushseen_15',['PushSeen',['../db/d18/class_u_articy_global_variables.html#a58a8678480924147e296646ca72b6f4a',1,'UArticyGlobalVariables']]]
 ];

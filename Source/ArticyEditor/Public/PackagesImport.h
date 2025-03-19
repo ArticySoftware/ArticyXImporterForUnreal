@@ -47,7 +47,7 @@ public:
 	 * @param Outer The outer object for the sub-asset.
 	 * @return A pointer to the generated UArticyObject sub-asset.
 	 */
-	UArticyObject* GenerateSubAsset(const UArticyImportData* Data, UObject* Outer) const;//MM_CHANGE
+	UArticyObject* GenerateSubAsset(UArticyImportData* Data, UObject* Outer) const;//MM_CHANGE
 
 	/**
 	 * Gets the type of the model.
@@ -204,7 +204,7 @@ public:
 	 *
 	 * @return A map of text data.
 	 */
-	TMap<FString, FArticyTexts> GetTexts() const;
+	TMap<FString, FArticyTexts>& GetTexts();
 
 	/**
 	 * Gets the folder path for the package.
@@ -352,7 +352,7 @@ public:
 	 * @param Package The package definition to retrieve texts from.
 	 * @return A map of text data.
 	 */
-	static TMap<FString, FArticyTexts> GetTexts(const FArticyPackageDef& Package);
+	static TMap<FString, FArticyTexts> GetTexts(FArticyPackageDef& Package);
 
 	/**
 	 * Gets a set of package names from the package definitions.

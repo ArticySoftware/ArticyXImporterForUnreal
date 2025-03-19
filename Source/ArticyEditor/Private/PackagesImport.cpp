@@ -82,7 +82,7 @@ void FArticyModelDef::GatherScripts(UArticyImportData* Data) const
  * @param Outer The outer object for the sub-asset.
  * @return A pointer to the generated UArticyObject sub-asset.
  */
-UArticyObject* FArticyModelDef::GenerateSubAsset(const UArticyImportData* Data, UObject* Outer) const
+UArticyObject* FArticyModelDef::GenerateSubAsset(UArticyImportData* Data, UObject* Outer) const
 {
 	// The class is found by taking the CPP name and removing the first character
 	auto className = Data->GetObjectDefs().GetCppType(Type, Data, false);
@@ -633,7 +633,7 @@ void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
  *
  * @return A map of text data.
  */
-TMap<FString, FArticyTexts> FArticyPackageDef::GetTexts() const
+TMap<FString, FArticyTexts>& FArticyPackageDef::GetTexts()
 {
 	return Texts;
 }
@@ -644,7 +644,7 @@ TMap<FString, FArticyTexts> FArticyPackageDef::GetTexts() const
  * @param Package The package definition to retrieve texts from.
  * @return A map of text data.
  */
-TMap<FString, FArticyTexts> FArticyPackageDefs::GetTexts(const FArticyPackageDef& Package)
+TMap<FString, FArticyTexts> FArticyPackageDefs::GetTexts(FArticyPackageDef& Package)
 {
 	return Package.GetTexts();
 }

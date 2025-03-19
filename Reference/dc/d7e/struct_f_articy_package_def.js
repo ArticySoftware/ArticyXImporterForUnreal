@@ -10,7 +10,7 @@ var struct_f_articy_package_def =
     [ "GetName", "dc/d7e/struct_f_articy_package_def.html#a8b4aa908f532f415c95916c01d72eb61", null ],
     [ "GetPreviousName", "dc/d7e/struct_f_articy_package_def.html#a0145e0ed6edf508478502aea525fc4af", null ],
     [ "GetScriptFragmentHash", "dc/d7e/struct_f_articy_package_def.html#a07df8f4a4f533b5bd6dee3506455d613", null ],
-    [ "GetTexts", "dc/d7e/struct_f_articy_package_def.html#a4bd533ef44e4495e0322e97e107bae0e", null ],
+    [ "GetTexts", "dc/d7e/struct_f_articy_package_def.html#af251c0443caf28807eda512a24cddeeb", null ],
     [ "ImportFromJson", "dc/d7e/struct_f_articy_package_def.html#a21caff100fddb939dbda520955092d39", null ],
     [ "operator==", "dc/d7e/struct_f_articy_package_def.html#afc04a5ee739cde680e75b7953594292b", null ],
     [ "SetName", "dc/d7e/struct_f_articy_package_def.html#a7c87a1715234398188d6b1db37669099", null ]

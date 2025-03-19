@@ -34,7 +34,7 @@ public:
      *
      * @param Data The import data used to generate the Articy type asset.
      */
-    static void GenerateAsset(const UArticyImportData* Data);
+    static void GenerateAsset(UArticyImportData* Data);
 
 private:
     /**
