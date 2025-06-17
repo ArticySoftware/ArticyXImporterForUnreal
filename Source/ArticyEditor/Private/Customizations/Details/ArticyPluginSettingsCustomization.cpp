@@ -82,7 +82,7 @@ void FArticyPluginSettingsCustomization::CustomizeDetails(IDetailLayoutBuilder& 
 	TArray<TSharedPtr<SPackageSettings>> PackageSettingsWidgets;
 
 	// create a custom widget per package
-	for (FString PackageName : OriginalDatabase->GetImportedPackageNames())
+	for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
 	{
 		const FName PackageNameAsName = FName(*PackageName);
 		TSharedPtr<SPackageSettings> NewSettingsWidget =

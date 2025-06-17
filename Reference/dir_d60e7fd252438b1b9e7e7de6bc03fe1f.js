@@ -6,6 +6,7 @@ var dir_d60e7fd252438b1b9e7e7de6bc03fe1f =
     [ "ArticyBaseInclude.h", "d1/d94/_articy_base_include_8h_source.html", null ],
     [ "ArticyBaseObject.h", "d1/d22/_articy_base_object_8h_source.html", null ],
     [ "ArticyBaseTypes.h", "d1/d3c/_articy_base_types_8h_source.html", null ],
+    [ "ArticyBridgeDiscoveryDialog.h", "dd/dc2/_articy_bridge_discovery_dialog_8h_source.html", null ],
     [ "ArticyBuiltinTypes.h", "db/d5d/_articy_builtin_types_8h_source.html", null ],
     [ "ArticyChangedProperty.h", "dd/d40/_articy_changed_property_8h_source.html", null ],
     [ "ArticyDatabase.h", "de/d7b/_articy_database_8h_source.html", null ],

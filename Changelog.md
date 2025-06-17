@@ -1,3 +1,21 @@
+## Unreal Importer 1.4.0 Changelog :
+
+- New Features:
+    - Compatibility with Unreal Engine 5.6
+    - Database lifecycle management
+
+## Unreal Importer 1.3.2 Changelog :
+
+- Fixes:
+    - Fix issues with nested rich text
+    - Improve stability of rich text imports
+    - Code cleanup for rich text imports
+
+## Unreal Importer 1.3.1 Changelog :
+
+ - Changes:
+    - Numerous code optimizations
+
 ## Unreal Importer 1.3.0 Changelog :
 
 - New Features:

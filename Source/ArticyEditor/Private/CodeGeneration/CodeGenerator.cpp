@@ -355,7 +355,7 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 
 	TArray<UObject*> ExistingAssets;
 	TArray<FAssetData> InvalidAssets;
-	for (FAssetData Data : OutAssets)
+	for (const FAssetData& Data : OutAssets)
 	{
 		if (Data.IsValid())
 		{
@@ -416,7 +416,7 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 	TArray<FAssetData> OutAssets;
 	AssetRegistry.Get().GetAssetsByPath(FName(*ArticyHelpers::GetArticyGeneratedFolder()), OutAssets, true, false);
 
-	for (FAssetData Data : OutAssets)
+	for (const FAssetData& Data : OutAssets)
 	{
 		if (Data.IsValid())
 		{
@@ -585,7 +585,7 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 
 	// Compiling is done!
 	// Check if UArticyBaseGlobalVariables can be found, otherwise something went wrong!
-	const auto ClassName = GetGlobalVarsClassname(Data, true);
+	const auto& ClassName = GetGlobalVarsClassname(Data, true);
 	auto FullClassName = FString::Printf(TEXT("Class'/Script/%s.%s'"), FApp::GetProjectName(), *ClassName);
 	if (!ConstructorHelpersInternal::FindOrLoadClass(FullClassName, UArticyGlobalVariables::StaticClass()))
 	{
@@ -636,7 +636,7 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 	TArray<UPackage*> PackagesToSave;
 
 	PackagesToSave.Add(Data->GetOutermost());
-	for (FAssetData AssetData : GeneratedAssets)
+	for (const FAssetData& AssetData : GeneratedAssets)
 	{
 		PackagesToSave.Add(AssetData.GetAsset()->GetOutermost());
 	}

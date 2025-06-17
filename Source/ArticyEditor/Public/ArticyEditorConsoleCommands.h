@@ -56,7 +56,7 @@ public:
 
 		if (ImportData)
 		{
-			if (const auto Factory = NewObject<UArticyJSONFactory>())
+			if (const auto& Factory = NewObject<UArticyJSONFactory>())
 			{
 				Factory->Reimport(ImportData);
 				//GC will destroy factory

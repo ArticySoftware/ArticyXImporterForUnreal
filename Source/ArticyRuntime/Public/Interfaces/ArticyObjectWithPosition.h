@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithPosition")
 	virtual FVector2D& GetPosition()
 	{
-		static const auto PropName = FName("Position");
+		static const auto& PropName = FName("Position");
 		return GetProperty<FVector2D>(PropName);
 	}
 

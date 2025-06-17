@@ -32,7 +32,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ObjectWithSpeaker")
 	virtual FArticyId& GetSpeakerId()
 	{
-		static const auto PropName = FName("Speaker");
+		static const auto& PropName = FName("Speaker");
 		return GetProperty<FArticyId>(PropName);
 	}
 

@@ -55,10 +55,10 @@ var NAVTREEINDEX =
 [
 "annotated.html",
 "d3/d8d/struct_f_articy_rect.html",
-"d7/d9b/class_u_articy_database.html#af818c7b5eb70c2100ffecedb2c6d7584",
-"db/d87/class_u_articy_node.html",
-"df/d68/class_f_frontend_filter___articy_object.html#a0ac5ed35d8c7a97ebe80c34a785b6f22"
+"d7/d9b/class_u_articy_database.html#aea752e050970091ac69b3f30637db964",
+"db/d7f/class_f_articy_editor_customization_manager.html#ace492858149d8aed2e060db5091e6b0d",
+"df/d46/class_s_articy_global_variables.html"
 ];
 
-var SYNCONMSG = 'click to disable panel synchronisation';
-var SYNCOFFMSG = 'click to enable panel synchronisation';
+var SYNCONMSG = 'click to disable panel synchronization';
+var SYNCOFFMSG = 'click to enable panel synchronization';

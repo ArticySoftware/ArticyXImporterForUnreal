@@ -99,11 +99,6 @@ public:
 			return FText(SourceString);
 		}
 
-		if (BackupText)
-		{
-			return *BackupText;
-		}
-
 		// By default, return via the key
 		if (ResolveTextExtension && !Key.ToString().EndsWith(".PreviewText"))
 		{

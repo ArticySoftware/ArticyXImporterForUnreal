@@ -10,7 +10,8 @@ var searchData=
   ['sarticyrefpin_7',['SArticyRefPin',['../dd/d21/class_s_articy_ref_pin.html',1,'']]],
   ['sarticyrefproperty_8',['SArticyRefProperty',['../de/d71/class_s_articy_ref_property.html',1,'']]],
   ['sarticyvariableset_9',['SArticyVariableSet',['../dc/ddb/class_s_articy_variable_set.html',1,'']]],
-  ['sfixedsizemenucombobutton_10',['SFixedSizeMenuComboButton',['../dc/d48/class_s_fixed_size_menu_combo_button.html',1,'']]],
-  ['spackagesettings_11',['SPackageSettings',['../d7/d71/class_s_package_settings.html',1,'']]],
-  ['stringtablegenerator_12',['StringTableGenerator',['../db/d37/class_string_table_generator.html',1,'']]]
+  ['sbridgediscoverydialog_10',['SBridgeDiscoveryDialog',['../d4/d7d/class_s_bridge_discovery_dialog.html',1,'']]],
+  ['sfixedsizemenucombobutton_11',['SFixedSizeMenuComboButton',['../dc/d48/class_s_fixed_size_menu_combo_button.html',1,'']]],
+  ['spackagesettings_12',['SPackageSettings',['../d7/d71/class_s_package_settings.html',1,'']]],
+  ['stringtablegenerator_13',['StringTableGenerator',['../db/d37/class_string_table_generator.html',1,'']]]
 ];

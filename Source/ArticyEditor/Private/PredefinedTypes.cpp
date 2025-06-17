@@ -38,7 +38,7 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Add(TEXT("id"), PREDEFINE_TYPE(FArticyId));
 	Types.Add(TEXT("string"), PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; }));
 
-	const auto TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
+	const auto& TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
 		{
 			if (Json->Type == EJson::String)
 			{
@@ -249,85 +249,98 @@ FString CreateOpenTag(const TArray<TagInfo>& currentTags)
  */
 FString ConvertUnityMarkupToUnreal(const FString& Input)
 {
-	// Regex pattern to match tags (start and end)
+	// Regex pattern explanation:
+	//   - Group 1: Matches closing tag names (e.g., </i>)
+	//   - Group 2: Matches opening tag names (e.g., <i>)
+	//   - Group 3: Matches any attributes inside the opening tag (if present)
 	static FRegexPattern Pattern(TEXT("<\\/(.+?)>|<(\\w+)([^>]*?)>"));
+	FRegexMatcher Matcher(Pattern, Input);
 
-	// Create a matcher to search the input
-	FRegexMatcher myMatcher(Pattern, Input);
+	// If no tags are found, return the input unchanged.
+	if (!Matcher.FindNext())
+	{
+		return Input;
+	}
 
-	// Check to see if there's any matches at all
-	bool anyMatches = myMatcher.FindNext();
+	FString Output;
+	TArray<TagInfo> CurrentTags;
+	int LastPosition = 0;
 
-	// If not, just return the input string
-	if (!anyMatches) { return Input; }
-
-	// Create a buffer to hold the output
-	FString strings = "";
-
-	// Run through matches
-	TArray<TagInfo> currentTags;
-	int last = 0;
 	do
 	{
-		// Get bounds of match
-		int start = myMatcher.GetMatchBeginning();
-		int end = myMatcher.GetMatchEnding();
+		int Start = Matcher.GetMatchBeginning();
+		int End = Matcher.GetMatchEnding();
 
-		// Add all text preceding the match to the output
-		strings += (Input.Mid(last, start - last));
+		// Append any text preceding the current tag.
+		Output += Input.Mid(LastPosition, Start - LastPosition);
 
-		// Check if we're dealing with a start tag or an end tag
-		FString tagName = myMatcher.GetCaptureGroup(1);
-		if (tagName.Len() > 0) {  // Handle start tags
-			// Add to our list of open tags
-			FString value = myMatcher.GetCaptureGroup(3);
-			TagInfo info = TagInfo(tagName, value);
-			currentTags.Add(info);
-
-			// If it's not a dummy tag, open it in Unreal format
-			if (!info.dummy)
+		// Determine if this match is an opening tag or a closing tag.
+		FString OpenTagName = Matcher.GetCaptureGroup(2); // Opening tag name (if any)
+		if (OpenTagName.Len() > 0)
+		{
+			// It's an opening tag.
+			FString Attributes = Matcher.GetCaptureGroup(3);
+			// Remove any leading '=' if present.
+			if (Attributes.StartsWith(TEXT("=")))
 			{
-				strings += CreateOpenTag(currentTags);
+				Attributes = Attributes.Mid(1);
+			}
+
+			TagInfo NewTag(OpenTagName, Attributes);
+			CurrentTags.Add(NewTag);
+
+			// If not a dummy tag, output the corresponding Unreal open tag.
+			if (!NewTag.dummy)
+			{
+				Output += CreateOpenTag(CurrentTags);
 			}
 		}
-		else {  // Handle closing tags
-			if (currentTags.Num() == 0)
+		else
+		{
+			// It's a closing tag.
+			FString ClosingTagName = Matcher.GetCaptureGroup(1);
+
+			// If no tags are open, we have a syntax error.
+			if (CurrentTags.Num() == 0)
 			{
-				// Syntax issue, revert to original
 				return Input;
 			}
 
-			// Remove the last opened tag
-			auto popped = currentTags.Pop();
-
-			// If it's not a dummy tag, close it in Unreal format
-			if (!popped.dummy)
+			// Check if the closing tag matches the most recent open tag.
+			TagInfo LastTag = CurrentTags.Last();
+			if (LastTag.tagName != ClosingTagName)
 			{
-				strings += TEXT("</>");
+				return Input;
 			}
 
-			// Reopen any remaining tags in the correct order
-			if (currentTags.Num() > 0)
+			// Pop the matching tag from our stack.
+			CurrentTags.Pop();
+
+			// If the popped tag is not a dummy tag, output the Unreal closing tag.
+			if (!LastTag.dummy)
 			{
-				strings += CreateOpenTag(currentTags);
+				Output += TEXT("</>");
+			}
+
+			// Reopen any still-open tags to maintain correct nested formatting.
+			if (CurrentTags.Num() > 0)
+			{
+				Output += CreateOpenTag(CurrentTags);
 			}
 		}
 
-		last = end;
+		LastPosition = End;
 
-	} while (myMatcher.FindNext());
+	} while (Matcher.FindNext());
 
-	// Add any remaining text after the last match
-	if (last != Input.Len())
+	// Append any remaining text after the last tag.
+	if (LastPosition < Input.Len())
 	{
-		strings += Input.Mid(last, Input.Len() - last);
+		Output += Input.Mid(LastPosition);
 	}
 
-	// Create the final result string
-	const FString result = DecodeHtmlEntities(strings);
-
-	// Return the final result
-	return result;
+	// Decode any HTML entities and return the final result.
+	return DecodeHtmlEntities(Output);
 }
 
 FString DecodeHtmlEntities(const FString& Input)

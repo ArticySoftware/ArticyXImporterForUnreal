@@ -129,7 +129,7 @@ UObject* UArticyJSONFactory::FactoryCreateFile(UClass* InClass, UObject* InParen
  */
 bool UArticyJSONFactory::CanReimport(UObject* Obj, TArray<FString>& OutFilenames)
 {
-    const auto Asset = Cast<UArticyImportData>(Obj);
+    const auto& Asset = Cast<UArticyImportData>(Obj);
 
     if (!Asset)
     {

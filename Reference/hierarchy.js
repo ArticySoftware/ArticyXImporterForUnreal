@@ -78,6 +78,7 @@ var hierarchy =
       [ "FAssetTypeActions_ArticyAlterativeGV", "d6/d77/class_f_asset_type_actions___articy_alterative_g_v.html", null ],
       [ "FAssetTypeActions_ArticyGv", "db/d63/class_f_asset_type_actions___articy_gv.html", null ]
     ] ],
+    [ "FBridgeEndpoint", "de/d6d/struct_f_bridge_endpoint.html", null ],
     [ "FArticyObjectDefinitions::FClassInfo", "da/d64/struct_f_articy_object_definitions_1_1_f_class_info.html", null ],
     [ "ArticyImporterHelpers::FCompareArticyNodeXLocation", "d9/de1/struct_articy_importer_helpers_1_1_f_compare_articy_node_x_location.html", null ],
     [ "FEditorUndoClient", null, [
@@ -108,26 +109,6 @@ var hierarchy =
       [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
       [ "UArticyScriptCondition", "d0/d55/class_u_articy_script_condition.html", null ]
     ] ],
-    [ "IArticyFlowObject", "de/dec/class_i_articy_flow_object.html", [
-      [ "IArticyInputPinsProvider", "d6/dea/class_i_articy_input_pins_provider.html", [
-        [ "UArticyNode", "db/d87/class_u_articy_node.html", [
-          [ "UArticyCondition", "df/dc2/class_u_articy_condition.html", null ],
-          [ "UArticyDialogue", "db/d67/class_u_articy_dialogue.html", null ],
-          [ "UArticyDialogueFragment", "d8/d19/class_u_articy_dialogue_fragment.html", null ],
-          [ "UArticyFlowFragment", "d9/de9/class_u_articy_flow_fragment.html", null ],
-          [ "UArticyHub", "d0/d41/class_u_articy_hub.html", null ],
-          [ "UArticyInstruction", "dd/d2b/class_u_articy_instruction.html", null ],
-          [ "UArticyJump", "dc/daa/class_u_articy_jump.html", null ]
-        ] ]
-      ] ],
-      [ "IArticyOutputPinsProvider", "df/d85/class_i_articy_output_pins_provider.html", [
-        [ "UArticyNode", "db/d87/class_u_articy_node.html", null ]
-      ] ],
-      [ "UArticyFlowPin", "d0/d34/class_u_articy_flow_pin.html", [
-        [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
-        [ "UArticyOutputPin", "d7/d3b/class_u_articy_output_pin.html", null ]
-      ] ]
-    ] ],
     [ "IArticyHyperlinkHandler", "d1/dd3/class_i_articy_hyperlink_handler.html", null ],
     [ "IArticyIdPropertyWidgetCustomization", "d2/d84/class_i_articy_id_property_widget_customization.html", [
       [ "FArticyButtonCustomization", "dc/d06/class_f_articy_button_customization.html", null ]
@@ -141,6 +122,26 @@ var hierarchy =
       [ "UArticyScriptInstruction", "de/d38/class_u_articy_script_instruction.html", null ]
     ] ],
     [ "IArticyReflectable", "d9/d2d/class_i_articy_reflectable.html", [
+      [ "IArticyFlowObject", "de/dec/class_i_articy_flow_object.html", [
+        [ "IArticyInputPinsProvider", "d6/dea/class_i_articy_input_pins_provider.html", [
+          [ "UArticyNode", "db/d87/class_u_articy_node.html", [
+            [ "UArticyCondition", "df/dc2/class_u_articy_condition.html", null ],
+            [ "UArticyDialogue", "db/d67/class_u_articy_dialogue.html", null ],
+            [ "UArticyDialogueFragment", "d8/d19/class_u_articy_dialogue_fragment.html", null ],
+            [ "UArticyFlowFragment", "d9/de9/class_u_articy_flow_fragment.html", null ],
+            [ "UArticyHub", "d0/d41/class_u_articy_hub.html", null ],
+            [ "UArticyInstruction", "dd/d2b/class_u_articy_instruction.html", null ],
+            [ "UArticyJump", "dc/daa/class_u_articy_jump.html", null ]
+          ] ]
+        ] ],
+        [ "IArticyOutputPinsProvider", "df/d85/class_i_articy_output_pins_provider.html", [
+          [ "UArticyNode", "db/d87/class_u_articy_node.html", null ]
+        ] ],
+        [ "UArticyFlowPin", "d0/d34/class_u_articy_flow_pin.html", [
+          [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
+          [ "UArticyOutputPin", "d7/d3b/class_u_articy_output_pin.html", null ]
+        ] ]
+      ] ],
       [ "IArticyObjectWith_Base", "df/d1c/class_i_articy_object_with___base.html", [
         [ "IArticyObjectWithAttachments", "d0/d67/class_i_articy_object_with_attachments.html", null ],
         [ "IArticyObjectWithColor", "d2/d4f/class_i_articy_object_with_color.html", null ],
@@ -240,6 +241,7 @@ var hierarchy =
       [ "SArticyObjectTileView", "d9/d08/class_s_articy_object_tile_view.html", null ],
       [ "SArticyRefProperty", "de/d71/class_s_articy_ref_property.html", null ],
       [ "SArticyVariableSet", "dc/ddb/class_s_articy_variable_set.html", null ],
+      [ "SBridgeDiscoveryDialog", "d4/d7d/class_s_bridge_discovery_dialog.html", null ],
       [ "SPackageSettings", "d7/d71/class_s_package_settings.html", null ]
     ] ],
     [ "SGraphPin", null, [

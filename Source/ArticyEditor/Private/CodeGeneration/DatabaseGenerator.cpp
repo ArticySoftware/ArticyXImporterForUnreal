@@ -32,10 +32,10 @@ void DatabaseGenerator::GenerateCode(const UArticyImportData* Data, FString& Out
 			header->Line("#include \"" + OutFile + ".generated.h\"");
 			header->Line();
 
-			const auto className = CodeGenerator::GetDatabaseClassname(Data);
+			const auto& className = CodeGenerator::GetDatabaseClassname(Data);
 			header->Class(className + " : public UArticyDatabase", "", true, [&]
 				{
-					const auto expressoClass = CodeGenerator::GetExpressoScriptsClassname(Data, false);
+					const auto& expressoClass = CodeGenerator::GetExpressoScriptsClassname(Data, false);
 
 					header->AccessModifier("public");
 
@@ -48,7 +48,7 @@ void DatabaseGenerator::GenerateCode(const UArticyImportData* Data, FString& Out
 
 					header->Line();
 
-					const auto globalVarsClass = CodeGenerator::GetGlobalVarsClassname(Data);
+					const auto& globalVarsClass = CodeGenerator::GetGlobalVarsClassname(Data);
 					header->Method(globalVarsClass + "*", "GetGVs", "", [&]
 						{
 							header->Line(FString::Printf(TEXT("return static_cast<%s*>(Super::GetGVs());"), *globalVarsClass));
@@ -73,6 +73,6 @@ void DatabaseGenerator::GenerateCode(const UArticyImportData* Data, FString& Out
  */
 UArticyDatabase* DatabaseGenerator::GenerateAsset(const UArticyImportData* Data)
 {
-	const auto className = CodeGenerator::GetDatabaseClassname(Data, true);
+	const auto& className = CodeGenerator::GetDatabaseClassname(Data, true);
 	return ArticyImporterHelpers::GenerateAsset<UArticyDatabase>(*className, FApp::GetProjectName(), "", "", RF_ArchetypeObject, true);
 }

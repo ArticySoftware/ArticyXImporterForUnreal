@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithExternalId")
 	virtual FString& GetExternalId()
 	{
-		static const auto PropName = FName("ExternalId");
+		static const auto& PropName = FName("ExternalId");
 		return GetProperty<FString>(PropName);
 	}
 

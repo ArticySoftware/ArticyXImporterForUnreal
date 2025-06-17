@@ -27,8 +27,8 @@ UObject* UArticyAsset::LoadAsset() const
 			lib->GetAssetDataList(assets);
 		}*/
 
-		const auto folder = FPaths::GetPath(AssetRef);
-		const auto filename = FPaths::GetBaseFilename(AssetRef); //without extension
+		const auto& folder = FPaths::GetPath(AssetRef);
+		const auto& filename = FPaths::GetBaseFilename(AssetRef); //without extension
 
 		//construct the asset path like UE4 wants it
 		auto path = ArticyHelpers::GetArticyResourcesFolder() / folder / filename;

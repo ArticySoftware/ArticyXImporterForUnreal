@@ -69,11 +69,12 @@ var searchData=
   ['farticytype_66',['FArticyType',['../de/dec/struct_f_articy_type.html',1,'']]],
   ['fassettypeactions_5farticyalterativegv_67',['FAssetTypeActions_ArticyAlterativeGV',['../d6/d77/class_f_asset_type_actions___articy_alterative_g_v.html',1,'']]],
   ['fassettypeactions_5farticygv_68',['FAssetTypeActions_ArticyGv',['../db/d63/class_f_asset_type_actions___articy_gv.html',1,'']]],
-  ['fclassinfo_69',['FClassInfo',['../da/d64/struct_f_articy_object_definitions_1_1_f_class_info.html',1,'FArticyObjectDefinitions']]],
-  ['fcomparearticynodexlocation_70',['FCompareArticyNodeXLocation',['../d9/de1/struct_articy_importer_helpers_1_1_f_compare_articy_node_x_location.html',1,'ArticyImporterHelpers']]],
-  ['ffrontendfilter_5farticygvfilterexpressioncontext_71',['FFrontendFilter_ArticyGVFilterExpressionContext',['../da/d54/class_f_frontend_filter___articy_g_v_filter_expression_context.html',1,'']]],
-  ['ffrontendfilter_5farticyobject_72',['FFrontendFilter_ArticyObject',['../df/d68/class_f_frontend_filter___articy_object.html',1,'']]],
-  ['ffrontendfilter_5farticyobjectfilterexpressioncontext_73',['FFrontendFilter_ArticyObjectFilterExpressionContext',['../da/d5a/class_f_frontend_filter___articy_object_filter_expression_context.html',1,'']]],
-  ['ffrontendfilter_5farticyvariable_74',['FFrontendFilter_ArticyVariable',['../da/dd5/class_f_frontend_filter___articy_variable.html',1,'']]],
-  ['fglobalvariablessizedata_75',['FGlobalVariablesSizeData',['../d3/df2/struct_f_global_variables_size_data.html',1,'']]]
+  ['fbridgeendpoint_69',['FBridgeEndpoint',['../de/d6d/struct_f_bridge_endpoint.html',1,'']]],
+  ['fclassinfo_70',['FClassInfo',['../da/d64/struct_f_articy_object_definitions_1_1_f_class_info.html',1,'FArticyObjectDefinitions']]],
+  ['fcomparearticynodexlocation_71',['FCompareArticyNodeXLocation',['../d9/de1/struct_articy_importer_helpers_1_1_f_compare_articy_node_x_location.html',1,'ArticyImporterHelpers']]],
+  ['ffrontendfilter_5farticygvfilterexpressioncontext_72',['FFrontendFilter_ArticyGVFilterExpressionContext',['../da/d54/class_f_frontend_filter___articy_g_v_filter_expression_context.html',1,'']]],
+  ['ffrontendfilter_5farticyobject_73',['FFrontendFilter_ArticyObject',['../df/d68/class_f_frontend_filter___articy_object.html',1,'']]],
+  ['ffrontendfilter_5farticyobjectfilterexpressioncontext_74',['FFrontendFilter_ArticyObjectFilterExpressionContext',['../da/d5a/class_f_frontend_filter___articy_object_filter_expression_context.html',1,'']]],
+  ['ffrontendfilter_5farticyvariable_75',['FFrontendFilter_ArticyVariable',['../da/dd5/class_f_frontend_filter___articy_variable.html',1,'']]],
+  ['fglobalvariablessizedata_76',['FGlobalVariablesSizeData',['../d3/df2/struct_f_global_variables_size_data.html',1,'']]]
 ];

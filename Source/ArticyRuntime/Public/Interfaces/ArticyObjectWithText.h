@@ -28,7 +28,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithText")
 	virtual FText GetText()
 	{
-		static const auto PropName = FName("Text");
+		static const auto& PropName = FName("Text");
 		return GetStringText(Cast<UObject>(this), PropName);
 	}
 
@@ -42,14 +42,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithText")
 	virtual FText& SetText(UPARAM(ref) const FText& Text)
 	{
-		static const auto PropName = FName("Text");
+		static const auto& PropName = FName("Text");
 		return GetProperty<FText>(PropName) = Text;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "ArticyObjectWithText")
 	virtual USoundWave* GetVOAsset(UObject* WorldContext)
 	{
-		static const auto PropName = FName("Text");
+		static const auto& PropName = FName("Text");
 		FText& Key = GetProperty<FText>(PropName);
 		const FText MissingEntry = FText::FromString("<MISSING STRING TABLE ENTRY>");
 		FArticyId AssetId;

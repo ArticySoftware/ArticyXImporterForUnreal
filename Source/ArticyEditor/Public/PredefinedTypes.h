@@ -104,7 +104,7 @@ struct ArticyObjectTypeInfo final : ArticyPredefinedTypeInfo<Type, PropType>
 			Val->InitFromJson(Json);
 
 			UObject* Raw = Val;
-			if (const auto Prim = Cast<UArticyPrimitive>(Raw))
+			if (const auto& Prim = Cast<UArticyPrimitive>(Raw))
 				Model->AddSubobject(Prim);
 
 			return Val;

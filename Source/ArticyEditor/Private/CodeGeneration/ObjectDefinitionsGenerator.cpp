@@ -26,7 +26,7 @@ void ObjectDefinitionsGenerator::GenerateCode(UArticyImportData* Data, FString& 
 			header->Line("#include \"" + CodeGenerator::GetGeneratedTypesFilename(Data) + ".generated.h\"");
 			header->Line();
 
-			for (const auto type : Data->GetObjectDefs().GetTypes())
+			for (const auto& type : Data->GetObjectDefs().GetTypes())
 				type.Value.GenerateCode(*header, Data);
 		});
 }

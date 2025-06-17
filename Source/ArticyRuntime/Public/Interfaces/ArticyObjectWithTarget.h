@@ -31,7 +31,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithTarget")
 	virtual FArticyId& GetTargetId()
 	{
-		static const auto PropName = FName("Target");
+		static const auto& PropName = FName("Target");
 		return GetProperty<FArticyId>(PropName);
 	}
 

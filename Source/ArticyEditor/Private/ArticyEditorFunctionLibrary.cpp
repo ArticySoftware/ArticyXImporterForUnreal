@@ -59,7 +59,7 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 		return -1;
 	}
 
-	const auto Factory = NewObject<UArticyJSONFactory>();
+	const auto& Factory = NewObject<UArticyJSONFactory>();
 	if (Factory)
 	{
 		return Factory->Reimport(ImportData) - 1;

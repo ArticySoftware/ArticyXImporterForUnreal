@@ -181,7 +181,7 @@ FString UArticyTextExtension::FormatNumber(const FString& SourceValue, const FSt
 // Process Global Variables
 void UArticyTextExtension::GetGlobalVariable(UObject* Outer, const FString& SourceName, FArticyGvName GvName, FString& OutString, bool& OutSuccess) const
 {
-	const auto WorldContext = GEngine->GetWorldFromContextObject(Outer, EGetWorldErrorMode::ReturnNull);
+	const auto& WorldContext = GEngine->GetWorldFromContextObject(Outer, EGetWorldErrorMode::ReturnNull);
 	if (!WorldContext)
 	{
 		// Cannot use this context
@@ -190,9 +190,9 @@ void UArticyTextExtension::GetGlobalVariable(UObject* Outer, const FString& Sour
 		return;
 	}
 
-	const auto DB = UArticyDatabase::Get(Outer);
-	const auto GlobalVariables = DB->GetGVs();
-	const auto Set = GlobalVariables->GetNamespace(GvName.GetNamespace());
+	const auto& DB = UArticyDatabase::Get(Outer);
+	const auto& GlobalVariables = DB->GetGVs();
+	const auto& Set = GlobalVariables->GetNamespace(GvName.GetNamespace());
 	if (!Set)
 	{
 		OutSuccess = false;
@@ -231,7 +231,7 @@ void UArticyTextExtension::GetGlobalVariable(UObject* Outer, const FString& Sour
 
 void UArticyTextExtension::GetObjectProperty(UObject* Outer, const FString& SourceName, const FString& NameOrId, const FString& PropertyName, const bool bRequestType, FString& OutString, bool& OutSuccess) const
 {
-	const auto WorldContext = GEngine->GetWorldFromContextObject(Outer, EGetWorldErrorMode::ReturnNull);
+	const auto& WorldContext = GEngine->GetWorldFromContextObject(Outer, EGetWorldErrorMode::ReturnNull);
 	if (!WorldContext)
 	{
 		// Cannot use this context
@@ -241,7 +241,7 @@ void UArticyTextExtension::GetObjectProperty(UObject* Outer, const FString& Sour
 	}
 
 	// Get the object
-	const auto DB = UArticyDatabase::Get(this);
+	const auto& DB = UArticyDatabase::Get(this);
 	UArticyObject* Object;
 
 	FString ObjectName, ObjectInstance;

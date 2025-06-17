@@ -35,7 +35,7 @@ void ArticyLocalizerGenerator::GenerateCode(const UArticyImportData* Data, FStri
             header->Line();
 
             // Generate the UArticyLocalizerSystem class
-            const auto type = CodeGenerator::GetArticyLocalizerClassname(Data, false);
+            const auto& type = CodeGenerator::GetArticyLocalizerClassname(Data, false);
             header->Class(type + " : public UArticyLocalizerSystem", TEXT("Articy Localizer System"), true, [&]
                 {
                     header->AccessModifier("public");

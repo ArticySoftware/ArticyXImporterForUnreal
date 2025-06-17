@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithColor")
 	virtual FLinearColor& GetColor()
 	{
-		static const auto PropName = FName("Color");
+		static const auto& PropName = FName("Color");
 		return GetProperty<FLinearColor>(PropName);
 	}
 

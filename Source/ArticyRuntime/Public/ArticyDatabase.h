@@ -186,6 +186,20 @@ public:
 	void Init();
 
 	/**
+	 * Explicit initialize.
+	 * @param WorldContext any UObject in the target world
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy|Lifecycle")
+	static void Initialize(const UObject* WorldContext);
+
+	/**
+	 * Explicit deinitialize.
+	 * @param WorldContext any UObject in the target world
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy|Lifecycle")
+	static void Deinitialize(const UObject* WorldContext);
+
+	/**
 	 * Get the static instance of the database.
 	 * @param WorldContext The context from which to retrieve the database.
 	 * @return A pointer to the Articy database instance.
@@ -482,6 +496,9 @@ protected:
 	TMap<FArticyId, UArticyCloneableObject*> LoadedObjectsById;
 	UPROPERTY()
 	TMap<FName, FArticyDatabaseObjectArray> LoadedObjectsByName;
+
+	UPROPERTY(Transient)
+	bool bIsInitialized = false;
 
 	void UnloadAllPackages();
 

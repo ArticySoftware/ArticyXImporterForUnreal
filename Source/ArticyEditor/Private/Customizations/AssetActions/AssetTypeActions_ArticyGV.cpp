@@ -19,7 +19,7 @@ void FAssetTypeActions_ArticyGv::OpenAssetEditor(const TArray<UObject*>& InObjec
 
 	for (auto ObjIt = InObjects.CreateConstIterator(); ObjIt; ++ObjIt)
 	{
-		const auto ArticyGV = Cast<UArticyGlobalVariables>(*ObjIt);
+		const auto& ArticyGV = Cast<UArticyGlobalVariables>(*ObjIt);
 		if (ArticyGV != nullptr)
 		{
 			TSharedRef<FArticyGvEditor> Editor(new FArticyGvEditor);

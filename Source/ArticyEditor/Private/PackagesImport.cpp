@@ -268,7 +268,7 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 	ArticyPackage->bIsDefaultPackage = IsDefaultPackage;
 
 	// Create all contained subassets and register them in the package
-	for (const auto model : Models)
+	for (const auto& model : Models)
 	{
 		UArticyObject* asset = model.GenerateSubAsset(Data, ArticyPackage); //MM_CHANGE
 
@@ -403,9 +403,9 @@ void FArticyPackageDefs::ImportFromJson(
 		bool bExistingPackageFound = false;
 
 		// Iterate over new package list
-		for (const auto pack : *Json)
+		for (const auto& pack : *Json)
 		{
-			const auto obj = pack->AsObject();
+			const auto& obj = pack->AsObject();
 			if (!obj.IsValid())
 				continue;
 
@@ -453,9 +453,9 @@ void FArticyPackageDefs::ImportFromJson(
 	}
 
 	// Iterate over new package list
-	for (const auto pack : *Json)
+	for (const auto& pack : *Json)
 	{
-		const auto obj = pack->AsObject();
+		const auto& obj = pack->AsObject();
 		if (!obj.IsValid())
 			continue;
 
@@ -529,9 +529,9 @@ bool FArticyPackageDefs::ValidateImport(
 		bool bPackageDataFound = false;
 
 		// Iterate over new package list
-		for (const auto pack : *Json)
+		for (const auto& pack : *Json)
 		{
-			const auto obj = pack->AsObject();
+			const auto& obj = pack->AsObject();
 			if (!obj.IsValid())
 				continue;
 
@@ -559,9 +559,9 @@ bool FArticyPackageDefs::ValidateImport(
 	}
 
 	// Iterate over new package list
-	for (const auto pack : *Json)
+	for (const auto& pack : *Json)
 	{
-		const auto obj = pack->AsObject();
+		const auto& obj = pack->AsObject();
 		if (!obj.IsValid())
 			continue;
 
@@ -667,8 +667,8 @@ void FArticyPackageDefs::GenerateAssets(UArticyImportData* Data) const
 
 	// Store gathered information about who has which children in generated assets
 	auto parentChildrenCache = Data->GetParentChildrenCache();
-	const auto childrenProp = FName{ TEXT("Children") };
-	for (auto pack : ArticyPackages)
+	const auto& childrenProp = FName{ TEXT("Children") };
+	for (auto& pack : ArticyPackages)
 	{
 		for (auto obj : pack->GetAssets())
 		{
@@ -696,7 +696,7 @@ void FArticyPackageDefs::GenerateAssets(UArticyImportData* Data) const
 TSet<FString> FArticyPackageDefs::GetPackageNames() const
 {
 	TSet<FString> outArray;
-	for (FArticyPackageDef def : Packages)
+	for (const FArticyPackageDef& def : Packages)
 	{
 		outArray.Add(def.GetName());
 	}

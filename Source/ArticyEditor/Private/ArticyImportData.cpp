@@ -743,7 +743,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	// Add invariant if it does not exist
 	if (!Languages.Languages.Contains(TEXT("")))
 	{
-		const auto Iterator = Languages.Languages.CreateConstIterator();
+		const auto& Iterator = Languages.Languages.CreateConstIterator();
 		const auto& Elem = *Iterator;
 		Languages.Languages.Add(TEXT(""), Elem.Value);
 	}
@@ -897,7 +897,7 @@ int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, TMap<FStr
 			else
 			{
 				// Infer default from iterator
-				const auto Iterator = Text.Value.Content.CreateConstIterator();
+				const auto& Iterator = Text.Value.Content.CreateConstIterator();
 				const auto& Elem = *Iterator;
 				CsvOutput->Line(Text.Key, Elem.Value.Text);
 				if (!Elem.Value.VoAsset.IsEmpty())
@@ -928,7 +928,7 @@ void UArticyImportData::ImportAudioAssets(const FString& BaseContentDir)
 
     IAssetRegistry& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
 
-    for (FString& FilePath : FilesToImport)
+    for (const FString& FilePath : FilesToImport)
     {
         // Calculate the relative path from the base directory
         FString RelativePath = FilePath;

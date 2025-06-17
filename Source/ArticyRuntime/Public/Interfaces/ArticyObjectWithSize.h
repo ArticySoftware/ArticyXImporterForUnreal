@@ -23,7 +23,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithSize")
 	virtual FArticySize& GetSize()
 	{
-		static const auto PropName = FName("Size");
+		static const auto& PropName = FName("Size");
 		return GetProperty<FArticySize>(PropName);
 	}
 
