@@ -7,9 +7,9 @@
  *
  * First, checks for a command-line override in the form:
  *    -ArticyDir=/Game/Path/To/ArticyContent
- * If present, returns everything after the ‘=’. Otherwise, it scans
- * the project’s Content/ folder for the first .articyue file it finds,
- * converts that file’s parent directory into a virtual "/Game/…" path,
+ * If present, returns everything after the '='. Otherwise, it scans
+ * the project's Content/ folder for the first .articyue file it finds,
+ * converts that file's parent directory into a virtual "/Game/_" path,
  * and returns it. If neither approach yields a directory, returns empty.
  *
  * @param Tokens    The parsed command-line tokens (not used here).
