@@ -1,5 +1,6 @@
 #include "ArticyImportCommandlet.h"
 #include "ArticyEditorFunctionLibrary.h"
+#include "HAL/FileManager.h"
 
 /**
  * Resolves the Articy content directory to use for import/regeneration.
