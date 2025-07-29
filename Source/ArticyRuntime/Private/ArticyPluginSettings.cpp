@@ -22,7 +22,7 @@ UArticyPluginSettings::UArticyPluginSettings()
 	bUseLegacyImporter = false;
 
 	bSortChildrenAtGeneration = false;
-	ArticyDirectory.Path = TEXT("/Game");
+	ArticyDirectory = TEXT("/Game");
 	// update package load settings after all files have been loaded
 	FAssetRegistryModule& AssetRegistry = FModuleManager::Get().GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistry.Get().OnFilesLoaded().AddUObject(this, &UArticyPluginSettings::UpdatePackageSettings);
