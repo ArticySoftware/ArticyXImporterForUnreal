@@ -41,9 +41,12 @@ void FAdiSettings::ImportFromJson(TSharedPtr<FJsonObject> Json)
 	if (!set_IncludedNodes.Contains(TEXT("Settings")))
 		return;
 
-	const FArticyId OldRuleSetId = RuleSetId;
-	JSON_TRY_HEX_ID(Json, RuleSetId);
-	if (RuleSetId != OldRuleSetId)
+	const FString OldRuleSetId = RuleSetId;
+	const FString OldRuleSetChecksum = RuleSetChecksum;
+	JSON_TRY_STRING(Json, RuleSetId);
+	JSON_TRY_STRING(Json, RuleSetChecksum);
+	JSON_TRY_STRING(Json, RuleSetName);
+	if (RuleSetId != OldRuleSetId || RuleSetChecksum != OldRuleSetChecksum)
 	{
 		// Different rule set, start over
 		GlobalVariablesHash.Reset();

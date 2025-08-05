@@ -176,7 +176,7 @@ void FArticyEditorModule::RegisterArticyToolbar()
 #if ENGINE_MAJOR_VERSION >= 5
 	// Grab the appropriate toolbar menu so we can extend it
 #if ENGINE_MINOR_VERSION >= 6
-	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.SettingsToolbar");
+	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
 
 	{
 		// Create a new section for Articy utilities

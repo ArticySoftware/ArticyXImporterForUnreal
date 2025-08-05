@@ -47,6 +47,9 @@ public:
 	UArticyObject* GetAssetById(const FArticyId& Id) const;
 
 	UFUNCTION()
+	void RemoveAssetById(const FArticyId& Id);
+
+	UFUNCTION()
 	UArticyObject* GetAssetByTechnicalName(const FName& TechnicalName) const;
 
 	const bool IsAssetContained(FName TechnicalName) const;
@@ -105,6 +108,11 @@ inline UArticyObject* UArticyPackage::GetAssetById(const FArticyId& Id) const
 	}
 
 	return nullptr;
+}
+
+inline void UArticyPackage::RemoveAssetById(const FArticyId& Id)
+{
+	AssetsById.Remove(Id);
 }
 
 inline UArticyObject* UArticyPackage::GetAssetByTechnicalName(const FName& TechnicalName) const

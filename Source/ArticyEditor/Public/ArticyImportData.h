@@ -34,7 +34,13 @@ public:
 	FString set_IncludedNodes = "";
 
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
-	FArticyId RuleSetId;
+	FString RuleSetId;
+
+	UPROPERTY(VisibleAnywhere, Category = "Settings")
+	FString RuleSetChecksum;
+
+	UPROPERTY(VisibleAnywhere, Category = "Settings")
+	FString RuleSetName;
 
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ExportVersion = "";

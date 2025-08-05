@@ -1,18 +1,34 @@
+//  
+// Copyright (c) 2025 articy Software GmbH & Co. KG. All rights reserved.  
+//
+
 #include "ArticyBridgeClient.h"
 #include "Common/TcpSocketBuilder.h"
 #include "IPAddress.h"
 #include "Sockets.h"
 #include "SocketSubsystem.h"
 #include "Modules/ModuleManager.h"
-#include "ArticyImportData.h"
 #include "ArticyEditorFunctionLibrary.h"
 #include "Networking.h"
 #include "UObject/UnrealType.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformProcess.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonWriter.h"
+#include "Serialization/JsonSerializer.h"
+#include "ArticyImportData.h"
+#include "ArticyTexts.h"
+#include "ArticyBridgeDiscoveryDialog.h"
+#include "Dom/JsonObject.h"
+#include "ArticyLocalizerSystem.h"
+#include "CodeGeneration/CodeGenerator.h"
 
 TArray<uint8> DataBuffer;
 
+static const int32 HEADER_SIZE = 48;  // 4 + 32 + 8 + 4
+
 // Helper function to discover server via UDP advertisement.
-bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
+bool UArticyBridgeClientCommands::DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
 {
     ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get();
     if (!SocketSubsystem)
@@ -21,7 +37,6 @@ bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
         return false;
     }
 
-    // Create a UDP socket.
     FSocket* UDPSocket = SocketSubsystem->CreateSocket(NAME_DGram, TEXT("AdvertisementSocket"), false);
     if (!UDPSocket)
     {
@@ -29,7 +44,6 @@ bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
         return false;
     }
 
-    // Bind the UDP socket to any address on port 3334.
     TSharedRef<FInternetAddr> ListenAddr = SocketSubsystem->CreateInternetAddr();
     ListenAddr->SetAnyAddress();
     ListenAddr->SetPort(3334);
@@ -40,21 +54,18 @@ bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
         return false;
     }
 
-    // Join the IPv4 multicast group (239.255.0.1).
     TSharedRef<FInternetAddr> MulticastAddr = SocketSubsystem->CreateInternetAddr();
     bool bIsValid = false;
     MulticastAddr->SetIp(TEXT("239.255.0.1"), bIsValid);
     MulticastAddr->SetPort(3334);
     if (bIsValid)
     {
-        // Note: JoinMulticastGroup returns false on failure.
         if (!UDPSocket->JoinMulticastGroup(*MulticastAddr))
         {
             UE_LOG(LogTemp, Warning, TEXT("Failed to join multicast group. Continuing without group membership."));
         }
     }
 
-    // Use non-blocking mode with a short wait loop.
     UDPSocket->SetNonBlocking(true);
 
     const float TimeoutSeconds = 5.0f;
@@ -72,21 +83,52 @@ bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
             int32 BytesRead = 0;
             if (UDPSocket->RecvFrom(ReceivedData.GetData(), ReceivedData.Num(), BytesRead, *Sender))
             {
-                // Convert the received bytes to a string.
-                FString Message = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(ReceivedData.GetData()))).TrimStartAndEnd();
-                UE_LOG(LogTemp, Log, TEXT("Received advertisement: %s"), *Message);
-
-                // Parse the message as a port number.
-                OutPort = FCString::Atoi(*Message);
-                if (OutPort == 0)
+                // Sanity check that we received enough data
+                if (BytesRead >= 48)
                 {
-                    OutPort = 27036; // Use default port if parsing fails.
-                }
+                    // Verify header
+                    FString Header = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(ReceivedData.GetData()))).Left(4);
+                    if (Header != TEXT("RTCB"))
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("Invalid header received: %s"), *Header);
+                        continue;
+                    }
 
-                // Use the sender's IP address as the hostname.
-                OutHostname = Sender->ToString(false);
-                bReceived = true;
-                break;
+                    // Extract message length
+                    int32 MessageLength = 0;
+                    FMemory::Memcpy(&MessageLength, ReceivedData.GetData() + 44, 4);
+
+                    // Make sure we don't overflow
+                    if (48 + MessageLength > BytesRead)
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("Incomplete packet received."));
+                        continue;
+                    }
+
+                    // Extract JSON payload
+                    FString JsonString = FString(UTF8_TO_TCHAR(reinterpret_cast<const char*>(ReceivedData.GetData() + 48)));
+
+                    UE_LOG(LogTemp, Log, TEXT("Received JSON: %s"), *JsonString);
+
+                    TSharedPtr<FJsonObject> JsonObject;
+                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+                    if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+                    {
+                        OutPort = JsonObject->GetIntegerField("ServerPort");
+                        OutHostname = Sender->ToString(false);
+                        bReceived = true;
+                        break;
+                    }
+                    else
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON payload."));
+                    }
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Received data too small: %d bytes"), BytesRead);
+                }
             }
         }
         FPlatformProcess::Sleep(0.1f);
@@ -101,6 +143,86 @@ bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
 
     return bReceived;
 }
+
+void FArticyBridgeClientRunnable::SendHandshake()
+{
+    FString JsonString;
+
+    FString ComputerName = FPlatformProcess::ComputerName();
+    auto ImportDataPtr = UArticyImportData::GetImportData();
+    UArticyImportData* ImportData = ImportDataPtr.IsValid() ? ImportDataPtr.Get() : nullptr;
+
+    FString RuleSetIdStr = TEXT("");
+    FString RuleSetChecksumStr = TEXT("");
+    if (ImportData)
+    {
+        const FAdiSettings& S = ImportData->GetSettings();
+        RuleSetIdStr = S.RuleSetId;
+        RuleSetChecksumStr = S.RuleSetChecksum;
+    }
+
+    // 1) Build the JSON payload
+    TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
+    Writer->WriteObjectStart();
+    Writer->WriteValue(TEXT("ClientName"), ComputerName);
+    Writer->WriteValue(TEXT("Type"), TEXT("Unreal"));
+    Writer->WriteValue(TEXT("Version"), 1);
+    Writer->WriteValue(TEXT("NewSession"), !bSessionEstablished);
+    Writer->WriteValue(TEXT("UsedRuleSetId"), RuleSetIdStr);
+    Writer->WriteValue(TEXT("UsedRuleSetChecksum"), RuleSetChecksumStr);
+    Writer->WriteObjectEnd();
+    Writer->Close();
+
+    // 2) Frame the packet
+    const ANSICHAR* TypeName = "ClientBridgeSessionData";
+    const ANSICHAR* DataType = "Json";
+    FTCHARToUTF8 Utf8(JsonString);
+    int32 BodyLen = Utf8.Length();
+
+    TArray<uint8> Packet;
+    Packet.SetNumUninitialized(HEADER_SIZE + BodyLen);
+
+    // RTCB tag
+    FMemory::Memcpy(Packet.GetData() + 0, "RTCB", 4);
+    // MessageType (32 bytes, zero-padded)
+    FMemory::Memset(Packet.GetData() + 4, 0, 32);
+    FMemory::Memcpy(Packet.GetData() + 4, TypeName, FMath::Min<int32>(FCStringAnsi::Strlen(TypeName), 32));
+    // DataType (8 bytes, zero-padded)
+    FMemory::Memset(Packet.GetData() + 36, 0, 8);
+    FMemory::Memcpy(Packet.GetData() + 36, DataType, FCStringAnsi::Strlen(DataType));
+    // Length (4 bytes little endian)
+    FMemory::Memcpy(Packet.GetData() + 44, &BodyLen, sizeof(int32));
+    // JSON body
+    FMemory::Memcpy(Packet.GetData() + HEADER_SIZE, Utf8.Get(), BodyLen);
+
+    // 3) Send it
+    int32 Sent = 0;
+    if (!Socket->Send(Packet.GetData(), Packet.Num(), Sent))
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed sending handshake"));
+    }
+    else
+    {
+        bSessionEstablished = true;
+    }
+}
+
+void UArticyBridgeClientCommands::ShowBridgeDialog(const TArray<FString>&)
+{
+    if (!FSlateApplication::IsInitialized())
+        return;
+    TSharedRef<SWindow> Window = SNew(SWindow)
+        .Title(FText::FromString(TEXT("Connect to Articy Bridge")))
+        .ClientSize(FVector2D(400, 350))
+        .SupportsMinimize(false)
+        .SupportsMaximize(false);
+    Window->SetContent(
+        SNew(SBridgeDiscoveryDialog)
+        .DialogWindow(Window)
+    );
+    FSlateApplication::Get().AddWindow(Window);
+}
+
 
 void UArticyBridgeClientCommands::RegisterConsoleCommands()
 {
@@ -117,12 +239,20 @@ void UArticyBridgeClientCommands::RegisterConsoleCommands()
         FConsoleCommandDelegate::CreateStatic(&UArticyBridgeClientCommands::StopBridgeConnection),
         ECVF_Default
     );
+
+    IConsoleManager::Get().RegisterConsoleCommand(
+        TEXT("ShowBridgeDialog"),
+        TEXT("Opens the Bridge discovery and connect dialog."),
+        FConsoleCommandWithArgsDelegate::CreateStatic(&UArticyBridgeClientCommands::ShowBridgeDialog),
+        ECVF_Default
+    );
 }
 
 void UArticyBridgeClientCommands::UnregisterConsoleCommands()
 {
     IConsoleManager::Get().UnregisterConsoleObject(TEXT("StartBridgeConnection"), false);
     IConsoleManager::Get().UnregisterConsoleObject(TEXT("StopBridgeConnection"), false);
+    IConsoleManager::Get().UnregisterConsoleObject(TEXT("ShowBridgeDialog"), false);
 }
 
 TUniquePtr<FArticyBridgeClientRunnable> ClientRunnable;
@@ -138,7 +268,6 @@ FArticyBridgeClientRunnable::~FArticyBridgeClientRunnable()
     if (Thread)
     {
         Thread->Kill(true);
-        delete Thread;
     }
     if (Socket)
     {
@@ -173,7 +302,7 @@ uint32 FArticyBridgeClientRunnable::Run()
                 int32 BytesRead;
                 if (Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead))
                 {
-                    AccumulateAndParseReceivedData(ReceivedData);
+                    ParseReceivedData(ReceivedData);
                 }
             }
             FPlatformProcess::Sleep(0.1f);
@@ -195,6 +324,13 @@ void SetPropertyValue(FString Property, FArticyTexts& ArticyText, const FString&
     }
 }
 
+void FArticyBridgeClientRunnable::UpdateAssets(UArticyImportData* ImportData)
+{
+    ImportData->BuildCachedVersion();
+    CodeGenerator::GenerateAssets(ImportData);
+    ImportData->PostImport();
+}
+
 void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, const TSharedPtr<FJsonObject> Message, UArticyImportData* ImportData)
 {
     if (!ImportData)
@@ -213,7 +349,7 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
     FName TechnicalName = TEXT("");
     FString PackageName = TEXT("");
     TSoftObjectPtr<UArticyPackage> CurrentPackage = nullptr;
-    FArticyPackageDef* CurrentPackageDef = nullptr;
+    FArticyPackageDef CurrentPackageDef;
 
     UArticyObject* ObjectRef = nullptr;
     if (Message->TryGetStringField(TEXT("Id"), Id))
@@ -229,9 +365,9 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
                 CurrentPackage = nullptr;
                 for (FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
                 {
-                    if (PackageDef.GetName().Equals(Package->Name))
+                    if (PackageDef.GetName().Replace(TEXT(" "), TEXT("_")).Equals(PackageName.Replace(TEXT(" "), TEXT("_"))))
                     {
-                        CurrentPackageDef = &PackageDef;
+                        CurrentPackageDef = PackageDef;
                         break;
                     }
                 }
@@ -245,7 +381,10 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
     FString Value;
     Message->TryGetStringField(TEXT("Value"), Value);
 
-    if (MessageType.Equals(TEXT("CreatedObject"))) {
+    if (MessageType.Equals(TEXT("CreatedFirstClassObject"))) {
+        /*
+        {"Type":"Dialogue","Properties":{"Id":"0x0100000000003279","TechnicalName":"Dlg_8C2E87FB","Parent":"0x0300000043CE43F7","DisplayName":{"LId":"Dlg_8C2E87FB.DisplayName","Values":{"en":"Untitled dialogue"}},"Attachments":[],"PreviewImageAsset":null,"Color":{"a":1.0,"r":0.78431374,"g":0.8862745,"b":0.90588236},"Text":{"LId":"Dlg_8C2E87FB.Text","Values":{}},"ExternalId":"","ShortId":2351859707,"TemplateName":"","Position":{"x":442.0,"y":300.0},"ZIndex":11,"Size":{"w":291.0,"h":200.0},"InputPins":[{"Id":"0x010000000000327C","Owner":"0x0100000000003279"}],"OutputPins":[{"Id":"0x010000000000327D","Owner":"0x0100000000003279"}]},"Packages":["72057594037939252"]}
+        */
         return;
     }
 
@@ -254,14 +393,32 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
     }
 
     if (MessageType.Equals(TEXT("CreatedConnection"))) {
+        /* {"Source":"0x010000010000029E","Target":"0x0100000100000B92","SourcePin":"0x01000001000002A4","TargetPin":"0x0100000100000B97"} */
         return;
     }
 
     if (MessageType.Equals(TEXT("RemovedConnection"))) {
+        /* { "Source":"0x010000010000029E", "Target" : "0x0100000100000B92", "SourcePin" : "0x01000001000002A4", "TargetPin" : "0x0100000100000B97" } */
         return;
     }
 
     if (MessageType.Equals(TEXT("ObjectsDeleted"))) {
+        const TArray<TSharedPtr<FJsonValue>>* ObjectsArrayPtr;
+        if (Message->TryGetArrayField(TEXT("Objects"), ObjectsArrayPtr))
+        {
+            for (const TSharedPtr<FJsonValue>& IdValue : *ObjectsArrayPtr)
+            {
+                FString DeletedId = IdValue->AsString();
+
+                // Attempt to remove from packages
+                for (const TSoftObjectPtr<UArticyPackage>& Package : Packages)
+                {
+                    Package->RemoveAssetById(DeletedId);
+                    break;
+                }
+            }
+        }
+        UpdateAssets(ImportData);
         return;
     }
 
@@ -274,14 +431,10 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
         FString LangId;
         Message->TryGetStringField(TEXT("LanguageIso"), LangId);
 
-        TMap<FString, FArticyTexts>& UpdatedTexts = CurrentPackageDef->GetTexts();
+        TMap<FString, FArticyTexts> UpdatedTexts = CurrentPackageDef.GetTexts();
 
-        if (Property.Equals(TEXT("VoAsset"))) {
-            UpdatedTexts[TechnicalName.ToString()].Content[LangId].VoAsset = Value;
-        }
-        else if (Property.Equals(TEXT("Text"))) {
-            UpdatedTexts[TechnicalName.ToString()].Content[LangId].Text = Value;
-        }
+        FString Key = FString::Printf(TEXT("%s.%s"), *TechnicalName.ToString(), *Property);
+        UpdatedTexts[Key].Content[LangId].Text = Value;
 
         const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
         const FArticyLanguageDef LangDef = Languages[LangId];
@@ -293,38 +446,55 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
                 return UArticyImportData::ProcessStrings(CsvOutput, UpdatedTexts, Lang);
             });
 
+        UArticyLocalizerSystem::Get()->Reload();
         return;
     }
 }
 
-void FArticyBridgeClientRunnable::AccumulateAndParseReceivedData(const TArray<uint8>& Data)
+void FArticyBridgeClientRunnable::ParseReceivedData(const TArray<uint8>& Data)
 {
+    DataBuffer.Empty();
     DataBuffer.Append(Data);
 
-    while (DataBuffer.Num() >= 40) // Minimum header size: RTCB + TypeName + Length
+    FString HeaderCheck = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData()))).Left(4);
+    if (HeaderCheck != "RTCB")
     {
-        FString HeaderCheck = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData()))).Left(4);
-        if (HeaderCheck != "RTCB")
+        UE_LOG(LogTemp, Error, TEXT("Invalid message header."));
+        DataBuffer.Empty();
+        return;
+    }
+
+    const FString MessageType = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData() + 4))).Left(32).TrimStartAndEnd();
+    const FString DataType = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData() + 36))).Left(8).TrimStartAndEnd();
+
+    int32 MessageLength = *reinterpret_cast<const int32*>(DataBuffer.GetData() + 44);
+
+    if (MessageLength <= 0 || 48 + MessageLength > DataBuffer.Num())
+    {
+        return; // Wait for more data
+    }
+
+    const char* JsonStart = reinterpret_cast<const char*>(DataBuffer.GetData() + 48);
+    FUTF8ToTCHAR Converter(JsonStart, MessageLength);
+    FString JsonData(Converter.Length(), Converter.Get());
+
+    UE_LOG(LogTemp, Log, TEXT("Received Message Type: %s"), *MessageType);
+    UE_LOG(LogTemp, Log, TEXT("Received JSON Data: %s"), *JsonData);
+
+    if (MessageType == TEXT("BridgeServerMessage"))
+    {
+        // parse JSON and call handler on GameThread
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonData);
+        TSharedPtr<FJsonObject> JsonObject;
+        if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
         {
-            UE_LOG(LogTemp, Error, TEXT("Invalid message header."));
-            DataBuffer.Empty();
-            return;
+            AsyncTask(ENamedThreads::GameThread, [this, JsonObject]() {
+                HandleServerMessage(JsonObject);
+                });
         }
-
-        const FString MessageType = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData() + 4))).Left(32).TrimStartAndEnd();
-        int32 MessageLength = *reinterpret_cast<const int32*>(DataBuffer.GetData() + 36);
-
-        if (MessageLength <= 0 || 40 + MessageLength > DataBuffer.Num())
-        {
-            return; // Wait for more data
-        }
-
-        const FString JsonData = FString(UTF8_TO_TCHAR(reinterpret_cast<const char*>(DataBuffer.GetData() + 40)));
-        DataBuffer.RemoveAt(0, 40 + MessageLength); // Remove processed data
-
-        UE_LOG(LogTemp, Log, TEXT("Received Message Type: %s"), *MessageType);
-        UE_LOG(LogTemp, Log, TEXT("Received JSON Data: %s"), *JsonData);
-
+    }
+    else
+    {
         AsyncTask(ENamedThreads::GameThread, [JsonData, MessageType, this]() {
             TWeakObjectPtr<UArticyImportData> ImportData = UArticyImportData::GetImportData();
             if (!ImportData.IsValid()) {
@@ -338,7 +508,40 @@ void FArticyBridgeClientRunnable::AccumulateAndParseReceivedData(const TArray<ui
             {
                 ProcessMessage(MessageType, JsonObject, ImportData.Get());
             }
-        });
+            });
+    }
+}
+
+void FArticyBridgeClientRunnable::HandleServerMessage(const TSharedPtr<FJsonObject>& Msg)
+{
+    // 1) Extract the Event number
+    int32 EventId = 0;
+    if (!Msg->TryGetNumberField(TEXT("Event"), EventId))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("BridgeServerMessage missing Event field"));
+        return;
+    }
+
+    // 2) Pull out arguments - can be null or an object.
+    TSharedPtr<FJsonValue> ArgsValue;
+    if (Msg->HasField(TEXT("Arguments")))
+    {
+        ArgsValue = Msg->GetField<EJson::None>(TEXT("Arguments"));
+    }
+
+    // 3) Handle the known events
+    switch (EventId)
+    {
+    case 0: // ServerShutdown
+        UE_LOG(LogTemp, Warning, TEXT("Bridge Server Shutdown event received."));
+        // cleanly stop client loop:
+        this->bRun = false;
+        this->bShouldReconnect = false;
+        break;
+
+    default:
+        UE_LOG(LogTemp, Warning, TEXT("Unknown BridgeServerMessage Event: %d"), EventId);
+        break;
     }
 }
 
@@ -378,6 +581,8 @@ void FArticyBridgeClientRunnable::Connect()
             return;
         }
 
+        SendHandshake();
+
         UE_LOG(LogTemp, Log, TEXT("Connected to %s:%d"), *Hostname, Port);
     }
     else
@@ -413,7 +618,7 @@ void UArticyBridgeClientCommands::StartBridgeConnection(const TArray<FString>& A
     else
     {
         UE_LOG(LogTemp, Log, TEXT("No address specified. Attempting to discover server via UDP advertisement..."));
-        if (!DiscoverServerAdvertisement(Hostname, Port))
+        if (!UArticyBridgeClientCommands::DiscoverServerAdvertisement(Hostname, Port))
         {
             UE_LOG(LogTemp, Error, TEXT("Failed to discover server via advertisement."));
             return;

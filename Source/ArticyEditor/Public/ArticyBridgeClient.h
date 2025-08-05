@@ -1,3 +1,7 @@
+//  
+// Copyright (c) 2025 articy Software GmbH & Co. KG. All rights reserved.  
+//
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -17,6 +21,8 @@ public:
     static void UnregisterConsoleCommands();
     static void StartBridgeConnection(const TArray<FString>& Args);
     static void StopBridgeConnection();
+    static bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort);
+    static void ShowBridgeDialog(const TArray<FString>&);
 };
 
 class FArticyBridgeClientRunnable : public FRunnable
@@ -36,8 +42,13 @@ public:
     virtual bool Init() override;
     virtual uint32 Run() override;
 
+    void SendHandshake();
+    void UpdateAssets(class UArticyImportData* ImportData);
     void ProcessMessage(const FString& MessageType, const TSharedPtr<FJsonObject> Message, class UArticyImportData* ImportData);
-    void AccumulateAndParseReceivedData(const TArray<uint8>& Data);
+    void ParseReceivedData(const TArray<uint8>& Data);
+    void HandleServerMessage(const TSharedPtr<FJsonObject>& Msg);
     void Connect();
     void StopRunning();
+
+    bool bSessionEstablished = false;
 };
