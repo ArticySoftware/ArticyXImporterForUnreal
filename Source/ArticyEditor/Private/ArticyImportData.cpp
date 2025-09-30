@@ -1033,41 +1033,77 @@ void UArticyImportData::ImportAudioAssets(const FString& BaseContentDir)
  */
 const TWeakObjectPtr<UArticyImportData> UArticyImportData::GetImportData()
 {
-	static TWeakObjectPtr<UArticyImportData> ImportData = nullptr;
+	// Cache lives here but is only ever WRITTEN on the Game Thread.
+	static TWeakObjectPtr<UArticyImportData> ImportData;
 
-	if (!ImportData.IsValid())
+	// Fast path: if already valid, just return (safe to read from any thread).
+	if (ImportData.IsValid())
 	{
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(
-			"AssetRegistry");
-		TArray<FAssetData> AssetData;
+		return ImportData;
+	}
+
+	// If we're not on the Game Thread, do the lookup on the Game Thread and wait.
+	if (!IsInGameThread())
+	{
+		TWeakObjectPtr<UArticyImportData> Result;
+
+		FGraphEventRef Task =
+			FFunctionGraphTask::CreateAndDispatchWhenReady(
+				[&Result]()
+				{
+					// Re-enter on Game Thread; reuse the same function to hit the fast path
+					// or do the initialization below.
+					Result = UArticyImportData::GetImportData();
+				},
+				TStatId(),
+				/*Prereqs*/ nullptr,
+				ENamedThreads::GameThread);
+
+		Task->Wait();
+		return Result;
+	}
+
+	// --- From here on, we're on the Game Thread ---
+
+	// Second fast path (in case another thread initialized while we queued)
+	if (ImportData.IsValid())
+	{
+		return ImportData;
+	}
+
+	FAssetRegistryModule& AssetRegistryModule =
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	TArray<FAssetData> AssetData;
 
 #if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION > 0
-		AssetRegistryModule.Get().GetAssetsByClass(UArticyImportData::StaticClass()->GetClassPathName(), AssetData);
+	AssetRegistryModule.Get().GetAssetsByClass(
+		UArticyImportData::StaticClass()->GetClassPathName(), AssetData);
 #else
-		AssetRegistryModule.Get().GetAssetsByClass(UArticyImportData::StaticClass()->GetFName(), AssetData);
-#endif	
-
-		if (!AssetData.Num())
-		{
-			UE_LOG(LogArticyEditor, Warning, TEXT("Could not find articy import data asset."));
-		}
-		else
-		{
-			ImportData = Cast<UArticyImportData>(AssetData[0].GetAsset());
-
-			if (AssetData.Num() > 1)
-#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >0
-				UE_LOG(LogArticyEditor, Error,
-					TEXT(
-						"Found more than one import file. This is not supported by the plugin. Using the first found file for now: %s"
-					),
-					*AssetData[0].GetObjectPathString());
-#else
-				UE_LOG(LogArticyEditor, Error,
-					TEXT("Found more than one import file. This is not supported by the plugin. Using the first found file for now: %s"),
-					*AssetData[0].ObjectPath.ToString());
+	AssetRegistryModule.Get().GetAssetsByClass(
+		UArticyImportData::StaticClass()->GetFName(), AssetData);
 #endif
-		}
+
+	if (AssetData.Num() == 0)
+	{
+		UE_LOG(LogArticyEditor, Warning, TEXT("Could not find articy import data asset."));
+		return ImportData; // still invalid
+	}
+
+	// GetAsset() will synchronously resolve/load the UObject; must be Game Thread.
+	ImportData = Cast<UArticyImportData>(AssetData[0].GetAsset());
+
+	if (AssetData.Num() > 1)
+	{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION > 0
+		UE_LOG(LogArticyEditor, Error,
+			TEXT("Found more than one import file. This is not supported by the plugin. Using the first found file for now: %s"),
+			*AssetData[0].GetObjectPathString());
+#else
+		UE_LOG(LogArticyEditor, Error,
+			TEXT("Found more than one import file. This is not supported by the plugin. Using the first found file for now: %s"),
+			*AssetData[0].ObjectPath.ToString());
+#endif
 	}
 
 	return ImportData;

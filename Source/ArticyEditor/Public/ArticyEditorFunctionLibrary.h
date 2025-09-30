@@ -54,6 +54,13 @@ public:
 	static int32 RegenerateAssets(UArticyImportData* = nullptr);
 
 	/**
+	 * Opens the bridge connection dialog.
+	 * 
+	 * @return -1 if the operation failed.
+	 */
+	static int32 OpenBridgeConnectionDialog();
+
+	/**
 	 * Ensures that the Articy import data asset is valid and available.
 	 * Generates a new import data asset if necessary.
 	 *

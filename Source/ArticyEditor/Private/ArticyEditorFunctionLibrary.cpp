@@ -11,6 +11,7 @@
 #include "FileHelpers.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
+#include "ArticyBridgeDiscoveryDialog.h"
 
 /**
  * Forces a complete reimport of the Articy data.
@@ -91,6 +92,28 @@ int32 FArticyEditorFunctionLibrary::RegenerateAssets(UArticyImportData* ImportDa
 	CodeGenerator::GenerateAssets(ImportData);
 
 	return -1;
+}
+
+/**
+ * Opens the bridge connection dialog.
+ *
+ * @return -1 if the operation failed.
+ */
+int32 FArticyEditorFunctionLibrary::OpenBridgeConnectionDialog()
+{
+	if (!FSlateApplication::IsInitialized())
+		return -1;
+	TSharedRef<SWindow> Window = SNew(SWindow)
+		.Title(FText::FromString(TEXT("Connect to Articy Bridge")))
+		.ClientSize(FVector2D(400, 350))
+		.SupportsMinimize(false)
+		.SupportsMaximize(false);
+	Window->SetContent(
+		SNew(SBridgeDiscoveryDialog)
+		.DialogWindow(Window)
+	);
+	FSlateApplication::Get().AddWindow(Window);
+	return 0;
 }
 
 /**

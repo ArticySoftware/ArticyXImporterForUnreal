@@ -23,6 +23,12 @@ public:
     static void StopBridgeConnection();
     static bool DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort);
     static void ShowBridgeDialog(const TArray<FString>&);
+
+    // Returns true if a client runnable exists
+    static bool IsBridgeRunning();
+
+    // Fetch current target for UI
+    static void GetCurrentBridgeTarget(FString& OutHost, int32& OutPort);
 };
 
 class FArticyBridgeClientRunnable : public FRunnable
@@ -50,5 +56,37 @@ public:
     void Connect();
     void StopRunning();
 
+    void RequestSwitchServer(const FString& NewHost, int32 NewPort)
+    {
+        FScopeLock Lock(&TargetMutex);
+        Hostname = NewHost;
+        Port = NewPort;
+        bReconnectRequested = true;
+    }
+
+    void GetCurrentTarget(FString& OutHost, int32& OutPort) const
+    {
+        OutHost = Hostname;
+        OutPort = Port;
+    }
+
     bool bSessionEstablished = false;
+
+private:
+    FCriticalSection TargetMutex;
+    TAtomic<bool> bReconnectRequested{ false };
+
+    void CloseSocket_NoLock()
+    {
+        if (Socket.IsValid())
+        {
+            Socket->Close();
+            if (ISocketSubsystem* SS = ISocketSubsystem::Get())
+            {
+                SS->DestroySocket(Socket.Get());
+            }
+            Socket.Reset();
+        }
+        bSessionEstablished = false;
+    }
 };

@@ -130,9 +130,15 @@ TSharedRef< FSlateStyleSet > FArticyEditorStyle::Create()
 		.SetHovered(IMAGE_BRUSH("ArticyWindow/Button_RegenerateAssets_Hover", FVector2D(333, 101)))
 		.SetPressed(IMAGE_BRUSH("ArticyWindow/Button_RegenerateAssets_Press", FVector2D(333, 101)));
 
+	FButtonStyle BridgeConnectionButtonStyle = FButtonStyle()
+		.SetNormal(IMAGE_BRUSH("ArticyWindow/Button_BridgeConnection", FVector2D(333, 101)))
+		.SetHovered(IMAGE_BRUSH("ArticyWindow/Button_BridgeConnection_Hover", FVector2D(333, 101)))
+		.SetPressed(IMAGE_BRUSH("ArticyWindow/Button_BridgeConnection_Press", FVector2D(333, 101)));
+
 	Style->Set("ArticyImporter.Button.FullReimport", FullReimportButtonStyle);
 	Style->Set("ArticyImporter.Button.ImportChanges", ImportChangesButtonStyle);
 	Style->Set("ArticyImporter.Button.RegenerateAssets", RegenerateAssetsButtonStyle);
+	Style->Set("ArticyImporter.Button.BridgeConnection", BridgeConnectionButtonStyle);
 
 	// Define styles for various asset types and UI elements.
 	Style->Set("ArticyImporter.AssetPicker.TileBackground.96", new IMAGE_BRUSH(TEXT("128/content_tile_fill"), Icon96x96));

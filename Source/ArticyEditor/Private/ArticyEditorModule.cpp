@@ -525,6 +525,20 @@ TSharedRef<SDockTab> FArticyEditorModule::OnSpawnArticyMenuTab(const FSpawnTabAr
 												.OnClicked_Lambda([]() -> FReply { FArticyEditorFunctionLibrary::RegenerateAssets(); return FReply::Handled(); })
 										]
 								]
+								+ SHorizontalBox::Slot()
+								.HAlign(HAlign_Center)
+								.VAlign(VAlign_Center)
+								[
+									SNew(SBox)
+										.WidthOverride(ButtonWidth)
+										.HeightOverride(ButtonHeight)
+										[
+											SNew(SButton)
+												.ButtonStyle(FArticyEditorStyle::Get(), "ArticyImporter.Button.BridgeConnection")
+												.ToolTipText(LOCTEXT("OpenBridgeConnectionTooltip", "Open the Articy Bridge Connection dialog."))
+												.OnClicked_Lambda([]() -> FReply { FArticyEditorFunctionLibrary::OpenBridgeConnectionDialog(); return FReply::Handled(); })
+										]
+								]
 						]
 				]
 				+ SOverlay::Slot()

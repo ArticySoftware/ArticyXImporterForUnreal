@@ -50,6 +50,12 @@ public:
         // Kick off initial scan
         RefreshEndpoints();
 
+        RegisterActiveTimer(1.0, FWidgetActiveTimerDelegate::CreateLambda([this](double, float)
+            {
+                // force a slate refresh; bound text will re-evaluate
+                return EActiveTimerReturnType::Continue;
+            }));
+
         ChildSlot
             [
                 SNew(SVerticalBox)
@@ -90,6 +96,13 @@ public:
                             ]
                     ]
 
+                    + SVerticalBox::Slot().AutoHeight().Padding(4)
+                    [
+                        SNew(STextBlock)
+                            .Text(this, &SBridgeDiscoveryDialog::GetStatusText)
+                    ]
+
+
                     // Buttons
                     + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(4)
                     [
@@ -108,6 +121,14 @@ public:
                                     .Text(FText::FromString(TEXT("Connect")))
                                     .IsEnabled(this, &SBridgeDiscoveryDialog::CanConnect)
                                     .OnClicked(this, &SBridgeDiscoveryDialog::OnConnectClicked)
+                            ]
+
+                            + SUniformGridPanel::Slot(2, 0)
+                            [
+                                SNew(SButton)
+                                    .Text(FText::FromString(TEXT("Disconnect")))
+                                    .IsEnabled(this, &SBridgeDiscoveryDialog::CanStop)
+                                    .OnClicked(this, &SBridgeDiscoveryDialog::OnStopClicked)
                             ]
 
                             + SUniformGridPanel::Slot(2, 0)
@@ -207,6 +228,33 @@ private:
         if (DialogWindow.IsValid())
         {
             DialogWindow.Pin()->RequestDestroyWindow();
+        }
+        return FReply::Handled();
+    }
+
+    bool CanStop() const
+    {
+        return UArticyBridgeClientCommands::IsBridgeRunning();
+    }
+
+    FText GetStatusText() const
+    {
+        FString Host; int32 Port = 0;
+        UArticyBridgeClientCommands::GetCurrentBridgeTarget(Host, Port);
+        if (!Host.IsEmpty() && Port > 0)
+        {
+            return FText::FromString(FString::Printf(TEXT("Connected to %s:%d"), *Host, Port));
+        }
+        return FText::FromString(TEXT("Not connected"));
+    }
+
+    FReply OnStopClicked()
+    {
+        UArticyBridgeClientCommands::StopBridgeConnection();
+        // Refresh the status immediately
+        if (EndpointListView.IsValid())
+        {
+            EndpointListView->RequestListRefresh();
         }
         return FReply::Handled();
     }

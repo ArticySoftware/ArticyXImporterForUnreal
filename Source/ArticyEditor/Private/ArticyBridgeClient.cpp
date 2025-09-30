@@ -44,6 +44,15 @@ bool UArticyBridgeClientCommands::DiscoverServerAdvertisement(FString& OutHostna
         return false;
     }
 
+    // Make multicast more resilient
+    UDPSocket->SetReuseAddr(true);
+    UDPSocket->SetBroadcast(true);
+    UDPSocket->SetNonBlocking(true);
+    UDPSocket->SetRecvErr(false);
+    int32 Buf = 256 * 1024;
+    UDPSocket->SetReceiveBufferSize(Buf, Buf);
+
+    // Bind to ANY:3334
     TSharedRef<FInternetAddr> ListenAddr = SocketSubsystem->CreateInternetAddr();
     ListenAddr->SetAnyAddress();
     ListenAddr->SetPort(3334);
@@ -54,94 +63,108 @@ bool UArticyBridgeClientCommands::DiscoverServerAdvertisement(FString& OutHostna
         return false;
     }
 
+    // Multicast group 239.255.0.1:3334
     TSharedRef<FInternetAddr> MulticastAddr = SocketSubsystem->CreateInternetAddr();
-    bool bIsValid = false;
-    MulticastAddr->SetIp(TEXT("239.255.0.1"), bIsValid);
+    bool bGroupValid = false;
+    MulticastAddr->SetIp(TEXT("239.255.0.1"), bGroupValid);
     MulticastAddr->SetPort(3334);
-    if (bIsValid)
+
+    // Enable loopback so same-host adverts are received
+    UDPSocket->SetMulticastLoopback(true);
+    UDPSocket->SetMulticastTtl(1);
+
+    if (bGroupValid)
     {
-        if (!UDPSocket->JoinMulticastGroup(*MulticastAddr))
+        // Join on loopback explicitly (same-PC case)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Failed to join multicast group. Continuing without group membership."));
+            TSharedRef<FInternetAddr> LoopIf = SocketSubsystem->CreateInternetAddr();
+            bool bLoopOk = false;
+            LoopIf->SetIp(TEXT("127.0.0.1"), bLoopOk);
+            if (bLoopOk)
+            {
+                if (!UDPSocket->JoinMulticastGroup(*MulticastAddr, *LoopIf))
+                {
+                    UE_LOG(LogTemp, Verbose, TEXT("JoinMulticastGroup loopback failed (ok to ignore on some OSes)."));
+                }
+            }
+        }
+
+        // Join on every local adapter
+        TArray<TSharedPtr<FInternetAddr>> LocalIfs;
+        SocketSubsystem->GetLocalAdapterAddresses(LocalIfs);
+
+        int32 Joined = 0;
+        for (const TSharedPtr<FInternetAddr>& IfAddr : LocalIfs)
+        {
+            if (!IfAddr.IsValid()) { continue; }
+            if (UDPSocket->JoinMulticastGroup(*MulticastAddr, *IfAddr))
+            {
+                ++Joined;
+                UE_LOG(LogTemp, Verbose, TEXT("Joined 239.255.0.1:3334 via %s"), *IfAddr->ToString(false));
+            }
+        }
+
+        // Best-effort fallback: join without specifying interface
+        if (Joined == 0)
+        {
+            if (!UDPSocket->JoinMulticastGroup(*MulticastAddr))
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Failed to join multicast group on any interface."));
+            }
         }
     }
 
-    UDPSocket->SetNonBlocking(true);
-
     const float TimeoutSeconds = 5.0f;
     const double StartTime = FPlatformTime::Seconds();
-    bool bReceived = false;
     TArray<uint8> ReceivedData;
-    ReceivedData.SetNumUninitialized(1024);
+    ReceivedData.SetNumUninitialized(64 * 1024);
     TSharedRef<FInternetAddr> Sender = SocketSubsystem->CreateInternetAddr();
 
     while ((FPlatformTime::Seconds() - StartTime) < TimeoutSeconds)
     {
-        uint32 PendingDataSize = 0;
-        if (UDPSocket->HasPendingData(PendingDataSize))
+        uint32 Pending = 0;
+        if (UDPSocket->HasPendingData(Pending) && Pending > 0)
         {
             int32 BytesRead = 0;
-            if (UDPSocket->RecvFrom(ReceivedData.GetData(), ReceivedData.Num(), BytesRead, *Sender))
+            if (UDPSocket->RecvFrom(ReceivedData.GetData(), ReceivedData.Num(), BytesRead, *Sender) && BytesRead >= HEADER_SIZE)
             {
-                // Sanity check that we received enough data
-                if (BytesRead >= 48)
+                if (FMemory::Memcmp(ReceivedData.GetData(), "RTCB", 4) != 0)
                 {
-                    // Verify header
-                    FString Header = FString(ANSI_TO_TCHAR(reinterpret_cast<const char*>(ReceivedData.GetData()))).Left(4);
-                    if (Header != TEXT("RTCB"))
-                    {
-                        UE_LOG(LogTemp, Warning, TEXT("Invalid header received: %s"), *Header);
-                        continue;
-                    }
-
-                    // Extract message length
-                    int32 MessageLength = 0;
-                    FMemory::Memcpy(&MessageLength, ReceivedData.GetData() + 44, 4);
-
-                    // Make sure we don't overflow
-                    if (48 + MessageLength > BytesRead)
-                    {
-                        UE_LOG(LogTemp, Warning, TEXT("Incomplete packet received."));
-                        continue;
-                    }
-
-                    // Extract JSON payload
-                    FString JsonString = FString(UTF8_TO_TCHAR(reinterpret_cast<const char*>(ReceivedData.GetData() + 48)));
-
-                    UE_LOG(LogTemp, Log, TEXT("Received JSON: %s"), *JsonString);
-
-                    TSharedPtr<FJsonObject> JsonObject;
-                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
-
-                    if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
-                    {
-                        OutPort = JsonObject->GetIntegerField("ServerPort");
-                        OutHostname = Sender->ToString(false);
-                        bReceived = true;
-                        break;
-                    }
-                    else
-                    {
-                        UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON payload."));
-                    }
+                    continue;
                 }
-                else
+
+                int32 MessageLength = 0;
+                FMemory::Memcpy(&MessageLength, ReceivedData.GetData() + 44, sizeof(int32));
+                if (MessageLength <= 0 || HEADER_SIZE + MessageLength > BytesRead)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("Received data too small: %d bytes"), BytesRead);
+                    continue;
+                }
+
+                const char* JsonStart = reinterpret_cast<const char*>(ReceivedData.GetData() + HEADER_SIZE);
+                FUTF8ToTCHAR Conv(JsonStart, MessageLength);
+                FString JsonString(Conv.Length(), Conv.Get());
+
+                TSharedPtr<FJsonObject> Obj;
+                auto Reader = TJsonReaderFactory<>::Create(JsonString);
+                if (FJsonSerializer::Deserialize(Reader, Obj) && Obj.IsValid())
+                {
+                    OutPort = Obj->GetIntegerField(TEXT("ServerPort"));
+                    OutHostname = Sender->ToString(false); // source IP
+                    SocketSubsystem->DestroySocket(UDPSocket);
+                    return true;
                 }
             }
         }
-        FPlatformProcess::Sleep(0.1f);
+        FPlatformProcess::Sleep(0.05f);
     }
 
     SocketSubsystem->DestroySocket(UDPSocket);
 
-    if (!bReceived)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No advertisement received within %f seconds."), TimeoutSeconds);
-    }
-
-    return bReceived;
+    // Fallback when multicast is blocked
+    OutHostname = TEXT("127.0.0.1");
+    OutPort = 9870;
+    UE_LOG(LogTemp, Warning, TEXT("Discovery timed out; falling back to %s:%d"), *OutHostname, OutPort);
+    return true;
 }
 
 void FArticyBridgeClientRunnable::SendHandshake()
@@ -265,17 +288,14 @@ FArticyBridgeClientRunnable::FArticyBridgeClientRunnable(FString InHostname, int
 
 FArticyBridgeClientRunnable::~FArticyBridgeClientRunnable()
 {
+    bRun = false;
+    bShouldReconnect = false;
+
+    CloseSocket_NoLock();
+
     if (Thread)
     {
         Thread->Kill(true);
-    }
-    if (Socket)
-    {
-        Socket->Close();
-        if (ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get())
-        {
-            SocketSubsystem->DestroySocket(Socket.Get());
-        }
     }
 }
 
@@ -286,20 +306,31 @@ uint32 FArticyBridgeClientRunnable::Run()
     UE_LOG(LogTemp, Log, TEXT("Bridge Client Runnable State - bRun: %s, bShouldReconnect: %s"),
         bRun ? TEXT("true") : TEXT("false"),
         bShouldReconnect ? TEXT("true") : TEXT("false"));
+
     while (bRun)
     {
+        if (bReconnectRequested.Load())
+        {
+            {
+                FScopeLock Lock(&TargetMutex);
+                CloseSocket_NoLock();           // drop existing connection
+                bReconnectRequested = false;    // clear flag; Hostname/Port already updated
+            }
+            // loop around; next iteration will call Connect() with new target
+        }
+
         if (!Socket.IsValid())
         {
             Connect();
         }
         else
         {
-            uint32 DataSize;
+            uint32 DataSize = 0;
             while (Socket->HasPendingData(DataSize))
             {
                 TArray<uint8> ReceivedData;
                 ReceivedData.SetNumUninitialized(DataSize);
-                int32 BytesRead;
+                int32 BytesRead = 0;
                 if (Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead))
                 {
                     ParseReceivedData(ReceivedData);
@@ -602,18 +633,10 @@ void UArticyBridgeClientCommands::StartBridgeConnection(const TArray<FString>& A
     FString Hostname;
     int32 Port = 0;
 
-    // If arguments were provided, use them; otherwise try to discover via UDP advertisement.
     if (Args.Num() > 0)
     {
         Hostname = Args[0];
-        if (Args.Num() > 1)
-        {
-            Port = FCString::Atoi(*Args[1]);
-        }
-        else
-        {
-            Port = 27036;  // Default port if not specified.
-        }
+        Port = (Args.Num() > 1) ? FCString::Atoi(*Args[1]) : 9870;
     }
     else
     {
@@ -629,10 +652,21 @@ void UArticyBridgeClientCommands::StartBridgeConnection(const TArray<FString>& A
     {
         ClientRunnable = MakeUnique<FArticyBridgeClientRunnable>(Hostname, Port);
         UE_LOG(LogTemp, Log, TEXT("Started Bridge Connection to %s:%d"), *Hostname, Port);
+        return;
+    }
+
+    FString CurHost; int32 CurPort = 0;
+    ClientRunnable->GetCurrentTarget(CurHost, CurPort);
+
+    if (!CurHost.Equals(Hostname, ESearchCase::IgnoreCase) || CurPort != Port)
+    {
+        UE_LOG(LogTemp, Log, TEXT("Switching Bridge Connection %s:%d -> %s:%d"),
+            *CurHost, CurPort, *Hostname, Port);
+        ClientRunnable->RequestSwitchServer(Hostname, Port);
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("Bridge Connection is already running"));
+        UE_LOG(LogTemp, Log, TEXT("Bridge Connection already on %s:%d"), *Hostname, Port);
     }
 }
 
@@ -647,5 +681,20 @@ void UArticyBridgeClientCommands::StopBridgeConnection()
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("No Bridge Connection to stop"));
+    }
+}
+
+bool UArticyBridgeClientCommands::IsBridgeRunning()
+{
+    return ClientRunnable.IsValid();
+}
+
+void UArticyBridgeClientCommands::GetCurrentBridgeTarget(FString& OutHost, int32& OutPort)
+{
+    OutHost.Empty();
+    OutPort = 0;
+    if (ClientRunnable.IsValid())
+    {
+        ClientRunnable->GetCurrentTarget(OutHost, OutPort);
     }
 }
