@@ -387,7 +387,8 @@ bool FArticyPackageDef::GetIsIncluded() const
 void FArticyPackageDefs::ImportFromJson(
 	const UArticyArchiveReader& Archive,
 	const TArray<TSharedPtr<FJsonValue>>* Json,
-	FAdiSettings& Settings)
+	FAdiSettings& Settings,
+	bool bAllowRemoval)
 {
 	if (!Json)
 		return;
@@ -409,21 +410,21 @@ void FArticyPackageDefs::ImportFromJson(
 			if (!obj.IsValid())
 				continue;
 
-			FArticyPackageDef package;
-			package.ImportFromJson(Archive, obj);
+			FArticyPackageDef TempMeta;
+			TempMeta.ImportFromJson(Archive, obj);
 
 			// If package with the same Id is found
-			if (ExistingPackage.GetId() == package.GetId())
+			if (ExistingPackage.GetId() == TempMeta.GetId())
 			{
 				bExistingPackageFound = true;
 
-				const FString& OldName = ExistingPackage.GetName();
-				const FString& NewName = package.GetName();
+				const FString OldName = ExistingPackage.GetName();
+				const FString NewName = TempMeta.GetName();
 
 				// If IsIncluded is set on the new package, replace the existing package
-				if (package.GetIsIncluded())
+				if (TempMeta.GetIsIncluded())
 				{
-					ExistingPackage = package;
+					ExistingPackage.ImportFromJson(Archive, obj);
 
 					// Useful if we ever decide to rename included packages 
 					ExistingPackage.SetName(OldName);
@@ -440,16 +441,19 @@ void FArticyPackageDefs::ImportFromJson(
 		}
 
 		// If existing package was not found in the new package list, mark it for removal
-		if (!bExistingPackageFound)
+		if (!bExistingPackageFound && bAllowRemoval)
 		{
 			PackagesToRemove.Add(ExistingPackage);
 		}
 	}
 
 	// Remove packages that don't exist in the new package list
-	for (const auto& PackageToRemove : PackagesToRemove)
+	if (bAllowRemoval)
 	{
-		Packages.RemoveSingle(PackageToRemove);
+		for (const auto& PackageToRemove : PackagesToRemove)
+		{
+			Packages.RemoveSingle(PackageToRemove);
+		}
 	}
 
 	// Iterate over new package list
@@ -459,15 +463,15 @@ void FArticyPackageDefs::ImportFromJson(
 		if (!obj.IsValid())
 			continue;
 
-		FArticyPackageDef package;
-		package.ImportFromJson(Archive, obj);
+		FArticyPackageDef NewPackage;
+		NewPackage.ImportFromJson(Archive, obj);
 
 		bool bExistingPackageFound = false;
 
 		// Check if package already exists in the Packages array
 		for (const auto& ExistingPackage : Packages)
 		{
-			if (ExistingPackage.GetId() == package.GetId())
+			if (ExistingPackage.GetId() == NewPackage.GetId())
 			{
 				bExistingPackageFound = true;
 				break;
@@ -477,7 +481,7 @@ void FArticyPackageDefs::ImportFromJson(
 		// If package doesn't exist, add it to the Packages array
 		if (!bExistingPackageFound)
 		{
-			Packages.Add(package);
+			Packages.Add(NewPackage);
 		}
 	}
 
@@ -518,6 +522,31 @@ bool FArticyPackageDefs::ValidateImport(
 {
 	if (!Json)
 		return false;
+
+	const bool bHasExistingData = Packages.Num() > 0;
+	if (!bHasExistingData)
+	{
+		for (const auto& pack : *Json)
+		{
+			const auto& obj = pack->AsObject();
+			if (!obj.IsValid())
+				continue;
+
+			FArticyPackageDef package;
+			package.ImportFromJson(Archive, obj);
+
+			if (!package.GetIsIncluded())
+			{
+				UE_LOG(LogArticyEditor, Error,
+					TEXT("Initial import contains package '%s' without data. Partial exports are not allowed on first import."),
+					*package.GetName());
+				return false;
+			}
+		}
+
+		// First import, manifest is complete: OK
+		return true;
+	}
 
 	// Iterate over existing packages
 	for (auto& ExistingPackage : Packages)

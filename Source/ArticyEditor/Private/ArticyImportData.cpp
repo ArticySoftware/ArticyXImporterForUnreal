@@ -611,11 +611,19 @@ void UArticyImportData::PostImport()
 bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, const TSharedPtr<FJsonObject> RootObject)
 {
 	// Abort if we will have broken packages
-	if (!PackageDefs.ValidateImport(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES)))
-		return false;
+	const TArray<TSharedPtr<FJsonValue>>* PackagesJson =
+		&RootObject->GetArrayField(JSON_SECTION_PACKAGES);
 
-	// Record old script fragments hash
-	const FString& OldScriptFragmentsHash = Settings.ScriptFragmentsHash;
+	const bool bAllowRemoval = !bMultiFileMerge;
+	/* if (!PackageDefs.ValidateImport(Archive, PackagesJson, bAllowRemoval))
+		return false; */
+
+	// record old hashes before merge
+	TSet<FString> OldPackageScriptHashes;
+	for (const auto& ExistingPackage : PackageDefs.GetPackages())
+	{
+		OldPackageScriptHashes.Add(ExistingPackage.GetScriptFragmentHash());
+	}
 
 	// import the main sections
 	Settings.ImportFromJson(RootObject->GetObjectField(JSON_SECTION_SETTINGS));
@@ -626,7 +634,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	Languages.ImportFromJson(RootObject);
 
 	if (Settings.set_IncludedNodes.Contains(TEXT("Packages")))
-		PackageDefs.ImportFromJson(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES), Settings);
+		PackageDefs.ImportFromJson(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES), Settings, bAllowRemoval);
 
 	if (Settings.set_IncludedNodes.Contains(TEXT("Hierarchy")))
 	{
@@ -696,8 +704,28 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		bNeedsCodeGeneration = true;
 	}
 
-	if (Settings.ScriptFragmentsHash.IsEmpty() || !Settings.ScriptFragmentsHash.Equals(OldScriptFragmentsHash))
+	const auto& Packages = PackageDefs.GetPackages();
+	if (OldPackageScriptHashes.Num() == Packages.Num())
 	{
+		bool bScriptFragmentsChanged = false;
+
+		for (auto& Package : Packages)
+		{
+			if (!OldPackageScriptHashes.Contains(Package.GetScriptFragmentHash()))
+			{
+				bScriptFragmentsChanged = true;
+				break;
+			}
+		}
+
+		if (bScriptFragmentsChanged)
+		{
+			Settings.SetScriptFragmentsNeedRebuild();
+		}
+	}
+	else
+	{
+		// Different number of packages -> definitely changed
 		Settings.SetScriptFragmentsNeedRebuild();
 	}
 
@@ -764,7 +792,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	for (const auto& Language : Languages.Languages)
 	{
 		// Handle packages
-		for (const auto& Package : GetPackageDefs().GetPackages())
+		for (const auto& Package : Packages)
 		{
 			const FString PackageName = Package.GetName();
 			const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));

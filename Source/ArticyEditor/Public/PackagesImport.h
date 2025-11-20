@@ -321,7 +321,7 @@ public:
 	 * @param Json A pointer to the JSON array containing the package definitions.
 	 * @param Settings A reference to the FADISettings object.
 	 */
-	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FAdiSettings& Settings);
+	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FAdiSettings& Settings, bool bAllowRemoval);
 
 	/**
 	 * Validates the import of package definitions from a JSON array.

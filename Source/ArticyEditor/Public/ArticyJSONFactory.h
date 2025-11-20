@@ -84,7 +84,6 @@ public:
     virtual EReimportResult::Type Reimport(UObject* Obj) override;
     //~FReimportHandler
 
-private:
     /**
      * Performs the actual import task, converting the JSON data into UArticyImportData.
      *
@@ -94,6 +93,7 @@ private:
      */
     bool ImportFromFile(const FString& FileName, UArticyImportData* Asset) const;
 
+private:
     /**
      * Handles the case where an import or reimport is performed during play.
      *

@@ -463,6 +463,9 @@ protected:
 	UPROPERTY()
 	bool bHasCachedVersion = false;
 
+
+	bool bMultiFileMerge = false;
+
 private:
 
 	friend class FArticyEditorFunctionLibrary;

@@ -137,6 +137,60 @@ EImportDataEnsureResult FArticyEditorFunctionLibrary::EnsureImportDataAsset(UArt
 	return Result;
 }
 
+bool FArticyEditorFunctionLibrary::IsFullArticyExport(const FString& FullArchivePath)
+{
+	UArticyArchiveReader* Archive = NewObject<UArticyArchiveReader>();
+	if (!Archive->OpenArchive(*FullArchivePath))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to open articy archive %s"), *FullArchivePath);
+		return false;
+	}
+
+	FString ManifestJson;
+	if (!Archive->ReadFile(TEXT("manifest.json"), ManifestJson))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to read manifest.json from %s"), *FullArchivePath);
+		return false;
+	}
+
+	TSharedPtr<FJsonObject> Root;
+	TSharedRef<TJsonReader<TCHAR>> Reader = TJsonReaderFactory<TCHAR>::Create(ManifestJson);
+	if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid())
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to parse manifest.json in %s"), *FullArchivePath);
+		return false;
+	}
+
+	const TArray<TSharedPtr<FJsonValue>>* PackagesJson = nullptr;
+	if (!Root->TryGetArrayField(TEXT("Packages"), PackagesJson) || !PackagesJson)
+	{
+		// If there are no packages, treat this as not usable for our purposes
+		UE_LOG(LogArticyEditor, Warning, TEXT("Manifest in %s has no 'Packages' array."), *FullArchivePath);
+		return false;
+	}
+
+	// Full export requirement: every package in the manifest must be IsIncluded == true
+	for (const TSharedPtr<FJsonValue>& PackageValue : *PackagesJson)
+	{
+		TSharedPtr<FJsonObject> PackageObject = PackageValue->AsObject();
+		if (!PackageObject.IsValid())
+		{
+			continue;
+		}
+
+		bool bIsIncluded = false;
+		PackageObject->TryGetBoolField(TEXT("IsIncluded"), bIsIncluded);
+
+		if (!bIsIncluded)
+		{
+			// This is a partial export - not valid as the base import.
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /**
  * Generates a new Articy import data asset.
  * Searches for an existing .articyue file in the specified directory and imports it.
@@ -157,19 +211,56 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
 	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
 	// attach the non-virtual path to the content directory, then convert it to absolute
-	const FString AbsoluteDirectoryPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*(FPaths::ProjectContentDir() + ArticyDirectoryNonVirtual));
+	const FString AbsoluteDirectoryPath =
+		IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(
+			*(FPaths::ProjectContentDir() + ArticyDirectoryNonVirtual));
+
 	IFileManager::Get().FindFiles(ArticyImportFiles, *AbsoluteDirectoryPath, TEXT("articyue"));
 	if (ArticyImportFiles.Num() == 0)
 	{
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed creation of import data asset. No .articyue file found in directory %s. Please check the plugin settings for the correct articy directory and try again."), *ArticyDirectory);
+		UE_LOG(LogArticyEditor, Error,
+			TEXT("Failed creation of import data asset. No .articyue file found in directory %s. Please check the plugin settings for the correct articy directory and try again."),
+			*ArticyDirectory);
 		return nullptr;
 	}
 
-	const FString FileName = FPaths::GetBaseFilename(ArticyImportFiles[0], false);
+	// Choose a base file for initial asset creation
+	FString BaseArticyFile;
 
-	const FString PackagePath = ArticyDirectory + TEXT("/") + FileName;
+	if (ArticyImportFiles.Num() == 1)
+	{
+		BaseArticyFile = ArticyImportFiles[0];
+	}
+	else
+	{
+		// Prefer a full export as the base (all packages IsIncluded == true)
+		for (const FString& Candidate : ArticyImportFiles)
+		{
+			const FString FullCandidatePath = AbsoluteDirectoryPath / Candidate;
+			if (IsFullArticyExport(FullCandidatePath))
+			{
+				BaseArticyFile = Candidate;
+				UE_LOG(LogArticyEditor, Log,
+					TEXT("Selected %s as base Articy export for import data asset."),
+					*BaseArticyFile);
+				break;
+			}
+		}
 
-	const FString CleanedPackagePath = PackagePath.Replace(TEXT(" "), TEXT("_")).Replace(TEXT("."), TEXT("_"));
+		if (BaseArticyFile.IsEmpty())
+		{
+			// Fallback: just pick the first file
+			BaseArticyFile = ArticyImportFiles[0];
+			UE_LOG(LogArticyEditor, Warning,
+				TEXT("Multiple .articyue files found but no full export detected; using %s as base."),
+				*BaseArticyFile);
+		}
+	}
+
+	const FString BaseFileName = FPaths::GetBaseFilename(BaseArticyFile, false);
+	const FString PackagePath = ArticyDirectory + TEXT("/") + BaseFileName;
+	const FString CleanedPackagePath =
+		PackagePath.Replace(TEXT(" "), TEXT("_")).Replace(TEXT("."), TEXT("_"));
 
 	// @TODO Engine Versioning
 #if ENGINE_MAJOR_VERSION >= 5 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
@@ -180,26 +271,57 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 
 	Outer->FullyLoad();
 
-	const FString FullPath = AbsoluteDirectoryPath + TEXT("/") + ArticyImportFiles[0];
+	const FString BaseFullPath = AbsoluteDirectoryPath / BaseArticyFile;
 	bool bRequired = false;
-	UObject* ImportDataAsset = Factory->ImportObject(UArticyImportData::StaticClass(), Outer, FName(*FPaths::GetBaseFilename(CleanedPackagePath)), EObjectFlags::RF_Standalone | EObjectFlags::RF_Public, FullPath, nullptr, bRequired);
 
-	if (ImportDataAsset)
+	// Create the UArticyImportData asset from the base file
+	UObject* ImportDataAsset = Factory->ImportObject(
+		UArticyImportData::StaticClass(),
+		Outer,
+		FName(*FPaths::GetBaseFilename(CleanedPackagePath)),
+		EObjectFlags::RF_Standalone | EObjectFlags::RF_Public,
+		BaseFullPath,
+		nullptr,
+		bRequired);
+
+	if (!ImportDataAsset)
 	{
-		ImportData = Cast<UArticyImportData>(ImportDataAsset);
-
-		// automatically save the import data asset
-		TArray<UPackage*> FailedToSavePackages;
-		FEditorFileUtils::PromptForCheckoutAndSave({ Outer }, false, false, &FailedToSavePackages);
-
-		UE_LOG(LogArticyEditor, Warning, TEXT("Successfully created import data asset. Continuing process."));
-	}
-	else
-	{
-		// delete the package if we couldn't create the import asset
 		ObjectTools::ForceDeleteObjects({ Outer });
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed creation import data asset. Aborting process."));
+		UE_LOG(LogArticyEditor, Error,
+			TEXT("Failed creation import data asset from '%s'. Aborting process."),
+			*BaseArticyFile);
+		return nullptr;
 	}
+
+	ImportData = Cast<UArticyImportData>(ImportDataAsset);
+	ImportData->bMultiFileMerge = true;
+
+	// Apply remaining .articyue files on top of the same ImportData
+	for (const FString& File : ArticyImportFiles)
+	{
+		if (File == BaseArticyFile)
+			continue;
+
+		const FString FullPath = AbsoluteDirectoryPath / File;
+		UE_LOG(LogArticyEditor, Log,
+			TEXT("Merging additional Articy export '%s' into existing import data asset."),
+			*FullPath);
+
+		if (!Factory->ImportFromFile(FullPath, ImportData))
+		{
+			UE_LOG(LogArticyEditor, Warning,
+				TEXT("Failed to merge articy export '%s' into import data; continuing with remaining files."),
+				*FullPath);
+		}
+	}
+
+	// Save the resulting combined import data asset
+	TArray<UPackage*> FailedToSavePackages;
+	FEditorFileUtils::PromptForCheckoutAndSave({ Outer }, false, false, &FailedToSavePackages);
+
+	UE_LOG(LogArticyEditor, Warning,
+		TEXT("Successfully created import data asset from '%s' and merged %d additional file(s)."),
+		*BaseArticyFile, ArticyImportFiles.Num() - 1);
 
 	return ImportData;
 }
