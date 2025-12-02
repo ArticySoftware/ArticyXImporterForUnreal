@@ -454,6 +454,8 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyLanguages Languages;
 
+	bool bMultiFileMerge = false;
+
 protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Articy")
@@ -462,9 +464,6 @@ protected:
 	// indicates whether we've had at least one working import. Used to determine if we want to re
 	UPROPERTY()
 	bool bHasCachedVersion = false;
-
-
-	bool bMultiFileMerge = false;
 
 private:
 

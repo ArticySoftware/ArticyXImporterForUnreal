@@ -24,7 +24,7 @@ public:
 	 * @param Data The import data used for code generation.
 	 * @return true if code was generated successfully, false otherwise.
 	 */
-	static bool GenerateCode(UArticyImportData* Data);
+	static bool GenerateCode(UArticyImportData* Data, bool bAllowRemoval = false);
 
 	/**
 	 * @brief Caches the content of code files in the source folder.
@@ -49,7 +49,7 @@ public:
 	 *
 	 * @param Data The import data used for asset generation.
 	 */
-	static void GenerateAssets(UArticyImportData* Data);
+	static void GenerateAssets(UArticyImportData* Data, bool bAllowRemoval = false);
 
 	/**
 	 * @brief Initiates the recompilation process for the generated code.

@@ -283,7 +283,7 @@ void CodeGenerator::CacheCodeFiles()
  * @param Data The import data used for code generation.
  * @return true if code was generated successfully, false otherwise.
  */
-bool CodeGenerator::GenerateCode(UArticyImportData* Data)
+bool CodeGenerator::GenerateCode(UArticyImportData* Data, bool bAllowRemoval)
 {
 	if (!Data)
 		return false;
@@ -316,7 +316,10 @@ bool CodeGenerator::GenerateCode(UArticyImportData* Data)
 		OutFiles.Add(OutFile);
 
 		bCodeGenerated = true;
-		DeleteExtraCode(OutFiles);
+		if (bAllowRemoval)
+		{
+			DeleteExtraCode(OutFiles);
+		}
 	}
 	// If object defs or GVs didn't change, but scripts changed, regenerate only expresso scripts
 	else if (Data->GetSettings().DidScriptFragmentsChange())
@@ -577,7 +580,7 @@ void CodeGenerator::Compile(UArticyImportData* Data)
  *
  * @param Data The import data used for asset generation.
  */
-void CodeGenerator::GenerateAssets(UArticyImportData* Data)
+void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 {
 	TGuardValue<bool> GuardIsInitialLoad(GIsInitialLoad, false);
 
@@ -602,7 +605,7 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 		return;
 	}
 
-	if (!ensureAlwaysMsgf(DeleteGeneratedAssets(Data->GetPackageDefs()),
+	if (bAllowRemoval && !ensureAlwaysMsgf(DeleteGeneratedAssets(Data->GetPackageDefs()),
 		TEXT("DeletedGeneratedAssets() has failed. The Articy X Importer can not proceed without\n"
 			"being able to delete the previously generated assets to replace them with new ones.\n"
 			"Please make sure the Generated folder in ArticyContent is editable.")))

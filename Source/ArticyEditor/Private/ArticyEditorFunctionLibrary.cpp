@@ -137,60 +137,6 @@ EImportDataEnsureResult FArticyEditorFunctionLibrary::EnsureImportDataAsset(UArt
 	return Result;
 }
 
-bool FArticyEditorFunctionLibrary::IsFullArticyExport(const FString& FullArchivePath)
-{
-	UArticyArchiveReader* Archive = NewObject<UArticyArchiveReader>();
-	if (!Archive->OpenArchive(*FullArchivePath))
-	{
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed to open articy archive %s"), *FullArchivePath);
-		return false;
-	}
-
-	FString ManifestJson;
-	if (!Archive->ReadFile(TEXT("manifest.json"), ManifestJson))
-	{
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed to read manifest.json from %s"), *FullArchivePath);
-		return false;
-	}
-
-	TSharedPtr<FJsonObject> Root;
-	TSharedRef<TJsonReader<TCHAR>> Reader = TJsonReaderFactory<TCHAR>::Create(ManifestJson);
-	if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid())
-	{
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed to parse manifest.json in %s"), *FullArchivePath);
-		return false;
-	}
-
-	const TArray<TSharedPtr<FJsonValue>>* PackagesJson = nullptr;
-	if (!Root->TryGetArrayField(TEXT("Packages"), PackagesJson) || !PackagesJson)
-	{
-		// If there are no packages, treat this as not usable for our purposes
-		UE_LOG(LogArticyEditor, Warning, TEXT("Manifest in %s has no 'Packages' array."), *FullArchivePath);
-		return false;
-	}
-
-	// Full export requirement: every package in the manifest must be IsIncluded == true
-	for (const TSharedPtr<FJsonValue>& PackageValue : *PackagesJson)
-	{
-		TSharedPtr<FJsonObject> PackageObject = PackageValue->AsObject();
-		if (!PackageObject.IsValid())
-		{
-			continue;
-		}
-
-		bool bIsIncluded = false;
-		PackageObject->TryGetBoolField(TEXT("IsIncluded"), bIsIncluded);
-
-		if (!bIsIncluded)
-		{
-			// This is a partial export - not valid as the base import.
-			return false;
-		}
-	}
-
-	return true;
-}
-
 /**
  * Generates a new Articy import data asset.
  * Searches for an existing .articyue file in the specified directory and imports it.
@@ -237,7 +183,7 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 		for (const FString& Candidate : ArticyImportFiles)
 		{
 			const FString FullCandidatePath = AbsoluteDirectoryPath / Candidate;
-			if (IsFullArticyExport(FullCandidatePath))
+			if (UArticyJSONFactory::IsFullArticyExport(FullCandidatePath))
 			{
 				BaseArticyFile = Candidate;
 				UE_LOG(LogArticyEditor, Log,

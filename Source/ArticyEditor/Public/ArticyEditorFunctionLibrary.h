@@ -63,8 +63,6 @@ public:
 	static EImportDataEnsureResult EnsureImportDataAsset(UArticyImportData**);
 
 private:
-	static bool IsFullArticyExport(const FString& FullArchivePath);
-
 	/**
 	 * Generates a new Articy import data asset.
 	 * Searches for an existing .articyue file in the specified directory and imports it.

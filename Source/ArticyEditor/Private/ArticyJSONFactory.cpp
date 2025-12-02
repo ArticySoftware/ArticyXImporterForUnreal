@@ -159,6 +159,60 @@ void UArticyJSONFactory::SetReimportPaths(UObject* Obj, const TArray<FString>& N
         Asset->ImportData->UpdateFilenameOnly(NewReimportPaths[0]);
 }
 
+bool UArticyJSONFactory::IsFullArticyExport(const FString& FullArchivePath)
+{
+    UArticyArchiveReader* Archive = NewObject<UArticyArchiveReader>();
+    if (!Archive->OpenArchive(*FullArchivePath))
+    {
+        UE_LOG(LogArticyEditor, Error, TEXT("Failed to open articy archive %s"), *FullArchivePath);
+        return false;
+    }
+
+    FString ManifestJson;
+    if (!Archive->ReadFile(TEXT("manifest.json"), ManifestJson))
+    {
+        UE_LOG(LogArticyEditor, Error, TEXT("Failed to read manifest.json from %s"), *FullArchivePath);
+        return false;
+    }
+
+    TSharedPtr<FJsonObject> Root;
+    TSharedRef<TJsonReader<TCHAR>> Reader = TJsonReaderFactory<TCHAR>::Create(ManifestJson);
+    if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid())
+    {
+        UE_LOG(LogArticyEditor, Error, TEXT("Failed to parse manifest.json in %s"), *FullArchivePath);
+        return false;
+    }
+
+    const TArray<TSharedPtr<FJsonValue>>* PackagesJson = nullptr;
+    if (!Root->TryGetArrayField(TEXT("Packages"), PackagesJson) || !PackagesJson)
+    {
+        // If there are no packages, treat this as not usable for our purposes
+        UE_LOG(LogArticyEditor, Warning, TEXT("Manifest in %s has no 'Packages' array."), *FullArchivePath);
+        return false;
+    }
+
+    // Full export requirement: every package in the manifest must be IsIncluded == true
+    for (const TSharedPtr<FJsonValue>& PackageValue : *PackagesJson)
+    {
+        TSharedPtr<FJsonObject> PackageObject = PackageValue->AsObject();
+        if (!PackageObject.IsValid())
+        {
+            continue;
+        }
+
+        bool bIsIncluded = false;
+        PackageObject->TryGetBoolField(TEXT("IsIncluded"), bIsIncluded);
+
+        if (!bIsIncluded)
+        {
+            // This is a partial export - not valid as the base import.
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /**
  * Reimports the specified object.
  *
@@ -168,25 +222,115 @@ void UArticyJSONFactory::SetReimportPaths(UObject* Obj, const TArray<FString>& N
 EReimportResult::Type UArticyJSONFactory::Reimport(UObject* Obj)
 {
     auto Asset = Cast<UArticyImportData>(Obj);
-    if (Asset)
+    if (!Asset || !Asset->ImportData)
     {
-        if (!Asset->ImportData)
-            return EReimportResult::Failed;
-
-        // Don't look for old .articyue4 files
-        if (Asset->ImportData->SourceData.SourceFiles.Num() > 0)
-            Asset->ImportData->SourceData.SourceFiles[0].RelativeFilename.RemoveFromEnd(TEXT("4"));
-
-        const FString ImportFilename = Asset->ImportData->GetFirstFilename();
-
-        if (ImportFilename.Len() == 0)
-            return EReimportResult::Failed;
-
-        if (ImportFromFile(ImportFilename, Asset))
-            return EReimportResult::Succeeded;
+        return EReimportResult::Failed;
     }
 
-    return EReimportResult::Failed;
+    // Derive the directory from the original import file / plugin settings
+    // 1) Try original import path
+    FString FirstImportFilename = Asset->ImportData->GetFirstFilename();
+
+    // Normalize old ".articyue4" extension if needed
+    if (FirstImportFilename.EndsWith(TEXT("articyue4")))
+    {
+        FirstImportFilename.RemoveFromEnd(TEXT("4")); // -> ".articyue"
+    }
+
+    FString BaseDir;
+    if (!FirstImportFilename.IsEmpty())
+    {
+        BaseDir = FPaths::GetPath(FirstImportFilename);
+    }
+    else
+    {
+        // Fallback: use plugin settings directory (same as GenerateImportDataAsset)
+        const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+        FString ArticyDirectoryNonVirtual = ArticyDirectory;
+        ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
+        ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
+
+        BaseDir = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(
+            *(FPaths::ProjectContentDir() + ArticyDirectoryNonVirtual));
+    }
+
+    TArray<FString> ArticyFiles;
+    IFileManager::Get().FindFiles(ArticyFiles, *BaseDir, TEXT("articyue"));
+
+    if (ArticyFiles.Num() == 0)
+    {
+        UE_LOG(LogArticyEditor, Error,
+            TEXT("Reimport failed: no .articyue files found in '%s'."), *BaseDir);
+        return EReimportResult::Failed;
+    }
+
+    // Choose a base file (you can reuse IsFullArticyExport(...) here if you implemented it)
+    FString BaseArticyFile;
+    if (ArticyFiles.Num() == 1)
+    {
+        BaseArticyFile = ArticyFiles[0];
+    }
+    else
+    {
+        // Try to pick a "full export" as base; otherwise just the first one
+        for (const FString& Candidate : ArticyFiles)
+        {
+            const FString FullCandidatePath = BaseDir / Candidate;
+            if (IsFullArticyExport(FullCandidatePath))   // optional helper
+            {
+                BaseArticyFile = Candidate;
+                break;
+            }
+        }
+
+        if (BaseArticyFile.IsEmpty())
+        {
+            BaseArticyFile = ArticyFiles[0];
+            UE_LOG(LogArticyEditor, Warning,
+                TEXT("Multiple .articyue files found during reimport but no full export detected; using %s as base."),
+                *BaseArticyFile);
+        }
+    }
+
+    // 1) Import base file in "single-file" mode
+    const FString BaseFullPath = BaseDir / BaseArticyFile;
+
+    UE_LOG(LogArticyEditor, Log,
+        TEXT("Reimport: using '%s' as base Articy export."), *BaseFullPath);
+
+    Asset->bMultiFileMerge = false;
+    if (!ImportFromFile(BaseFullPath, Asset))
+    {
+        UE_LOG(LogArticyEditor, Error,
+            TEXT("Reimport failed: could not import base articy file '%s'."), *BaseFullPath);
+        Asset->bMultiFileMerge = false;
+        return EReimportResult::Failed;
+    }
+
+    // 2) Import remaining files as supplemental
+    Asset->bMultiFileMerge = true;
+
+    for (const FString& File : ArticyFiles)
+    {
+        if (File == BaseArticyFile)
+            continue;
+
+        const FString FullPath = BaseDir / File;
+
+        UE_LOG(LogArticyEditor, Log,
+            TEXT("Reimport: merging supplemental Articy export '%s'."), *FullPath);
+
+        if (!ImportFromFile(FullPath, Asset))
+        {
+            UE_LOG(LogArticyEditor, Warning,
+                TEXT("Reimport: failed to merge supplemental articy file '%s', continuing with others."),
+                *FullPath);
+        }
+    }
+
+    Asset->bMultiFileMerge = false;
+
+    return EReimportResult::Succeeded;
 }
 
 /**

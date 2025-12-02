@@ -46,6 +46,7 @@ void FAdiSettings::ImportFromJson(TSharedPtr<FJsonObject> Json)
 	if (RuleSetId != OldRuleSetId)
 	{
 		// Different rule set, start over
+		UE_LOG(LogArticyEditor, Warning, TEXT("Ruleset mismatch, starting over."));
 		GlobalVariablesHash.Reset();
 		ObjectDefinitionsHash.Reset();
 		ObjectDefinitionsTextHash.Reset();
@@ -796,7 +797,10 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		{
 			const FString PackageName = Package.GetName();
 			const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
-			if (!Package.GetName().Equals(Package.GetPreviousName()))
+			if (!Package.GetIsIncluded() || PackageName.IsEmpty())
+				continue;
+
+			if (!PackageName.Equals(Package.GetPreviousName()))
 			{
 				// Needs rename
 				const FString OldStringTableFileName = Package.GetPreviousName().Replace(TEXT(" "), TEXT("_"));
@@ -842,9 +846,6 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 				}
 			}
 
-			if (!Package.GetIsIncluded())
-				continue;
-
 			StringTableGenerator(StringTableFileName, Language.Key,
 				[&](StringTableGenerator* CsvOutput)
 				{
@@ -860,7 +861,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	// if we are generating code, generate and compile it; after it has finished, generate assets and perform post import logic
 	if (bNeedsCodeGeneration)
 	{
-		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this);
+		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this, bAllowRemoval);
 
 		if (bAnyCodeGenerated)
 		{
@@ -874,10 +875,10 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 
 			// this will have either the current import data or the cached version
 			PostImportHandle = FArticyEditorModule::Get().OnCompilationFinished.AddLambda(
-				[this](UArticyImportData* Data)
+				[this, bAllowRemoval](UArticyImportData* Data)
 				{
 					BuildCachedVersion();
-					CodeGenerator::GenerateAssets(Data);
+					CodeGenerator::GenerateAssets(Data, bAllowRemoval);
 					PostImport();
 				});
 
@@ -888,7 +889,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	else
 	{
 		BuildCachedVersion();
-		CodeGenerator::GenerateAssets(this);
+		CodeGenerator::GenerateAssets(this, bAllowRemoval);
 		PostImport();
 	}
 

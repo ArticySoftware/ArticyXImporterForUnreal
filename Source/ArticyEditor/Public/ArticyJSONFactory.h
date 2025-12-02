@@ -93,6 +93,8 @@ public:
      */
     bool ImportFromFile(const FString& FileName, UArticyImportData* Asset) const;
 
+    static bool IsFullArticyExport(const FString& FullArchivePath);
+
 private:
     /**
      * Handles the case where an import or reimport is performed during play.
