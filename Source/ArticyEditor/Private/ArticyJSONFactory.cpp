@@ -15,6 +15,7 @@
 #include "Runtime/Launch/Resources/Version.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Misc/ConfigCacheIni.h"
+#include "CodeGeneration/CodeGenerator.h"
 
 #define LOCTEXT_NAMESPACE "ArticyJSONFactory"
 
@@ -329,6 +330,8 @@ EReimportResult::Type UArticyJSONFactory::Reimport(UObject* Obj)
     }
 
     Asset->bMultiFileMerge = false;
+
+    CodeGenerator::Recompile(Asset);
 
     return EReimportResult::Succeeded;
 }

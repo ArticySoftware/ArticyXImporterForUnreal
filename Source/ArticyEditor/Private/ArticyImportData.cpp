@@ -881,8 +881,6 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 					CodeGenerator::GenerateAssets(Data, bAllowRemoval);
 					PostImport();
 				});
-
-			CodeGenerator::Recompile(this);
 		}
 	}
 	// if we are importing but no code needed to be generated, generate assets immediately and perform post import
