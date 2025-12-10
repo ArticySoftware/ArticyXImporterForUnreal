@@ -20,6 +20,7 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
+				"Linux",
 				"Win64",
 				"Mac",
 				"IOS",
@@ -31,6 +32,7 @@
 			"Type": "Editor",
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
+				"Linux",
 				"Win64",
 				"Mac",
 				"IOS",
