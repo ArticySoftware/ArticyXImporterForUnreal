@@ -13,7 +13,7 @@
  * @param InObjects The array of objects to be edited.
  * @param EditWithinLevelEditor An optional toolkit host to edit within the level editor.
  */
-void FAssetTypeActions_ArticyGv::OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor)
+void FAssetTypeActions_ArticyGV::OpenAssetEditor(const TArray<UObject*>& InObjects, TSharedPtr<IToolkitHost> EditWithinLevelEditor)
 {
 	EToolkitMode::Type Mode = EditWithinLevelEditor.IsValid() ? EToolkitMode::WorldCentric : EToolkitMode::Standalone;
 
