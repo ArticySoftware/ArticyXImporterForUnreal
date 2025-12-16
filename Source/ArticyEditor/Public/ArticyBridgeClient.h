@@ -53,6 +53,7 @@ public:
     void ProcessMessage(const FString& MessageType, const TSharedPtr<FJsonObject> Message, class UArticyImportData* ImportData);
     void ParseReceivedData(const TArray<uint8>& Data);
     void HandleServerMessage(const TSharedPtr<FJsonObject>& Msg);
+    void UpdateAssetsAndCode(UArticyImportData* ImportData);
     void Connect();
     void StopRunning();
 

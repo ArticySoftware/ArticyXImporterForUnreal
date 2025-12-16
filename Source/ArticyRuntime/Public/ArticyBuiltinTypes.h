@@ -61,7 +61,6 @@ public:
 	UArticyFlowPin* GetTargetPin() const;
 	FArticyId GetTargetPinID() const { return TargetPin;  }
 	
-protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Articy", meta=(DisplayName="TargetPin"))
 	FArticyId TargetPin;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Articy", meta=(DisplayName="Target"))

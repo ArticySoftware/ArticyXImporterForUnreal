@@ -106,7 +106,7 @@ public:
 	 * @param PackageDefs The package definitions used to determine which assets to delete.
 	 * @return true if all invalid assets were successfully deleted, false otherwise.
 	 */
-	static bool DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs);
+	static bool DeleteGeneratedAssets(FArticyPackageDefs& PackageDefs);
 
 	/**
 	 * @brief Renames generated assets based on package definitions.
@@ -116,7 +116,7 @@ public:
 	 * @param PackageDefs The package definitions containing the new asset names.
 	 * @return true if all renaming operations succeeded, false otherwise.
 	 */
-	static bool RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs);
+	static bool RenameGeneratedAssets(FArticyPackageDefs& PackageDefs);
 
 private:
 	/**

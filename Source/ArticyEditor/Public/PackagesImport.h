@@ -366,7 +366,7 @@ public:
 	 *
 	 * @return An array of package definitions.
 	 */
-	TArray<FArticyPackageDef> GetPackages() const;
+	TArray<FArticyPackageDef>& GetPackages();
 
 	/**
 	 * Resets the packages array, clearing all package definitions.

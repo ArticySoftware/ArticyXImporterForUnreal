@@ -347,7 +347,7 @@ void CodeGenerator::Recompile(UArticyImportData* Data)
  * @param PackageDefs The package definitions used to determine which assets to delete.
  * @return true if all invalid assets were successfully deleted, false otherwise.
  */
-bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
+bool CodeGenerator::DeleteGeneratedAssets(FArticyPackageDefs& PackageDefs)
 {
 	FAssetRegistryModule& AssetRegistry = FModuleManager::Get().GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> OutAssets;
@@ -410,7 +410,7 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
  * @param PackageDefs The package definitions containing the new asset names.
  * @return true if all renaming operations succeeded, false otherwise.
  */
-bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
+bool CodeGenerator::RenameGeneratedAssets(FArticyPackageDefs& PackageDefs)
 {
 	const FAssetRegistryModule& AssetRegistry = FModuleManager::Get().GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> OutAssets;

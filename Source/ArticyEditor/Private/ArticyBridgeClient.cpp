@@ -22,13 +22,16 @@
 #include "Dom/JsonObject.h"
 #include "ArticyLocalizerSystem.h"
 #include "CodeGeneration/CodeGenerator.h"
+#include "ArticyBuiltinTypes.h"
+#include "ArticyPins.h"
+#include "ArticyEditorModule.h"
 
 TArray<uint8> DataBuffer;
 
 static const int32 HEADER_SIZE = 48;  // 4 + 32 + 8 + 4
 
 // Helper function to discover server via UDP advertisement.
-bool UArticyBridgeClientCommands::DiscoverServerAdvertisement(FString& OutHostname, int32& OutPort)
+bool UArticyBridgeClientCommands::DiscoverServerAdvertisement(FString & OutHostname, int32 & OutPort)
 {
     ISocketSubsystem* SocketSubsystem = ISocketSubsystem::Get();
     if (!SocketSubsystem)
@@ -342,7 +345,7 @@ uint32 FArticyBridgeClientRunnable::Run()
     return 0;
 }
 
-void SetPropertyValue(FString Property, FArticyTexts& ArticyText, const FString& Value)
+void SetPropertyValue(FString Property, FArticyTexts & ArticyText, const FString & Value)
 {
     FProperty* FoundProperty = FindFProperty<FStrProperty>(FArticyTexts::StaticStruct(), *Property);
     if (FoundProperty)
@@ -355,14 +358,47 @@ void SetPropertyValue(FString Property, FArticyTexts& ArticyText, const FString&
     }
 }
 
-void FArticyBridgeClientRunnable::UpdateAssets(UArticyImportData* ImportData)
+void FArticyBridgeClientRunnable::UpdateAssets(UArticyImportData * ImportData)
 {
     ImportData->BuildCachedVersion();
     CodeGenerator::GenerateAssets(ImportData);
     ImportData->PostImport();
 }
 
-void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, const TSharedPtr<FJsonObject> Message, UArticyImportData* ImportData)
+void FArticyBridgeClientRunnable::UpdateAssetsAndCode(UArticyImportData * ImportData)
+{
+    const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(ImportData);
+
+    if (bAnyCodeGenerated)
+    {
+        static FDelegateHandle PostImportHandle;
+
+        if (PostImportHandle.IsValid())
+        {
+            FArticyEditorModule::Get().OnCompilationFinished.Remove(PostImportHandle);
+            PostImportHandle.Reset();
+        }
+
+        // Avoid dangling pointer if the object gets GC'd before the callback fires
+        TWeakObjectPtr<UArticyImportData> WeakImportData = ImportData;
+
+        PostImportHandle = FArticyEditorModule::Get().OnCompilationFinished.AddLambda(
+            [WeakImportData](UArticyImportData* FinishedImportData)
+            {
+                // Prefer the still-valid captured object; otherwise fall back to the parameter
+                UArticyImportData* Data = WeakImportData.IsValid() ? WeakImportData.Get() : FinishedImportData;
+                if (!Data) return;
+
+                Data->BuildCachedVersion();
+                CodeGenerator::GenerateAssets(Data);
+                Data->PostImport();
+            });
+
+        CodeGenerator::Recompile(ImportData);
+    }
+}
+
+void FArticyBridgeClientRunnable::ProcessMessage(const FString & MessageType, const TSharedPtr<FJsonObject> Message, UArticyImportData * ImportData)
 {
     if (!ImportData)
     {
@@ -412,10 +448,166 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
     FString Value;
     Message->TryGetStringField(TEXT("Value"), Value);
 
-    if (MessageType.Equals(TEXT("CreatedFirstClassObject"))) {
-        /*
-        {"Type":"Dialogue","Properties":{"Id":"0x0100000000003279","TechnicalName":"Dlg_8C2E87FB","Parent":"0x0300000043CE43F7","DisplayName":{"LId":"Dlg_8C2E87FB.DisplayName","Values":{"en":"Untitled dialogue"}},"Attachments":[],"PreviewImageAsset":null,"Color":{"a":1.0,"r":0.78431374,"g":0.8862745,"b":0.90588236},"Text":{"LId":"Dlg_8C2E87FB.Text","Values":{}},"ExternalId":"","ShortId":2351859707,"TemplateName":"","Position":{"x":442.0,"y":300.0},"ZIndex":11,"Size":{"w":291.0,"h":200.0},"InputPins":[{"Id":"0x010000000000327C","Owner":"0x0100000000003279"}],"OutputPins":[{"Id":"0x010000000000327D","Owner":"0x0100000000003279"}]},"Packages":["72057594037939252"]}
-        */
+    if (MessageType.Equals(TEXT("CreatedFirstClassObject")))
+    {
+        // 1) Parse basic fields
+        FString CreatedType;
+        const TSharedPtr<FJsonObject>* PropsPtr = nullptr;
+        const TArray<TSharedPtr<FJsonValue>>* JsonPkgIds = nullptr;
+
+        if (!Message->TryGetStringField(TEXT("Type"), CreatedType) || CreatedType.IsEmpty())
+        {
+            UE_LOG(LogTemp, Error, TEXT("CreatedFirstClassObject: Missing 'Type'."));
+            return;
+        }
+        if (!Message->TryGetObjectField(TEXT("Properties"), PropsPtr) || !PropsPtr || !PropsPtr->IsValid())
+        {
+            UE_LOG(LogTemp, Error, TEXT("CreatedFirstClassObject: Missing 'Properties'."));
+            return;
+        }
+        const TSharedPtr<FJsonObject>& Props = *PropsPtr;
+
+        FString NewId;             Props->TryGetStringField(TEXT("Id"), NewId);
+        FString NewTechnicalName;  Props->TryGetStringField(TEXT("TechnicalName"), NewTechnicalName);
+
+        // 2) Resolve the target package definition (prefer the one listed in the message)
+        //    Message "Packages" is an array of numeric ids (as strings).
+        Message->TryGetArrayField(TEXT("Packages"), JsonPkgIds);
+
+        FArticyPackageDef* TargetPkgDef = nullptr;
+        FString TargetCsvBase;
+
+        auto Norm = [](const FString& S) { return S.Replace(TEXT(" "), TEXT("_")); };
+
+        // (a) Try by numeric id from the message
+        if (JsonPkgIds && JsonPkgIds->Num() > 0)
+        {
+            // Usually one entry; we use the first
+            const FString DeclaredIdStr = (*JsonPkgIds)[0]->AsString();
+            for (FArticyPackageDef& PkgDef : PackageDefs.GetPackages())
+            {
+                const FString PkgIdStr = FString::Printf(TEXT("%llu"), (unsigned long long)PkgDef.GetId());
+                if (PkgIdStr == DeclaredIdStr)
+                {
+                    TargetPkgDef = &PkgDef;
+                    TargetCsvBase = Norm(PkgDef.GetName());
+                    break;
+                }
+            }
+        }
+
+        // (b) Fall back to the package you discovered earlier in the outer code
+        if (!TargetPkgDef)
+        {
+            for (FArticyPackageDef& PkgDef : PackageDefs.GetPackages())
+            {
+                if (Norm(PkgDef.GetName()).Equals(Norm(PackageName)))
+                {
+                    TargetPkgDef = &PkgDef;
+                    TargetCsvBase = Norm(PkgDef.GetName());
+                    break;
+                }
+            }
+        }
+
+        // (c) Last resort: use the first package def
+        if (!TargetPkgDef)
+        {
+            auto& All = PackageDefs.GetPackages();
+            if (All.Num() == 0)
+            {
+                UE_LOG(LogTemp, Error, TEXT("CreatedFirstClassObject: No package defs available."));
+                return;
+            }
+            TargetPkgDef = &All[0];
+            TargetCsvBase = Norm(TargetPkgDef->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("CreatedFirstClassObject: Falling back to first package '%s'."), *TargetPkgDef->GetName());
+        }
+
+        // 3) Prepare text map + helpers
+        TMap<FString, FArticyTexts> UpdatedTexts = TargetPkgDef->GetTexts();
+        TSet<FString> LanguagesToRebuild;
+
+        auto UpdateFromLocalizableField = [&](const TCHAR* FieldName)
+            {
+                const TSharedPtr<FJsonObject>* LocObjPtr = nullptr;
+                if (!Props->TryGetObjectField(FieldName, LocObjPtr) || !LocObjPtr || !LocObjPtr->IsValid())
+                {
+                    return; // field absent or not localizable
+                }
+
+                const TSharedPtr<FJsonObject>& LocObj = *LocObjPtr;
+                FString LId;
+                if (!LocObj->TryGetStringField(TEXT("LId"), LId) || LId.IsEmpty())
+                {
+                    return; // no key to write
+                }
+
+                const TSharedPtr<FJsonObject>* ValuesObjPtr = nullptr;
+                if (!LocObj->TryGetObjectField(TEXT("Values"), ValuesObjPtr) || !ValuesObjPtr || !ValuesObjPtr->IsValid())
+                {
+                    return; // no values (allowed—fresh objects often start empty)
+                }
+
+                FArticyTexts& Entry = UpdatedTexts.FindOrAdd(LId);
+
+                for (const auto& KV : (*ValuesObjPtr)->Values)
+                {
+                    const FString LangId = KV.Key;
+                    if (LangId.IsEmpty()) continue;
+
+                    FString TextValue;
+                    if (KV.Value.IsValid())
+                    {
+                        if (KV.Value->Type == EJson::String)
+                        {
+                            TextValue = KV.Value->AsString();
+                        }
+                        else if (!KV.Value->TryGetString(TextValue))
+                        {
+                            double Num; bool b;
+                            if (KV.Value->TryGetNumber(Num)) TextValue = FString::SanitizeFloat(Num);
+                            else if (KV.Value->TryGetBool(b)) TextValue = b ? TEXT("true") : TEXT("false");
+                            else TextValue = TEXT("");
+                        }
+                    }
+
+                    FArticyTextDef& LangEntry = Entry.Content.FindOrAdd(LangId);
+                    LangEntry.Text = TextValue;
+                    LanguagesToRebuild.Add(LangId);
+                }
+            };
+
+        // 4) Apply for known localizable fields present in Articy fragments
+        UpdateFromLocalizableField(TEXT("Text"));
+        UpdateFromLocalizableField(TEXT("MenuText"));
+        UpdateFromLocalizableField(TEXT("DisplayName"));
+
+        // 5) Rebuild string tables for just the languages we touched
+        for (const FString& LangId : LanguagesToRebuild)
+        {
+            const FArticyLanguageDef* LangDefPtr = Languages.Find(LangId);
+            if (!LangDefPtr)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("CreatedFirstClassObject: Unknown language '%s' (skipping CSV)."), *LangId);
+                continue;
+            }
+            const FArticyLanguageDef LangDef = *LangDefPtr;
+            TPair<FString, FArticyLanguageDef> LangPair(LangId, LangDef);
+
+            StringTableGenerator(TargetCsvBase, LangId,
+                [&](StringTableGenerator* CsvOutput)
+                {
+                    return UArticyImportData::ProcessStrings(CsvOutput, UpdatedTexts, LangPair);
+                });
+        }
+
+        // 7) Refresh the in-engine view of assets
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("CreatedFirstClassObject: Type=%s, Id=%s, TechnicalName=%s, PackageCsv=%s, TouchedLangs=%d"),
+            *CreatedType, *NewId, *NewTechnicalName, *TargetCsvBase, LanguagesToRebuild.Num());
+
         return;
     }
 
@@ -423,66 +615,677 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString& MessageType, con
         return;
     }
 
-    if (MessageType.Equals(TEXT("CreatedConnection"))) {
-        /* {"Source":"0x010000010000029E","Target":"0x0100000100000B92","SourcePin":"0x01000001000002A4","TargetPin":"0x0100000100000B97"} */
-        return;
-    }
+    if (MessageType.Equals(TEXT("CreatedConnection")))
+    {
+        // Payload example:
+        // {"Source":"0x010000010000029E","Target":"0x0100000100000B92","SourcePin":"0x01000001000002A4","TargetPin":"0x0100000100000B97"}
 
-    if (MessageType.Equals(TEXT("RemovedConnection"))) {
-        /* { "Source":"0x010000010000029E", "Target" : "0x0100000100000B92", "SourcePin" : "0x01000001000002A4", "TargetPin" : "0x0100000100000B97" } */
-        return;
-    }
-
-    if (MessageType.Equals(TEXT("ObjectsDeleted"))) {
-        const TArray<TSharedPtr<FJsonValue>>* ObjectsArrayPtr;
-        if (Message->TryGetArrayField(TEXT("Objects"), ObjectsArrayPtr))
+        FString SourceNodeHex, TargetNodeHex, SourcePinHex, TargetPinHex;
+        if (!Message->TryGetStringField(TEXT("Source"), SourceNodeHex) ||
+            !Message->TryGetStringField(TEXT("Target"), TargetNodeHex) ||
+            !Message->TryGetStringField(TEXT("SourcePin"), SourcePinHex) ||
+            !Message->TryGetStringField(TEXT("TargetPin"), TargetPinHex))
         {
-            for (const TSharedPtr<FJsonValue>& IdValue : *ObjectsArrayPtr)
-            {
-                FString DeletedId = IdValue->AsString();
+            UE_LOG(LogTemp, Error, TEXT("CreatedConnection: Missing one of Source/Target/SourcePin/TargetPin."));
+            return;
+        }
 
-                // Attempt to remove from packages
+        FArticyId SourceNodeId = FArticyId(SourceNodeHex);
+        FArticyId TargetNodeId = FArticyId(TargetNodeHex);
+        FArticyId SourcePinId = FArticyId(SourcePinHex);
+        FArticyId TargetPinId = FArticyId(TargetPinHex);
+
+        // --- Locate the source node (owner of the output pin) ---
+        UArticyObject* SourceNode = nullptr;
+        for (const TSoftObjectPtr<UArticyPackage>& Pkg : Packages)
+        {
+            if (!Pkg.IsValid()) continue;
+            if (UArticyObject* Obj = Pkg->GetAssetById(SourceNodeHex))
+            {
+                SourceNode = Obj;
+                break;
+            }
+        }
+        if (!SourceNode)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("CreatedConnection: Source node %s not found."), *SourceNodeHex);
+            UpdateAssetsAndCode(ImportData);
+            return;
+        }
+
+        // --- Fetch the source output pin subobject ---
+        UArticyOutputPin* SourcePin = Cast<UArticyOutputPin>(SourceNode->GetSubobject(SourcePinId));
+        if (!SourcePin)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("CreatedConnection: Source pin %s not found on node %s."), *SourcePinHex, *SourceNodeHex);
+            UpdateAssetsAndCode(ImportData);
+            return;
+        }
+
+        // Validate target side for sanity & logs
+        UArticyObject* TargetNode = nullptr;
+        for (const TSoftObjectPtr<UArticyPackage>& Pkg : Packages)
+        {
+            if (!Pkg.IsValid()) continue;
+            if (UArticyObject* Obj = Pkg->GetAssetById(TargetNodeHex))
+            {
+                TargetNode = Obj;
+                break;
+            }
+        }
+        UArticyInputPin* TargetPin = nullptr;
+        if (TargetNode)
+        {
+            TargetPin = Cast<UArticyInputPin>(TargetNode->GetSubobject(TargetPinId));
+            if (!TargetPin)
+            {
+                UE_LOG(LogTemp, Verbose, TEXT("CreatedConnection: Target node found but target pin %s missing (node %s)."),
+                    *TargetPinHex, *TargetNodeHex);
+            }
+        }
+        else
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("CreatedConnection: Target node %s not found (will still attach outgoing connection)."), *TargetNodeHex);
+        }
+
+        // --- Create and attach the outgoing connection on the source pin ---
+        UArticyOutgoingConnection* NewConn = NewObject<UArticyOutgoingConnection>(SourcePin);
+        if (!ensure(NewConn))
+        {
+            UE_LOG(LogTemp, Error, TEXT("CreatedConnection: Failed to allocate UArticyOutgoingConnection."));
+            return;
+        }
+
+        // Fill connection endpoints
+        NewConn->Target = TargetNodeId;
+        NewConn->TargetPin = TargetPinId;
+
+        SourcePin->Connections.Add(NewConn);
+
+#if WITH_EDITOR
+        SourcePin->Modify();
+#endif
+
+        // --- Refresh any derived/cached views so exploration sees the new edge ---
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("CreatedConnection: %s[%s] -> %s[%s] (connections on src now: %d)"),
+            *SourceNodeHex, *SourcePinHex, *TargetNodeHex, *TargetPinHex, SourcePin->Connections.Num());
+
+        return;
+    }
+
+    if (MessageType.Equals(TEXT("RemovedConnection")))
+    {
+        // Payload example:
+        // { "Source":"0x010000010000029E", "Target":"0x0100000100000B92",
+        //   "SourcePin":"0x01000001000002A4", "TargetPin":"0x0100000100000B97" }
+
+        FString SourceNodeHex, TargetNodeHex, SourcePinHex, TargetPinHex;
+        if (!Message->TryGetStringField(TEXT("Source"), SourceNodeHex) ||
+            !Message->TryGetStringField(TEXT("Target"), TargetNodeHex) ||
+            !Message->TryGetStringField(TEXT("SourcePin"), SourcePinHex) ||
+            !Message->TryGetStringField(TEXT("TargetPin"), TargetPinHex))
+        {
+            UE_LOG(LogTemp, Error, TEXT("RemovedConnection: Missing one of Source/Target/SourcePin/TargetPin."));
+            return;
+        }
+
+        FArticyId SourceNodeId = FArticyId(SourceNodeHex);
+        FArticyId TargetNodeId = FArticyId(TargetNodeHex);
+        FArticyId SourcePinId = FArticyId(SourcePinHex);
+        FArticyId TargetPinId = FArticyId(TargetPinHex);
+
+        // --- Locate the source node (owner of the output pin) ---
+        UArticyObject* SourceNode = nullptr;
+        for (const TSoftObjectPtr<UArticyPackage>& Pkg : Packages)
+        {
+            if (!Pkg.IsValid()) continue;
+            if (UArticyObject* Obj = Pkg->GetAssetById(SourceNodeHex))
+            {
+                SourceNode = Obj;
+                break;
+            }
+        }
+        if (!SourceNode)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("RemovedConnection: Source node %s not found."), *SourceNodeHex);
+            UpdateAssetsAndCode(ImportData);
+            return;
+        }
+
+        // --- Fetch the source output pin subobject ---
+        UArticyOutputPin* SourcePin = Cast<UArticyOutputPin>(SourceNode->GetSubobject(SourcePinId));
+        if (!SourcePin)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("RemovedConnection: Source pin %s not found on node %s."), *SourcePinHex, *SourceNodeHex);
+            UpdateAssetsAndCode(ImportData);
+            return;
+        }
+
+        // --- Remove matching connections ---
+        const int32 Before = SourcePin->Connections.Num();
+        SourcePin->Connections.RemoveAll([&](UArticyOutgoingConnection* Conn)
+            {
+                return Conn &&
+                    Conn->Target == TargetNodeId &&
+                    Conn->TargetPin == TargetPinId;
+            });
+        const int32 Removed = Before - SourcePin->Connections.Num();
+
+#if WITH_EDITOR
+        if (Removed > 0) SourcePin->Modify();
+#endif
+
+        if (Removed == 0)
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("RemovedConnection: No matching connection found from %s[%s] to %s[%s]."),
+                *SourceNodeHex, *SourcePinHex, *TargetNodeHex, *TargetPinHex);
+        }
+
+        // --- Refresh derived/cached views so exploration reflects the removal ---
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("RemovedConnection: %s[%s] -X-> %s[%s] (removed %d, remaining on src: %d)"),
+            *SourceNodeHex, *SourcePinHex, *TargetNodeHex, *TargetPinHex, Removed, SourcePin->Connections.Num());
+
+        return;
+    }
+
+    if (MessageType.Equals(TEXT("ObjectsDeleted")))
+    {
+        const TArray<TSharedPtr<FJsonValue>>* ObjectsArrayPtr = nullptr;
+        if (!Message->TryGetArrayField(TEXT("Objects"), ObjectsArrayPtr) || !ObjectsArrayPtr)
+        {
+            UpdateAssetsAndCode(ImportData);
+            return;
+        }
+
+        // --- Collect deleted ids (raw hex + parsed) ---
+        TSet<FString>          DeletedHexIds;
+        TSet<FArticyId>        DeletedIds;
+
+        for (const TSharedPtr<FJsonValue>& IdValue : *ObjectsArrayPtr)
+        {
+            const FString DeletedHex = IdValue->AsString();
+            DeletedHexIds.Add(DeletedHex);
+            FArticyId DeletedId = FArticyId(DeletedHex);
+            DeletedIds.Add(DeletedId);
+        }
+
+        // --- Helpers to fetch InputPins/OutputPins from a node via reflection ---
+        auto GetInputPinsPtrFrom = [](UArticyObject* Obj) -> const TArray<UArticyInputPin*>*
+            {
+                if (!Obj) return nullptr;
+                if (IArticyReflectable* Refl = Cast<IArticyReflectable>(Obj))
+                {
+                    static const FName NameInputPins(TEXT("InputPins"));
+                    return Refl->GetPropPtr<TArray<UArticyInputPin*>>(NameInputPins);
+                }
+                return nullptr;
+            };
+        auto GetOutputPinsPtrFrom = [](UArticyObject* Obj) -> const TArray<UArticyOutputPin*>*
+            {
+                if (!Obj) return nullptr;
+                if (IArticyReflectable* Refl = Cast<IArticyReflectable>(Obj))
+                {
+                    static const FName NameOutputPins(TEXT("OutputPins"));
+                    return Refl->GetPropPtr<TArray<UArticyOutputPin*>>(NameOutputPins);
+                }
+                return nullptr;
+            };
+
+        // --- Resolve which deleted ids are nodes/pins and collect impacted pin ids ---
+        TSet<FArticyId> DeletedNodeIds;
+        TSet<FArticyId> DeletedInputPinIds;
+        TSet<FArticyId> DeletedOutputPinIds;
+
+        // Try to resolve objects BEFORE we remove them from packages
+        auto ResolveObjectByHex = [&](const FString& Hex) -> UArticyObject*
+            {
                 for (const TSoftObjectPtr<UArticyPackage>& Package : Packages)
                 {
-                    Package->RemoveAssetById(DeletedId);
-                    break;
+                    if (!Package.IsValid()) continue;
+                    if (UArticyObject* Obj = Package->GetAssetById(Hex))
+                        return Obj;
+                }
+                return nullptr;
+            };
+
+        for (const FString& Hex : DeletedHexIds)
+        {
+            UArticyObject* Obj = ResolveObjectByHex(Hex);
+            if (!Obj)
+                continue;
+
+            // Check whether this is a pin (input/output) or an owning node
+            if (UArticyFlowPin* AnyPin = Cast<UArticyFlowPin>(Obj))
+            {
+                // We don't expect pins as "assets" typically, but handle it anyway
+                if (UArticyInputPin* In = Cast<UArticyInputPin>(AnyPin))
+                {
+                    DeletedInputPinIds.Add(In->GetId());
+                }
+                else if (UArticyOutputPin* Out = Cast<UArticyOutputPin>(AnyPin))
+                {
+                    DeletedOutputPinIds.Add(Out->GetId());
+                }
+            }
+            else
+            {
+                // Treat as "node": collect its input pins (incoming edges point here)
+                DeletedNodeIds.Add(Obj->GetId());
+
+                if (const TArray<UArticyInputPin*>* InPins = GetInputPinsPtrFrom(Obj))
+                {
+                    for (UArticyInputPin* Pin : *InPins)
+                    {
+                        if (Pin) DeletedInputPinIds.Add(Pin->GetId());
+                    }
+                }
+
+                // For completeness, also collect its output pins, so we can clear them too
+                if (const TArray<UArticyOutputPin*>* OutPins = GetOutputPinsPtrFrom(Obj))
+                {
+                    for (UArticyOutputPin* Pin : *OutPins)
+                    {
+                        if (Pin) DeletedOutputPinIds.Add(Pin->GetId());
+                    }
                 }
             }
         }
-        UpdateAssets(ImportData);
+
+        // --- 1) Clear outgoing connections on any deleted OUTPUT pins themselves ---
+        for (TObjectIterator<UArticyOutputPin> It; It; ++It)
+        {
+            UArticyOutputPin* OutPin = *It;
+            if (!IsValid(OutPin)) continue;
+
+            if (DeletedOutputPinIds.Contains(OutPin->GetId()))
+            {
+                OutPin->Connections.Reset();
+#if WITH_EDITOR
+                OutPin->Modify();
+#endif
+            }
+        }
+
+        // --- 2) Remove incoming edges that target any deleted NODE or INPUT PIN ---
+        // Source pins (outgoing lists) are authoritative, so scan all of them:
+        for (TObjectIterator<UArticyOutputPin> It; It; ++It)
+        {
+            UArticyOutputPin* OutPin = *It;
+            if (!IsValid(OutPin)) continue;
+
+            const int32 Before = OutPin->Connections.Num();
+            OutPin->Connections.RemoveAll([&](UArticyOutgoingConnection* Conn)
+                {
+                    if (!Conn) return true; // prune nulls defensively
+                    const bool bTargetNodeGone = DeletedIds.Contains(Conn->Target) || DeletedNodeIds.Contains(Conn->Target);
+                    const bool bTargetPinGone = DeletedIds.Contains(Conn->TargetPin) || DeletedInputPinIds.Contains(Conn->TargetPin);
+                    return bTargetNodeGone || bTargetPinGone;
+                });
+            if (OutPin->Connections.Num() != Before)
+            {
+#if WITH_EDITOR
+                OutPin->Modify();
+#endif
+            }
+        }
+
+        // --- 3) Now remove the assets themselves from packages ---
+        for (const FString& DeletedHex : DeletedHexIds)
+        {
+            for (const TSoftObjectPtr<UArticyPackage>& Package : Packages)
+            {
+                if (!Package.IsValid()) continue;
+                Package->RemoveAssetById(DeletedHex);
+                // Do NOT 'break' here — same id could exist across multiple loaded packages in rare scenarios.
+            }
+        }
+
+        // --- 4) Rebuild code/assets (keeps DB caches & string tables consistent) ---
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("ObjectsDeleted: %d ids. Removed incoming edges to %d nodes / %d input pins, cleared %d output pins."),
+            DeletedHexIds.Num(), DeletedNodeIds.Num(), DeletedInputPinIds.Num(), DeletedOutputPinIds.Num());
+
         return;
     }
 
-    if (MessageType.Equals(TEXT("ChangedBasicProperty"))) {
+    if (MessageType.Equals(TEXT("ChangedBasicProperty")))
+    {
+        // ---- 1) Parse Id / Property / generic Value (as raw JSON) ----
+        FString TargetId;
+        FString PropName;
+
+        if (!Message->TryGetStringField(TEXT("Id"), TargetId) || TargetId.IsEmpty())
+        {
+            UE_LOG(LogTemp, Error, TEXT("ChangedBasicProperty: Missing 'Id'."));
+            return;
+        }
+        if (!Message->TryGetStringField(TEXT("Property"), PropName) || PropName.IsEmpty())
+        {
+            UE_LOG(LogTemp, Error, TEXT("ChangedBasicProperty: Missing 'Property'."));
+            return;
+        }
+
+        // Pull the raw 'Value' as a generic JSON value so we can coerce based on FProperty type
+        const TSharedPtr<FJsonValue>* RawValuePtr = Message->Values.Find(TEXT("Value"));
+        if (!RawValuePtr || !RawValuePtr->IsValid())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ChangedBasicProperty: 'Value' missing for Id=%s, Property=%s"), *TargetId, *PropName);
+            return;
+        }
+        const TSharedPtr<FJsonValue>& RawValue = *RawValuePtr;
+
+        // ---- 2) Locate target object from your packages ----
+        UArticyObject* TargetObj = nullptr;
+        for (const TSoftObjectPtr<UArticyPackage>& Pkg : Packages)
+        {
+            if (!Pkg.IsValid()) continue;
+            if (UArticyObject* Candidate = Pkg->GetAssetById(TargetId))
+            {
+                TargetObj = Candidate;
+                break;
+            }
+        }
+        if (!TargetObj)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ChangedBasicProperty: Object Id=%s not found in any loaded package."), *TargetId);
+            return;
+        }
+
+        // ---- 3) Find destination property by name on the object class ----
+        FProperty* DestProp = TargetObj->GetClass()->FindPropertyByName(FName(*PropName));
+        if (!DestProp)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ChangedBasicProperty: Property '%s' not found on class %s (Id=%s)."),
+                *PropName, *TargetObj->GetClass()->GetName(), *TargetId);
+            return;
+        }
+
+        // ---- 4) Helpers to coerce JSON -> native type and assign ----
+        auto SetStringLike = [&](FProperty* P, void* Addr, const FString& S)
+            {
+                if (FStrProperty* SP = CastField<FStrProperty>(P))
+                {
+                    SP->SetPropertyValue(Addr, S);
+                    return true;
+                }
+                if (FNameProperty* NP = CastField<FNameProperty>(P))
+                {
+                    NP->SetPropertyValue(Addr, FName(*S));
+                    return true;
+                }
+                if (FTextProperty* TP = CastField<FTextProperty>(P))
+                {
+                    TP->SetPropertyValue(Addr, FText::FromString(S));
+                    return true;
+                }
+                return false;
+            };
+
+        auto SetBoolLike = [&](FProperty* P, void* Addr, bool bVal)
+            {
+                if (FBoolProperty* BP = CastField<FBoolProperty>(P))
+                {
+                    BP->SetPropertyValue(Addr, bVal);
+                    return true;
+                }
+                return false;
+            };
+
+        auto SetNumericLike = [&](FProperty* P, void* Addr, const TSharedPtr<FJsonValue>& Jv)
+            {
+                if (FNumericProperty* NP = CastField<FNumericProperty>(P))
+                {
+                    // Try number first; if string, try to parse
+                    if (Jv->Type == EJson::Number)
+                    {
+                        if (NP->IsInteger())
+                        {
+                            int64 I = (int64)Jv->AsNumber();
+                            NP->SetIntPropertyValue(Addr, I);
+                        }
+                        else
+                        {
+                            double D = Jv->AsNumber();
+                            NP->SetFloatingPointPropertyValue(Addr, D);
+                        }
+                        return true;
+                    }
+                    else if (Jv->Type == EJson::String)
+                    {
+                        const FString S = Jv->AsString();
+                        if (NP->IsInteger())
+                        {
+                            int64 I = 0;
+                            LexFromString(I, *S);
+                            NP->SetIntPropertyValue(Addr, I);
+                        }
+                        else
+                        {
+                            double D = 0.0;
+                            LexFromString(D, *S);
+                            NP->SetFloatingPointPropertyValue(Addr, D);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+        auto TrySetStruct = [&](FStructProperty* SP, void* Addr, const TSharedPtr<FJsonValue>& Jv)
+            {
+                if (Jv->Type != EJson::Object) return false;
+                const TSharedPtr<FJsonObject> Obj = Jv->AsObject();
+                if (!Obj.IsValid()) return false;
+
+                UScriptStruct* SS = SP->Struct;
+                if (!SS) return false;
+
+                // FLinearColor {a,r,g,b}
+                if (SS == TBaseStructure<FLinearColor>::Get())
+                {
+                    FLinearColor Color;
+                    Obj->TryGetNumberField(TEXT("a"), Color.A);
+                    Obj->TryGetNumberField(TEXT("r"), Color.R);
+                    Obj->TryGetNumberField(TEXT("g"), Color.G);
+                    Obj->TryGetNumberField(TEXT("b"), Color.B);
+                    *reinterpret_cast<FLinearColor*>(Addr) = Color;
+                    return true;
+                }
+
+                // FVector2D {x,y}  (useful for Position / Size if mapped)
+                if (SS == TBaseStructure<FVector2D>::Get())
+                {
+                    double X = 0, Y = 0;
+                    Obj->TryGetNumberField(TEXT("x"), X);
+                    Obj->TryGetNumberField(TEXT("y"), Y);
+                    *reinterpret_cast<FVector2D*>(Addr) = FVector2D((float)X, (float)Y);
+                    return true;
+                }
+
+                // TODO: Handle other structs
+
+                return false;
+            };
+
+        auto AssignJsonToUProperty = [&](UObject* Obj, FProperty* P, const TSharedPtr<FJsonValue>& Jv) -> bool
+            {
+                void* ValueAddr = P->ContainerPtrToValuePtr<void>(Obj);
+
+                // 1) Strings / Names / Text
+                if (Jv->Type == EJson::String && SetStringLike(P, ValueAddr, Jv->AsString()))
+                    return true;
+
+                // 2) Numbers (int/float/double)
+                if (Jv->Type == EJson::Number && SetNumericLike(P, ValueAddr, Jv))
+                    return true;
+
+                // 3) Bool
+                if (Jv->Type == EJson::Boolean && SetBoolLike(P, ValueAddr, Jv->AsBool()))
+                    return true;
+
+                // 4) Structs we know how to parse (Color/Position/Size etc.)
+                if (FStructProperty* SP = CastField<FStructProperty>(P))
+                {
+                    if (TrySetStruct(SP, ValueAddr, Jv))
+                        return true;
+                }
+
+                // 5) Name/Text from non-string JSON (coerce)
+                if (FStrProperty* StrP = CastField<FStrProperty>(P))
+                {
+                    // Coerce anything to string for last resort
+                    FString S;
+                    if (Jv->Type == EJson::Number) { S = FString::SanitizeFloat(Jv->AsNumber()); }
+                    else if (Jv->Type == EJson::Boolean) { S = Jv->AsBool() ? TEXT("true") : TEXT("false"); }
+                    else if (Jv->Type == EJson::Object) { S = TEXT("<object>"); }
+                    else if (Jv->Type == EJson::Array) { S = TEXT("<array>"); }
+                    else                                 S = TEXT("");
+                    StrP->SetPropertyValue(ValueAddr, S);
+                    return true;
+                }
+
+                UE_LOG(LogTemp, Warning, TEXT("ChangedBasicProperty: Unsupported assignment for property '%s' on %s (JSON type=%d)."),
+                    *P->GetName(), *Obj->GetClass()->GetName(), (int)Jv->Type);
+                return false;
+            };
+
+        // ---- 5) Apply the change ----
+        if (!AssignJsonToUProperty(TargetObj, DestProp, RawValue))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ChangedBasicProperty: Failed to assign Value to '%s' (Id=%s)."),
+                *PropName, *TargetId);
+            return;
+        }
+
+#if WITH_EDITOR
+        // Notify editor systems if you’re in editor; otherwise omit
+        TargetObj->Modify();
+        FPropertyChangedEvent Ev(DestProp, EPropertyChangeType::ValueSet);
+        TargetObj->PostEditChangeProperty(Ev);
+#endif
+
+        TargetObj->MarkPackageDirty();
+
+        // If property changes affect graph/layout etc., refresh assets
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("ChangedBasicProperty: Set %s.%s for Id=%s"), *TargetObj->GetClass()->GetName(), *PropName, *TargetId);
         return;
     }
 
     if (MessageType.Equals(TEXT("ChangedLocalizableText")))
     {
-        FString LangId;
-        Message->TryGetStringField(TEXT("LanguageIso"), LangId);
+        // Value is an object: { "LId": "...", "Values": { "en": "..." , ... } }
+        const TSharedPtr<FJsonObject>* ValueObjPtr = nullptr;
+        if (!Message->TryGetObjectField(TEXT("Value"), ValueObjPtr) || !ValueObjPtr || !ValueObjPtr->IsValid())
+        {
+            UE_LOG(LogTemp, Error, TEXT("ChangedLocalizableText: 'Value' is missing or not an object."));
+            return;
+        }
+        const TSharedPtr<FJsonObject>& ValueObj = *ValueObjPtr;
 
+        // LId is the key for the text entry (e.g. "DFr_Awake.Text")
+        FString LId;
+        if (!ValueObj->TryGetStringField(TEXT("LId"), LId) || LId.IsEmpty())
+        {
+            UE_LOG(LogTemp, Error, TEXT("ChangedLocalizableText: 'LId' missing in 'Value'."));
+            return;
+        }
+
+        // Values is an object whose keys are language codes (en, de, fr, ...)
+        const TSharedPtr<FJsonObject>* ValuesObjPtr = nullptr;
+        if (!ValueObj->TryGetObjectField(TEXT("Values"), ValuesObjPtr) || !ValuesObjPtr || !ValuesObjPtr->IsValid())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("ChangedLocalizableText: 'Values' missing; nothing to update."));
+            return;
+        }
+        const TSharedPtr<FJsonObject>& ValuesObj = *ValuesObjPtr;
+
+        // Prepare current text map
         TMap<FString, FArticyTexts> UpdatedTexts = CurrentPackageDef.GetTexts();
 
-        FString Key = FString::Printf(TEXT("%s.%s"), *TechnicalName.ToString(), *Property);
-        UpdatedTexts[Key].Content[LangId].Text = Value;
+        // Ensure the key exists
+        FArticyTexts& TextsEntry = UpdatedTexts.FindOrAdd(LId);
 
-        const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
-        const FArticyLanguageDef LangDef = Languages[LangId];
-        TPair<FString, FArticyLanguageDef> Lang(LangId, LangDef);
+        // Update all provided languages
+        // ValuesObj->Values: TMap<FString, TSharedPtr<FJsonValue>>
+        for (const auto& Pair : ValuesObj->Values)
+        {
+            const FString LangId = Pair.Key; // e.g. "en"
+            FString NewText;
 
-        StringTableGenerator(StringTableFileName, LangId,
-            [&](StringTableGenerator* CsvOutput)
+            // Extract the string safely
+            if (Pair.Value.IsValid())
             {
-                return UArticyImportData::ProcessStrings(CsvOutput, UpdatedTexts, Lang);
-            });
+                if (Pair.Value->Type == EJson::String)
+                {
+                    NewText = Pair.Value->AsString();
+                }
+                else
+                {
+                    // Coerce to string just in case
+                    TSharedPtr<FJsonObject> AsObj;
+                    double AsNumber;
+                    bool AsBool;
+                    if (Pair.Value->TryGetString(NewText))
+                    {
+                        // ok
+                    }
+                    else if (Pair.Value->TryGetNumber(AsNumber))
+                    {
+                        NewText = FString::SanitizeFloat(AsNumber);
+                    }
+                    else if (Pair.Value->TryGetBool(AsBool))
+                    {
+                        NewText = AsBool ? TEXT("true") : TEXT("false");
+                    }
+                }
+            }
 
+            // Update the language content if we have a language code
+            if (!LangId.IsEmpty())
+            {
+                FArticyTextDef& LangEntry = TextsEntry.Content.FindOrAdd(LangId);
+                LangEntry.Text = NewText;
+
+                // Generate/update the string table for this language immediately
+                const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
+
+                const FArticyLanguageDef* LangDefPtr = Languages.Find(LangId);
+                if (!LangDefPtr)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("ChangedLocalizableText: Unknown language '%s' for LId '%s'."), *LangId, *LId);
+                    continue;
+                }
+
+                const FArticyLanguageDef LangDef = *LangDefPtr;
+                TPair<FString, FArticyLanguageDef> LangPair(LangId, LangDef);
+
+                StringTableGenerator(StringTableFileName, LangId,
+                    [&](StringTableGenerator* CsvOutput)
+                    {
+                        // Note: We pass the whole UpdatedTexts map so the CSV can be rebuilt consistently.
+                        return UArticyImportData::ProcessStrings(CsvOutput, UpdatedTexts, LangPair);
+                    });
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("ChangedLocalizableText: Empty language id for LId '%s'."), *LId);
+            }
+        }
+
+        // Finally reload localizer
         UArticyLocalizerSystem::Get()->Reload();
         return;
     }
 }
 
-void FArticyBridgeClientRunnable::ParseReceivedData(const TArray<uint8>& Data)
+void FArticyBridgeClientRunnable::ParseReceivedData(const TArray<uint8>&Data)
 {
     DataBuffer.Empty();
     DataBuffer.Append(Data);
@@ -543,7 +1346,7 @@ void FArticyBridgeClientRunnable::ParseReceivedData(const TArray<uint8>& Data)
     }
 }
 
-void FArticyBridgeClientRunnable::HandleServerMessage(const TSharedPtr<FJsonObject>& Msg)
+void FArticyBridgeClientRunnable::HandleServerMessage(const TSharedPtr<FJsonObject>&Msg)
 {
     // 1) Extract the Event number
     int32 EventId = 0;
@@ -628,7 +1431,7 @@ void FArticyBridgeClientRunnable::StopRunning()
     bShouldReconnect = false;
 }
 
-void UArticyBridgeClientCommands::StartBridgeConnection(const TArray<FString>& Args)
+void UArticyBridgeClientCommands::StartBridgeConnection(const TArray<FString>&Args)
 {
     FString Hostname;
     int32 Port = 0;
@@ -689,7 +1492,7 @@ bool UArticyBridgeClientCommands::IsBridgeRunning()
     return ClientRunnable.IsValid();
 }
 
-void UArticyBridgeClientCommands::GetCurrentBridgeTarget(FString& OutHost, int32& OutPort)
+void UArticyBridgeClientCommands::GetCurrentBridgeTarget(FString & OutHost, int32 & OutPort)
 {
     OutHost.Empty();
     OutPort = 0;

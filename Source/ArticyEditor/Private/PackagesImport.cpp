@@ -709,7 +709,7 @@ TSet<FString> FArticyPackageDefs::GetPackageNames() const
  *
  * @return An array of package definitions.
  */
-TArray<FArticyPackageDef> FArticyPackageDefs::GetPackages() const
+TArray<FArticyPackageDef>& FArticyPackageDefs::GetPackages()
 {
 	return Packages;
 }

@@ -436,7 +436,7 @@ public:
 	const FArticyGVInfo& GetGlobalVars() const { return GlobalVariables; }
 	const FADIHierarchy& GetHierarchy() const { return Hierarchy; }
 	FArticyObjectDefinitions& GetObjectDefs() { return ObjectDefinitions; }
-	const FArticyPackageDefs& GetPackageDefs() const { return PackageDefs; }
+	FArticyPackageDefs& GetPackageDefs() { return PackageDefs; }
 
 	TArray<TSoftObjectPtr<UArticyPackage>>& GetPackages() { return ImportedPackages; }
 	TArray<UArticyPackage*> GetPackagesDirect();
