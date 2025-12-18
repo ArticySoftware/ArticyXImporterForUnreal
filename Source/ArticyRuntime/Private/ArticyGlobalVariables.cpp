@@ -241,7 +241,7 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
     const FName Key = FName(*Name);
 
     // Check if we already have a clone
-    const auto Existing = OtherClones.Find(Key);
+    const auto& Existing = OtherClones.Find(Key);
     if (Existing && Existing->IsValid())
     {
         // If so, return it

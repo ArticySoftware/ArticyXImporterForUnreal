@@ -21,7 +21,7 @@ public:
 	
 	virtual TArray<FVector2D>& GetVertices()
 	{
-		static const auto PropName = FName("Vertices");
+		static const auto& PropName = FName("Vertices");
 		return GetProperty<TArray<FVector2D>>(PropName);
 	}
 

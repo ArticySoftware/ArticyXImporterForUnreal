@@ -67,7 +67,7 @@ namespace ArticyHelpers
 	static_assert(!std::is_const<decltype(x)>::value, #x " is const!"); \
 	{ const TArray<TSharedPtr<FJsonValue>>* items; \
 	if(json->TryGetArrayField(TEXT(#x), items)) \
-	for(const auto item : *items) \
+	for(const auto& item : *items) \
 	{ loopBody } }
 
 #define JSON_TRY_STRING_ARRAY(json, x) JSON_TRY_ARRAY(json, x, x.Add(item->AsString()); )

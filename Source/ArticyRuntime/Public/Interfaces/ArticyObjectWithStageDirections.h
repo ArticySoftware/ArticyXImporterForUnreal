@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithStageDirections")
 	virtual FText& GetStageDirections()
 	{
-		static const auto PropName = FName("StageDirections");
+		static const auto& PropName = FName("StageDirections");
 		return GetProperty<FText>(PropName);
 	}
 	

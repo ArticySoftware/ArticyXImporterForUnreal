@@ -115,8 +115,8 @@ protected:
 		check(Instance);
 
 		//push the value if we are in a new shadow level now
-		const auto storeLevel = GetStoreShadowLevel();
-		const auto shadowLevel = GetShadowLevel(Instance);
+		const auto& storeLevel = GetStoreShadowLevel();
+		const auto& shadowLevel = GetShadowLevel(Instance);
 		if(storeLevel > shadowLevel)
 		{																						
 			Instance->Shadows.Push(ArticyShadowState<ValueType>{storeLevel, Instance->Value});

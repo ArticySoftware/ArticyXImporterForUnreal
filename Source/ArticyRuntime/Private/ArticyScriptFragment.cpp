@@ -118,7 +118,7 @@ UArticyScriptCondition* UArticyCondition::GetCondition() const
     if (!Condition)
     {
         FName Expression = TEXT("Expression");
-        Condition = GetProp<UArticyScriptCondition*>(Expression);
+        Condition = static_cast<const IArticyReflectable*>(static_cast<const UArticyBaseObject*>(this))->GetProp<UArticyScriptCondition*>(Expression);
     }
 
     return Condition;
@@ -135,7 +135,7 @@ UArticyScriptInstruction* UArticyInstruction::GetInstruction() const
     if (!Instruction)
     {
         FName Expression = TEXT("Expression");
-        Instruction = GetProp<UArticyScriptInstruction*>(Expression);
+        Instruction = static_cast<const IArticyReflectable*>(static_cast<const UArticyBaseObject*>(this))->GetProp<UArticyScriptInstruction*>(Expression);
     }
 
     return Instruction;

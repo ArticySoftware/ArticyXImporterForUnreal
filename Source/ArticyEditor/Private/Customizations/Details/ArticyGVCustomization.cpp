@@ -8,6 +8,7 @@
 #include "DetailWidgetRow.h"
 #include "Delegates/Delegate.h"
 #include "ArticyEditorModule.h"
+#include "DetailLayoutBuilder.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Slate/GV/SArticyGlobalVariablesDebugger.h"
 #include "Runtime/Launch/Resources/Version.h"
@@ -43,7 +44,7 @@ void FArticyGVCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilde
 	IDetailCategoryBuilder& CategoryBuilder = DetailBuilder.EditCategory(TEXT("Default"));
 
 	// Hide all normal categories as we'll replace them with a custom UI
-	for (FName CatName : CategoryNames)
+	for (const FName& CatName : CategoryNames)
 	{
 		DetailBuilder.HideCategory(CatName);
 	}

@@ -18,7 +18,7 @@ class UArticyImportData;
  * The Settings object in the .json file.
  */
 USTRUCT()
-struct FADISettings
+struct FAdiSettings
 {
 	GENERATED_BODY()
 
@@ -98,7 +98,7 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Project")
 	FString TechnicalName;
 
-	void ImportFromJson(const TSharedPtr<FJsonObject> JsonRoot, FADISettings& Settings);
+	void ImportFromJson(const TSharedPtr<FJsonObject> JsonRoot, FAdiSettings& Settings);
 };
 
 /**
@@ -377,7 +377,7 @@ struct ARTICYEDITOR_API FArticyImportDataStruct
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
-	FADISettings Settings;
+	FAdiSettings Settings;
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyProjectDef Project;
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
@@ -424,8 +424,8 @@ public:
 	bool ImportFromJson(const UArticyArchiveReader& Archive, const TSharedPtr<FJsonObject> RootObject);
 
 	const static TWeakObjectPtr<UArticyImportData> GetImportData();
-	const FADISettings& GetSettings() const { return Settings; }
-	FADISettings& GetSettings() { return Settings; }
+	const FAdiSettings& GetSettings() const { return Settings; }
+	FAdiSettings& GetSettings() { return Settings; }
 	const FArticyProjectDef& GetProject() const { return Project; }
 	const FArticyGVInfo& GetGlobalVars() const { return GlobalVariables; }
 	const FADIHierarchy& GetHierarchy() const { return Hierarchy; }
@@ -468,7 +468,7 @@ private:
 	friend class FArticyEditorFunctionLibrary;
 
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
-	FADISettings Settings;
+	FAdiSettings Settings;
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyProjectDef Project;
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
@@ -491,6 +491,6 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Imported")
 	TMap<FArticyId, FArticyIdArray> ParentChildrenCache;
 
-	void ImportAudioAssets(const FString& BaseContentDir, const FString& SubDir);
+	void ImportAudioAssets(const FString& BaseContentDir);
 	int ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
 };

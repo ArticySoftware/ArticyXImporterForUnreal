@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithShortId")
 	virtual int32& GetShortId()
 	{
-		static const auto PropName = FName("ShortId");
+		static const auto& PropName = FName("ShortId");
 		return GetProperty<int32>(PropName);
 	}
 

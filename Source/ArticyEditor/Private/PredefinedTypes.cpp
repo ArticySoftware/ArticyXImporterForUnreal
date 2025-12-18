@@ -38,7 +38,7 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Add(TEXT("id"), PREDEFINE_TYPE(FArticyId));
 	Types.Add(TEXT("string"), PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; }));
 
-	const auto TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
+	const auto& TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
 		{
 			if (Json->Type == EJson::String)
 			{
@@ -249,97 +249,242 @@ FString CreateOpenTag(const TArray<TagInfo>& currentTags)
  */
 FString ConvertUnityMarkupToUnreal(const FString& Input)
 {
-	// Updated pattern to match more complex tags with attributes
+	// Regex pattern explanation:
+	//   - Group 1: Matches closing tag names (e.g., </i>)
+	//   - Group 2: Matches opening tag names (e.g., <i>)
+	//   - Group 3: Matches any attributes inside the opening tag (if present)
 	static FRegexPattern Pattern(TEXT("<\\/(.+?)>|<(\\w+)([^>]*?)>"));
+	FRegexMatcher Matcher(Pattern, Input);
 
-	// Create a matcher to search the input
-	FRegexMatcher myMatcher(Pattern, Input);
+	// If no tags are found, return the input unchanged.
+	if (!Matcher.FindNext())
+	{
+		return Input;
+	}
 
-	// Check to see if there's any matches at all
-	bool anyMatches = myMatcher.FindNext();
+	FString Output;
+	TArray<TagInfo> CurrentTags;
+	int LastPosition = 0;
 
-	// If not, just return the input string
-	if (!anyMatches) { return Input; }
-
-	// Create a buffer to hold the output
-	FString strings = "";
-
-	// Run through matches
-	TArray<TagInfo> currentTags;
-	int last = 0;
 	do
 	{
-		// Get bounds of match
-		int start = myMatcher.GetMatchBeginning();
-		int end = myMatcher.GetMatchEnding();
+		int Start = Matcher.GetMatchBeginning();
+		int End = Matcher.GetMatchEnding();
 
-		// Add all text preceding the match to the output
-		strings += (Input.Mid(last, start - last));
+		// Append any text preceding the current tag.
+		Output += Input.Mid(LastPosition, Start - LastPosition);
 
-		// Check if we're dealing with a start tag or an end tag
-		FString tagName = myMatcher.GetCaptureGroup(1);
-		if (tagName.Len() > 0) {  // Handle start tags
-			// Add to our list of open tags
-			FString value = myMatcher.GetCaptureGroup(3);
-			TagInfo info = TagInfo(tagName, value);
-			currentTags.Add(info);
-
-			// If it's not a dummy tag, open it in Unreal format
-			if (!info.dummy)
+		// Determine if this match is an opening tag or a closing tag.
+		FString OpenTagName = Matcher.GetCaptureGroup(2); // Opening tag name (if any)
+		if (OpenTagName.Len() > 0)
+		{
+			// It's an opening tag.
+			FString Attributes = Matcher.GetCaptureGroup(3);
+			// Remove any leading '=' if present.
+			if (Attributes.StartsWith(TEXT("=")))
 			{
-				strings += CreateOpenTag(currentTags);
+				Attributes = Attributes.Mid(1);
+			}
+
+			TagInfo NewTag(OpenTagName, Attributes);
+			CurrentTags.Add(NewTag);
+
+			// If not a dummy tag, output the corresponding Unreal open tag.
+			if (!NewTag.dummy)
+			{
+				Output += CreateOpenTag(CurrentTags);
 			}
 		}
-		else {  // Handle closing tags
-			if (currentTags.Num() == 0)
+		else
+		{
+			// It's a closing tag.
+			FString ClosingTagName = Matcher.GetCaptureGroup(1);
+
+			// If no tags are open, we have a syntax error.
+			if (CurrentTags.Num() == 0)
 			{
-				// Syntax issue, revert to original
 				return Input;
 			}
 
-			// Remove the last opened tag
-			auto popped = currentTags.Pop();
-
-			// If it's not a dummy tag, close it in Unreal format
-			if (!popped.dummy)
+			// Check if the closing tag matches the most recent open tag.
+			TagInfo LastTag = CurrentTags.Last();
+			if (LastTag.tagName != ClosingTagName)
 			{
-				strings += TEXT("</>");
+				return Input;
 			}
 
-			// Reopen any remaining tags in the correct order
-			if (currentTags.Num() > 0)
+			// Pop the matching tag from our stack.
+			CurrentTags.Pop();
+
+			// If the popped tag is not a dummy tag, output the Unreal closing tag.
+			if (!LastTag.dummy)
 			{
-				strings += CreateOpenTag(currentTags);
+				Output += TEXT("</>");
+			}
+
+			// Reopen any still-open tags to maintain correct nested formatting.
+			if (CurrentTags.Num() > 0)
+			{
+				Output += CreateOpenTag(CurrentTags);
 			}
 		}
 
-		last = end;
+		LastPosition = End;
 
-	} while (myMatcher.FindNext());
+	} while (Matcher.FindNext());
 
-	// Add any remaining text after the last match
-	if (last != Input.Len())
+	// Append any remaining text after the last tag.
+	if (LastPosition < Input.Len())
 	{
-		strings += Input.Mid(last, Input.Len() - last);
+		Output += Input.Mid(LastPosition);
 	}
 
-	// Create the final result string
-	FString result = strings;
+	// Decode any HTML entities and return the final result.
+	return DecodeHtmlEntities(Output);
+}
 
-	// Static map for replacing HTML entities
-	static TMap<FString, FString> replacements = {
+FString DecodeHtmlEntities(const FString& Input)
+{
+    FString DecodedString = Input;
+
+    // 1. Replace standard named HTML entities
+	static const TMap<FString, FString> HtmlEntities = {
+		// Basic entities
 		{TEXT("&lt;"), TEXT("<")},
 		{TEXT("&gt;"), TEXT(">")},
+		{TEXT("&amp;"), TEXT("&")},
 		{TEXT("&quot;"), TEXT("\"")},
-		{TEXT("&apos;"), TEXT("\"")}
+		{TEXT("&apos;"), TEXT("'")},
+		{TEXT("&nbsp;"), TEXT("\u00A0")}, // Non-breaking space
+
+		// Currency symbols
+		{TEXT("&cent;"), TEXT("\u00A2")}, // ¢
+		{TEXT("&pound;"), TEXT("\u00A3")}, // £
+		{TEXT("&yen;"), TEXT("\u00A5")}, // ¥
+		{TEXT("&euro;"), TEXT("\u20AC")}, // €
+		{TEXT("&copy;"), TEXT("\u00A9")}, // ©
+		{TEXT("&reg;"), TEXT("\u00AE")}, // ®
+
+		// Math symbols
+		{TEXT("&times;"), TEXT("\u00D7")}, // ×
+		{TEXT("&divide;"), TEXT("\u00F7")}, // ÷
+		{TEXT("&plusmn;"), TEXT("\u00B1")}, // ±
+		{TEXT("&le;"), TEXT("\u2264")}, // ≤
+		{TEXT("&ge;"), TEXT("\u2265")}, // ≥
+	    {TEXT("&ne;"), TEXT("\u2260")}, // ≠
+	    {TEXT("&infin;"), TEXT("\u221E")}, // ∞
+
+	    // Greek letters
+	    {TEXT("&alpha;"), TEXT("\u03B1")}, // α
+	    {TEXT("&beta;"), TEXT("\u03B2")}, // β
+	    {TEXT("&gamma;"), TEXT("\u03B3")}, // γ
+	    {TEXT("&delta;"), TEXT("\u03B4")}, // δ
+	    {TEXT("&epsilon;"), TEXT("\u03B5")}, // ε
+	    {TEXT("&pi;"), TEXT("\u03C0")}, // π
+	    {TEXT("&sigma;"), TEXT("\u03C3")}, // σ
+	    {TEXT("&omega;"), TEXT("\u03C9")}, // ω
+
+	    // Arrows
+	    {TEXT("&larr;"), TEXT("\u2190")}, // ←
+	    {TEXT("&uarr;"), TEXT("\u2191")}, // ↑
+	    {TEXT("&rarr;"), TEXT("\u2192")}, // →
+	    {TEXT("&darr;"), TEXT("\u2193")}, // ↓
+	    {TEXT("&harr;"), TEXT("\u2194")}, // ↔
+		{TEXT("&rArr;"), TEXT("\u21D2")}, // ⇒
+		{TEXT("&lArr;"), TEXT("\u21D0")}, // ⇐
+
+		// Punctuation
+		{TEXT("&hellip;"), TEXT("\u2026")}, // …
+		{TEXT("&middot;"), TEXT("\u00B7")}, // ·
+		{TEXT("&laquo;"), TEXT("\u00AB")}, // «
+		{TEXT("&raquo;"), TEXT("\u00BB")}, // »
+		{TEXT("&ldquo;"), TEXT("\u201C")}, // “
+		{TEXT("&rdquo;"), TEXT("\u201D")}, // ”
+		{TEXT("&lsquo;"), TEXT("\u2018")}, // ‘
+		{TEXT("&rsquo;"), TEXT("\u2019")}, // ’
+		{TEXT("&ndash;"), TEXT("\u2013")}, // –
+		{TEXT("&mdash;"), TEXT("\u2014")}, // —
+
+		// Fractions
+		{TEXT("&frac14;"), TEXT("\u00BC")}, // ¼
+		{TEXT("&frac12;"), TEXT("\u00BD")}, // ½
+		{TEXT("&frac34;"), TEXT("\u00BE")}, // ¾
+
+		// Miscellaneous symbols
+		{TEXT("&para;"), TEXT("\u00B6")}, // ¶
+		{TEXT("&sect;"), TEXT("\u00A7")}, // §
+		{TEXT("&dagger;"), TEXT("\u2020")}, // †
+		{TEXT("&Dagger;"), TEXT("\u2021")}, // ‡
+		{TEXT("&bull;"), TEXT("\u2022")}, // •
+		{TEXT("&trade;"), TEXT("\u2122")}, // ™
+		{TEXT("&spades;"), TEXT("\u2660")}, // ♠
+		{TEXT("&clubs;"), TEXT("\u2663")}, // ♣
+		{TEXT("&hearts;"), TEXT("\u2665")}, // ♥
+		{TEXT("&diams;"), TEXT("\u2666")}, // ♦
 	};
+	
+    for (const auto& EntityPair : HtmlEntities)
+    {
+        DecodedString = DecodedString.Replace(*EntityPair.Key, *EntityPair.Value);
+    }
 
-	// Replace each occurrence of HTML entities in the final result
-	for (const TPair<FString, FString>& pair : replacements)
-	{
-		result = result.Replace(*pair.Key, *pair.Value);
-	}
+    // 2. Decode numeric character references (decimal and hex)
+    static const FRegexPattern NumericEntityPattern(TEXT(R"(&#(x[0-9A-Fa-f]+|\d+);)"));
 
-	// Return the final result
-	return result;
+    FRegexMatcher Matcher(NumericEntityPattern, DecodedString);
+
+    FString FinalString;
+    int32 LastPosition = 0;
+
+    while (Matcher.FindNext())
+    {
+        // Append text before the entity
+        FinalString += DecodedString.Mid(LastPosition, Matcher.GetMatchBeginning() - LastPosition);
+
+        // Extract entity value
+        FString Entity = Matcher.GetCaptureGroup(1);
+        int32 CodePoint = 0;
+
+        if (Entity.StartsWith(TEXT("x")) || Entity.StartsWith(TEXT("X")))
+        {
+            // Hexadecimal numeric entity
+            FString HexPart = Entity.Mid(1);
+            CodePoint = FParse::HexNumber(*HexPart);
+        }
+        else
+        {
+            // Decimal numeric entity
+            CodePoint = FCString::Atoi(*Entity);
+        }
+
+        // Convert Unicode code point to TCHAR
+        if (CodePoint > 0)
+        {
+            if (CodePoint <= 0xFFFF) // Basic Multilingual Plane (BMP)
+            {
+                FinalString.AppendChar(static_cast<TCHAR>(CodePoint));
+            }
+            else
+            {
+                // Convert code point outside BMP to UTF-16 surrogate pair
+                int32 HighSurrogate = ((CodePoint - 0x10000) >> 10) + 0xD800;
+                int32 LowSurrogate = ((CodePoint - 0x10000) & 0x3FF) + 0xDC00;
+
+                FinalString.AppendChar(static_cast<TCHAR>(HighSurrogate));
+                FinalString.AppendChar(static_cast<TCHAR>(LowSurrogate));
+            }
+        }
+
+        // Update last position
+        LastPosition = Matcher.GetMatchEnding();
+    }
+
+    // Append remaining text after the last entity
+    if (LastPosition < DecodedString.Len())
+    {
+        FinalString += DecodedString.Mid(LastPosition);
+    }
+
+    return FinalString;
 }
+

@@ -24,7 +24,7 @@ public:
     UArticyJSONFactory();
 
     /** Destructor for UArticyJSONFactory. */
-    virtual ~UArticyJSONFactory();
+    virtual ~UArticyJSONFactory() override;
 
     /**
      * Determines if the factory can import the specified file.
@@ -32,14 +32,14 @@ public:
      * @param Filename The name of the file to check.
      * @return true if the factory can import the file, false otherwise.
      */
-    bool FactoryCanImport(const FString& Filename) override;
+    virtual bool FactoryCanImport(const FString& Filename) override;
 
     /**
      * Resolves the class supported by this factory.
      *
      * @return The class supported by this factory.
      */
-    UClass* ResolveSupportedClass() override;
+    virtual UClass* ResolveSupportedClass() override;
 
     /**
      * Creates an object from the specified file.
@@ -54,7 +54,7 @@ public:
      * @param bOutOperationCanceled Output flag indicating if the operation was canceled.
      * @return The created object.
      */
-    UObject* FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled) override;
+    virtual UObject* FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled) override;
 
     // FReimportHandler
 
@@ -65,7 +65,7 @@ public:
      * @param OutFilenames The list of filenames for reimporting.
      * @return true if the factory can reimport the object, false otherwise.
      */
-    bool CanReimport(UObject* Obj, TArray<FString>& OutFilenames) override;
+    virtual bool CanReimport(UObject* Obj, TArray<FString>& OutFilenames) override;
 
     /**
      * Sets the reimport paths for the specified object.
@@ -73,7 +73,7 @@ public:
      * @param Obj The object to set reimport paths for.
      * @param NewReimportPaths The new reimport paths.
      */
-    void SetReimportPaths(UObject* Obj, const TArray<FString>& NewReimportPaths) override;
+    virtual void SetReimportPaths(UObject* Obj, const TArray<FString>& NewReimportPaths) override;
 
     /**
      * Reimports the specified object.
@@ -81,7 +81,7 @@ public:
      * @param Obj The object to reimport.
      * @return The result of the reimport operation.
      */
-    EReimportResult::Type Reimport(UObject* Obj) override;
+    virtual EReimportResult::Type Reimport(UObject* Obj) override;
     //~FReimportHandler
 
 private:

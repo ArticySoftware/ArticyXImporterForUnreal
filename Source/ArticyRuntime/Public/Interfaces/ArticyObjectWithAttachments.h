@@ -24,7 +24,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithAttachments")
 	virtual TArray<FArticyId>& GetAttachmentIds()
 	{
-		static const auto PropName = FName("Attachments");
+		static const auto& PropName = FName("Attachments");
 		return GetProperty<TArray<FArticyId>>(PropName);
 	}
 

@@ -17,7 +17,7 @@
 void PackagesGenerator::GenerateAssets(UArticyImportData* Data)
 {
 	// Generate new Articy objects
-	const auto ArticyPackageDefs = Data->GetPackageDefs();
+	const auto& ArticyPackageDefs = Data->GetPackageDefs();
 	ArticyPackageDefs.GenerateAssets(Data);
 }
 

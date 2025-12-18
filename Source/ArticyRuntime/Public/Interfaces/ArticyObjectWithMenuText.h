@@ -28,7 +28,7 @@ public:
 		return GetStringText(Cast<UObject>(this), PropName);
 	}
 
-	virtual const FText GetMenuText() const
+	virtual FText GetMenuText() const
 	{
 		return const_cast<IArticyObjectWithMenuText*>(this)->GetMenuText();
 	}
@@ -38,7 +38,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithMenuText")
 	virtual FText& SetMenuText(UPARAM(ref) const FText& MenuText)
 	{
-		static const auto PropName = FName("MenuText");
+		static const auto& PropName = FName("MenuText");
 		return GetProperty<FText>(PropName) = MenuText;
 	}
 };

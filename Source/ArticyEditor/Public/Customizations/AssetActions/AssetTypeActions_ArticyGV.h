@@ -13,7 +13,7 @@
  *
  * This class provides the functionality to manage and display Articy global variable assets within the Unreal Editor.
  */
-class FAssetTypeActions_ArticyGV : public FAssetTypeActions_Base
+class FAssetTypeActions_ArticyGV final : public FAssetTypeActions_Base
 {
 public:
 	/**

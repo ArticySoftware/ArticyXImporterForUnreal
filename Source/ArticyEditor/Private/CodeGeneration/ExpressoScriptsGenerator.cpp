@@ -20,7 +20,7 @@ void GenerateMethodInterface(CodeFileGenerator* header, const UArticyImportData*
 	header->UInterface(CodeGenerator::GetMethodsProviderClassname(Data, true), "Blueprintable", "", [&]
 		{
 			header->Line("public:", false, true, -1);
-			for (const auto method : Data->GetUserMethods())
+			for (const auto& method : Data->GetUserMethods())
 			{
 				auto returnOrEmpty = method.GetCPPDefaultReturn();
 				if (!returnOrEmpty.IsEmpty())
@@ -63,7 +63,7 @@ void GenerateUserMethods(CodeFileGenerator* header, const UArticyImportData* Dat
 	header->Line();
 
 	auto iClass = "I" + CodeGenerator::GetMethodsProviderClassname(Data, true);
-	for (const auto method : Data->GetUserMethods())
+	for (const auto& method : Data->GetUserMethods())
 	{
 		const bool bIsVoid = method.GetCPPReturnType() == "void";
 		header->Method(method.GetCPPReturnType(), method.Name, method.GetCPPParameters(), [&]
@@ -111,7 +111,7 @@ void GenerateExpressoScripts(CodeFileGenerator* header, const UArticyImportData*
 	 * See declaration of GlobalVariableRef for details.
 	 */
 	auto gvTypeName = CodeGenerator::GetGlobalVarsClassname(Data);
-	for (const auto ns : Data->GetGlobalVars().Namespaces)
+	for (const auto& ns : Data->GetGlobalVars().Namespaces)
 		header->Variable("mutable TWeakObjectPtr<" + ns.CppTypename + ">", ns.Namespace, "nullptr");
 	header->Variable("mutable TWeakObjectPtr<" + gvTypeName + ">", "ActiveGlobals", "nullptr");
 
@@ -120,7 +120,7 @@ void GenerateExpressoScripts(CodeFileGenerator* header, const UArticyImportData*
 		{
 			header->Variable("auto", "gv", FString::Printf(TEXT("Cast<%s>(GV)"), *gvTypeName));
 			header->Comment("Initialize all GV namespace references (or nullify if we're setting to nullptr)");
-			for (const auto ns : Data->GetGlobalVars().Namespaces)
+			for (const auto& ns : Data->GetGlobalVars().Namespaces)
 				header->Line(FString::Printf(TEXT("%s = gv ? gv->%s : nullptr;"), *ns.Namespace, *ns.Namespace));
 
 			header->Comment("Store GVs");
@@ -153,8 +153,8 @@ void GenerateExpressoScripts(CodeFileGenerator* header, const UArticyImportData*
 	header->Line("#endif");
 	header->Method("", CodeGenerator::GetExpressoScriptsClassname(Data), "", [&]
 		{
-			const auto fragments = Data->GetScriptFragments();
-			for (auto script : fragments)
+			const auto& fragments = Data->GetScriptFragments();
+			for (auto& script : fragments)
 			{
 				if (script.OriginalFragment.IsEmpty())
 					continue;
@@ -208,7 +208,7 @@ void ExpressoScriptsGenerator::GenerateCode(const UArticyImportData* Data, FStri
 	// (if true, we use a different naming to allow something like overloaded functions)
 	bool bCreateBlueprintableUserMethods = UArticyPluginSettings::Get()->bCreateBlueprintTypeForScriptMethods;
 
-	const auto filename = GetFilename(Data);
+	const auto& filename = GetFilename(Data);
 	CodeFileGenerator(filename, true, [&](CodeFileGenerator* header)
 		{
 			header->Line("#include \"CoreUObject.h\"");
@@ -224,7 +224,7 @@ void ExpressoScriptsGenerator::GenerateCode(const UArticyImportData* Data, FStri
 
 			header->Line();
 
-			const auto className = CodeGenerator::GetExpressoScriptsClassname(Data);
+			const auto& className = CodeGenerator::GetExpressoScriptsClassname(Data);
 			header->Class(className + " : public UArticyExpressoScripts", "", true, [&]
 				{
 					// If script support is disabled, the class remains empty

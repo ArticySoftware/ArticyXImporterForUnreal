@@ -42,7 +42,7 @@ UArticyObject* FArticyShadowableObject::Get(const IShadowStateManager* ShadowMan
 	if (bForceUnshadowed)
 		return ShadowCopies[0].GetObject();
 
-	const auto ShadowLvl = ShadowManager->GetShadowLevel();
+	const auto& ShadowLvl = ShadowManager->GetShadowLevel();
 	FArticyObjectShadow* info = ShadowCopies.FindByPredicate([&](const FArticyObjectShadow& item)
 		{
 			return item.ShadowLevel == ShadowLvl;
@@ -177,6 +177,36 @@ UArticyDatabase::UArticyDatabase()
 void UArticyDatabase::Init()
 {
 	LoadDefaultPackages();
+}
+
+/**
+ * Explicit initialize.
+ * @param WorldContext any UObject in the target world
+ */
+void UArticyDatabase::Initialize(const UObject* WorldContext)
+{
+	// this will clone & Init internally
+	UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+	if (DB && !DB->bIsInitialized)
+	{
+		DB->bIsInitialized = true;
+		UE_LOG(LogArticyRuntime, Verbose, TEXT("ArticyDatabase initialized for world %s"), *WorldContext->GetName());
+	}
+}
+
+/**
+ * Explicit deinitialize.
+ * @param WorldContext any UObject in the target world
+ */
+void UArticyDatabase::Deinitialize(const UObject* WorldContext)
+{
+	UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+	if (!DB || !DB->bIsInitialized)
+		return;
+
+	DB->UnloadDatabase();
+	DB->bIsInitialized = false;
+	UE_LOG(LogArticyRuntime, Verbose, TEXT("ArticyDatabase deinitialized"));
 }
 
 /**
@@ -469,7 +499,7 @@ bool UArticyDatabase::UnloadPackage(const FString PackageName, const bool bQuick
 			 *  Only unload if it is not contained in any other package
 			*/
 			bool bIsAssetContained = false;
-			for (FString LoadedPackageName : LoadedPackages)
+			for (const FString& LoadedPackageName : LoadedPackages)
 			{
 				if (!LoadedPackageName.Equals(Package->Name))
 				{

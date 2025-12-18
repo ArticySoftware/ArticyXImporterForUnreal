@@ -7,7 +7,7 @@ var class_u_articy_flow_player =
     [ "GetAvailableBranches", "d4/d8d/class_u_articy_flow_player.html#afbccc6dd8489a880e4dc8237f5328141", null ],
     [ "GetCursor", "d4/d8d/class_u_articy_flow_player.html#a4bf2733272092a6fb335827f17d4d756", null ],
     [ "GetGVs", "d4/d8d/class_u_articy_flow_player.html#a1869d9d7839bfcb8f3c02046041ad33c", null ],
-    [ "GetMethodsProvider", "d4/d8d/class_u_articy_flow_player.html#a0c0f0fa850d97a132847c36b7c4fbabf", null ],
+    [ "GetMethodsProvider", "d4/d8d/class_u_articy_flow_player.html#a277cf4a06248d6b168a704c12c85363c", null ],
     [ "GetStartNode", "d4/d8d/class_u_articy_flow_player.html#ab8d347f5d7c869f7ba925ae5f0e9d6a9", null ],
     [ "IgnoresInvalidBranches", "d4/d8d/class_u_articy_flow_player.html#a8deefd09a86bb2291ee53b8f9116c280", null ],
     [ "Play", "d4/d8d/class_u_articy_flow_player.html#a3175461fc376694b601eb5d95e61bd4f", null ],

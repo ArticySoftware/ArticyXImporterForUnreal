@@ -169,9 +169,9 @@ UArticyObject* UArticyObject::FindAsset(const FArticyId& Id)
 		AssetRegistryModule.Get().GetAssetsByClass(UArticyPackage::StaticClass()->GetFName(), AssetData, true);
 #endif
 
-		for (const auto ArticyPackage : AssetData)
+		for (const auto& ArticyPackage : AssetData)
 		{
-			const auto Package = Cast<UArticyPackage>(ArticyPackage.GetAsset());
+			const auto& Package = Cast<UArticyPackage>(ArticyPackage.GetAsset());
 
 			if (Package != nullptr)
 			{
@@ -249,9 +249,9 @@ UArticyObject* UArticyObject::FindAsset(const FString& TechnicalName)// MM_CHANG
 #else
 		AssetRegistryModule.Get().GetAssetsByClass(UArticyPackage::StaticClass()->GetFName(), AssetData, true);
 #endif
-		for (const auto ArticyPackage : AssetData)
+		for (const auto& ArticyPackage : AssetData)
 		{
-			const auto Package = Cast<UArticyPackage>(ArticyPackage.GetAsset());
+			const auto& Package = Cast<UArticyPackage>(ArticyPackage.GetAsset());
 
 			if (Package != nullptr)
 			{

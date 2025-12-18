@@ -216,7 +216,7 @@ const FArticyId* UserInterfaceHelperFunctions::GetTargetID(const UArticyObject* 
 		return nullptr;
 	}
 
-	static const auto PropName = FName("Target");
+	static const auto& PropName = FName("Target");
 	FProperty* Prop = ArticyObject->GetProperty(PropName);
 
 	if (!Prop)

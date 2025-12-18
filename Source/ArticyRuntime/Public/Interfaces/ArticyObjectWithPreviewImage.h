@@ -23,7 +23,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithPreviewImage")
 	virtual UArticyPreviewImage*& GetPreviewImage()
 	{
-		static const auto PropName = FName("PreviewImage");
+		static const auto& PropName = FName("PreviewImage");
 		return GetProperty<UArticyPreviewImage*>(PropName);
 	}
 

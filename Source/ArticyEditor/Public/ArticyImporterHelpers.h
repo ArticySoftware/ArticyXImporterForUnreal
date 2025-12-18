@@ -10,7 +10,6 @@
 #include "AssetRegistryModule.h"
 #endif
 #include "UObject/Package.h"
-#include "ObjectTools.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Interfaces/ArticyObjectWithPosition.h"
 #include "Interfaces/ArticyNode.h"
@@ -33,7 +32,7 @@ namespace ArticyImporterHelpers
 	 * @param Name The name of the package to find or create.
 	 * @return A pointer to the found or created package.
 	 */
-	inline UPackage* FindOrCreatePackage(const FString Name)
+	inline UPackage* FindOrCreatePackage(const FString& Name)
 	{
 		const FString PackageName = ArticyHelpers::GetArticyGeneratedFolder() / Name;
 
@@ -60,10 +59,8 @@ namespace ArticyImporterHelpers
 	 * @param BaseClass The base class to use for the search.
 	 * @return A pointer to the found class, or nullptr if not found.
 	 */
-	inline UClass* RetrieveClass(const FString ClassName, const FString ModuleName = "", UClass* BaseClass = UArticyObject::StaticClass())
+	inline UClass* RetrieveClass(const FString& ClassName, const FString& ModuleName = "", UClass* BaseClass = UArticyObject::StaticClass())
 	{
-		UClass* Result = nullptr;
-
 		if (!ModuleName.IsEmpty())
 		{
 			auto FullClassName = FString::Printf(TEXT("/Script/%s.%s"), *ModuleName, *ClassName);
@@ -71,7 +68,7 @@ namespace ArticyImporterHelpers
 		}
 
 		FString FullClassName = FString::Printf(TEXT("/Script/%s.%s"), TEXT("ArticyRuntime"), *ClassName);
-		Result = ConstructorHelpersInternal::FindOrLoadClass(FullClassName, BaseClass);
+		UClass* Result = ConstructorHelpersInternal::FindOrLoadClass(FullClassName, BaseClass);
 
 		if (Result != nullptr)
 		{
@@ -106,11 +103,10 @@ namespace ArticyImporterHelpers
 		const auto FileName = (SubFolder.IsEmpty() ? ActualAssetName : SubFolder / ActualAssetName).Replace(TEXT(" "), TEXT("_"));
 
 		//auto FullClassName = FString::Printf(TEXT("Class'/Script/%s.%s'"), ModuleName, ClassName);
-		auto UClass = RetrieveClass(ClassName, ModuleName, AssetType::StaticClass());
 
-		if (UClass)
+		if (auto UClass = RetrieveClass(ClassName, ModuleName, AssetType::StaticClass()))
 		{
-			auto AssetPackage = ArticyImporterHelpers::FindOrCreatePackage(FileName);
+			auto AssetPackage = FindOrCreatePackage(FileName);
 			EObjectFlags Flags = RF_Public | RF_Standalone;
 
 			// If this asset is flagged as MustCreate...
@@ -184,8 +180,7 @@ namespace ArticyImporterHelpers
 		const auto FileName = ActualAssetName.Replace(TEXT(" "), TEXT("_"));
 
 		auto FullClassName = FString::Printf(TEXT("Class'/Script/%s.%s'"), ModuleName, ClassName);
-		auto UClass = ConstructorHelpersInternal::FindOrLoadClass(FullClassName, AssetType::StaticClass());
-		if (UClass)
+		if (auto UClass = ConstructorHelpersInternal::FindOrLoadClass(FullClassName, AssetType::StaticClass()))
 		{
 			// only public, not standalone, since the assets are bound to their outers
 			EObjectFlags Flags = RF_Public;

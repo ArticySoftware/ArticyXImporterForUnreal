@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithZIndex")
 	virtual float& GetZIndex()
 	{
-		static const auto PropName = FName("ZIndex");
+		static const auto& PropName = FName("ZIndex");
 		return GetProperty<float>(PropName);
 	}
 

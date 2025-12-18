@@ -22,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithTransform")
 	virtual UArticyTransformation*& GetTransform()
 	{
-		static const auto PropName = FName("Transform");
+		static const auto& PropName = FName("Transform");
 		return GetProperty<UArticyTransformation*>(PropName);
 	}
 

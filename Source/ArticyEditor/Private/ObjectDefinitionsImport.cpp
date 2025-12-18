@@ -52,7 +52,7 @@ void FArticyTemplateDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject
  */
 void FArticyTemplateDef::GenerateFeaturesDefs(CodeFileGenerator& header, const UArticyImportData* Data) const
 {
-    for (const auto feat : Features)
+    for (const auto& feat : Features)
         feat.GenerateDefCode(header, Data);
 }
 
@@ -64,7 +64,7 @@ void FArticyTemplateDef::GenerateFeaturesDefs(CodeFileGenerator& header, const U
  */
 void FArticyTemplateDef::GenerateProperties(CodeFileGenerator& header, const UArticyImportData* Data) const
 {
-    for (const auto feat : Features)
+    for (const auto& feat : Features)
         feat.GeneratePropertyCode(header, Data);
 }
 
@@ -95,7 +95,7 @@ void FArticyTemplateDef::GatherScripts(const TSharedPtr<FJsonObject> Values, UAr
  */
 void FArticyTemplateDef::InitializeModel(UArticyPrimitive* Model, const FString& Path, const TSharedPtr<FJsonObject> Values, const UArticyImportData* Data, const FString& PackageName) const
 {
-    for (const auto feat : Features)
+    for (const auto& feat : Features)
     {
         static const TSharedPtr<FJsonObject>* featureJson;
         if (Values->TryGetObjectField(feat.GetTechnicalName(), featureJson))
@@ -139,7 +139,7 @@ void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, 
         {
             DefType = EObjectDefType::Enum;
             ArticyType.IsEnum = true;
-            for (const auto json : (*obj)->Values)
+            for (const auto& json : (*obj)->Values)
             {
                 FArticyEnumValue val;
                 val.ImportFromJson(json);
@@ -221,7 +221,7 @@ void FArticyObjectDef::GenerateCode(CodeFileGenerator& header, const UArticyImpo
                 }
 
                 //declare all properties
-                for (const auto prop : Properties)
+                for (const auto& prop : Properties)
                 {
                     //check if this property is already defined in the base class
                     if (IsBaseProperty(prop.GetPropetyName(), Data))
@@ -297,18 +297,18 @@ void FArticyObjectDef::InitializeModel(
 
     {
         //try setting the "meta" data (not stored in the properties array)
-        const auto AssetRef = FName{ TEXT("AssetRef") };
-        const auto Category = FName{ TEXT("Category") };
+        const auto& AssetRef = FName{ TEXT("AssetRef") };
+        const auto& Category = FName{ TEXT("Category") };
         Model->SetProp(AssetRef, Vals.GetAssetRef());
         Model->SetProp(Category, Vals.GetAssetCat());
     }
 
-    const auto nameAndId = Vals.GetNameAndId();
+    const auto& nameAndId = Vals.GetNameAndId();
 
     //set all properties
     auto propertiesJson = Vals.GetPropertiesJson();
     //then set the rest of the properties
-    for (const auto prop : Properties)
+    for (const auto& prop : Properties)
         prop.InitializeModel(Model, nameAndId, propertiesJson, Data, PackageName);
 
     //set the features (if this is a template)
@@ -447,7 +447,7 @@ void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProper
         //localized strings get the FText type instead
         if (bIsLocalized)
         {
-            static const auto ftext = FName{ TEXT("FText") };
+            static const auto& ftext = FName{ TEXT("FText") };
             Type = ftext;
         }
     }
@@ -494,9 +494,9 @@ void FArticyPropertyDef::GatherScript(const TSharedPtr<FJsonObject>& JsonObject,
 
         //this is a bit hacky, but at this time we don't know much about the properties in the array,
         //so we can't just call GatherScript on that properties
-        static const auto InputPin = FName{ "inputpin" };
-        static const auto OutputPin = FName{ "outputpin" };
-        const auto isOutputPin = ItemType == OutputPin;
+        static const auto& InputPin = FName{ "inputpin" };
+        static const auto& OutputPin = FName{ "outputpin" };
+        const auto& isOutputPin = ItemType == OutputPin;
         if (isOutputPin || ItemType == InputPin)
         {
             //array may not be contained in values
@@ -521,11 +521,11 @@ void FArticyPropertyDef::GatherScript(const TSharedPtr<FJsonObject>& JsonObject,
         //check if it's a script_condition or a script_instruction
 
         //not case sensitive!!
-        static const auto ScriptCondition = FName{ "script_condition" };
-        static const auto ScriptInstruction = FName{ "script_instruction" };
+        static const auto& ScriptCondition = FName{ "script_condition" };
+        static const auto& ScriptInstruction = FName{ "script_instruction" };
 
-        const auto type = GetOriginalType();
-        const auto isInstruction = type == ScriptInstruction;
+        const auto& type = GetOriginalType();
+        const auto& isInstruction = type == ScriptInstruction;
         if (isInstruction || type == ScriptCondition)
         {
             //property may not be contained in values
@@ -595,7 +595,7 @@ void ImportFStringArray(const TArray<TSharedPtr<FJsonValue>>* Json, TArray<FStri
     if (!Json)
         return;
 
-    for (const auto type : *Json)
+    for (const auto& type : *Json)
         OutArray.Add(type->AsString());
 }
 
@@ -688,7 +688,7 @@ void FArticyTemplateFeatureDef::GenerateDefCode(CodeFileGenerator& header, const
             header.Line("public:", false, true, -1);
             header.Line();
 
-            for (const auto prop : Properties)
+            for (const auto& prop : Properties)
                 prop.GenerateCode(header, Data);
 
             //NOTE Constraints are not part of this implementation
@@ -739,7 +739,7 @@ void FArticyTemplateFeatureDef::InitializeModel(
     auto feature = NewObject<UArticyBaseFeature>(Model, GetUClass(Data));
     Model->SetProp(*TechnicalName, feature);
 
-    const auto path = Path + "." + *TechnicalName;
+    const auto& path = Path + "." + *TechnicalName;
     for (const auto& prop : Properties)
         prop.InitializeModel(feature, path, Json, Data, PackageName);
 
@@ -791,9 +791,9 @@ void FArticyObjectDefinitions::ImportFromJson(const TArray<TSharedPtr<FJsonValue
     if (!Json)
         return;
 
-    for (const auto type : *Json)
+    for (const auto& type : *Json)
     {
-        const auto obj = type->AsObject();
+        const auto& obj = type->AsObject();
         if (!obj.IsValid())
             continue;
 
@@ -801,7 +801,7 @@ void FArticyObjectDefinitions::ImportFromJson(const TArray<TSharedPtr<FJsonValue
         def.ImportFromJson(obj, Data);
         Types.Add(def.GetOriginalType(), def);
 
-        for (auto feature : def.GetFeatures())
+        for (auto& feature : def.GetFeatures())
         {
             FName key = FName(*feature.GetTechnicalName());
             if (!FeatureDefs.Contains(key))
@@ -836,7 +836,7 @@ void FArticyObjectDefinitions::GatherText(const TSharedPtr<FJsonObject>& Json)
  */
 void FArticyObjectDefinitions::GatherScripts(const FArticyModelDef& Values, UArticyImportData* Data) const
 {
-    const auto def = Types.Find(Values.GetType());
+    const auto& def = Types.Find(Values.GetType());
     if (ensure(def))
         def->GatherScripts(Values, Data);
     else
@@ -930,7 +930,7 @@ const FArticyObjectDefinitions::FClassInfo& FArticyObjectDefinitions::GetDefault
         return *base;
 
     //not one of the FlowClasses, use UArticyObject as base class
-    static const auto ArticyObject = FClassInfo{ "UArticyObject", UArticyObject::StaticClass() };
+    static const auto& ArticyObject = FClassInfo{ "UArticyObject", UArticyObject::StaticClass() };
     return ArticyObject;
 }
 

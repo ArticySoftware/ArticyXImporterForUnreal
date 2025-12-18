@@ -30,6 +30,7 @@
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Customizations/Details/ArticyRefCustomization.h"
+#include "Slate/GV/SArticyGlobalVariablesDebugger.h"
 
 #if ENGINE_MAJOR_VERSION >= 5
 // In UE5, you use the ToolMenus API to extend the UI
@@ -159,7 +160,7 @@ TArray<UArticyPackage*> FArticyEditorModule::GetPackagesSlow()
 #endif	
 
 	TArray<UArticyPackage*> Packages;
-	for (FAssetData& Data : PackageData)
+	for (const FAssetData& Data : PackageData)
 	{
 		Packages.Add(Cast<UArticyPackage>(Data.GetAsset()));
 	}
@@ -174,6 +175,19 @@ void FArticyEditorModule::RegisterArticyToolbar()
 {
 #if ENGINE_MAJOR_VERSION >= 5
 	// Grab the appropriate toolbar menu so we can extend it
+#if ENGINE_MINOR_VERSION >= 6
+	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
+
+	{
+		// Create a new section for Articy utilities
+		FToolMenuSection& Section = Menu->AddSection("ArticyUtilities", LOCTEXT("ArticyUtilities", "Articy Utilities"));
+
+		// Add buttons
+		auto Placeholder = TAttribute<FText>();
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.40"));
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.Type.Document.64"));
+	}
+#else
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.LevelToolbarQuickSettings");
 
 	{
@@ -182,8 +196,10 @@ void FArticyEditorModule::RegisterArticyToolbar()
 
 		// Add buttons
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands);
-		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGVDebugger, PluginCommands);
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands);
 	}
+#endif
+
 #else 
 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
 	{
@@ -238,7 +254,7 @@ void FArticyEditorModule::RegisterPluginCommands()
 		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyWindow),
 		FCanExecuteAction());
 
-	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyGVDebugger,
+	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyGvDebugger,
 		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyGVDebugger),
 		FCanExecuteAction());
 }
@@ -366,7 +382,7 @@ EImportStatusValidity FArticyEditorModule::CheckImportStatusValidity() const
 	AssetRegistryModule.Get().GetAssetsByPath(FName(*ArticyHelpers::GetArticyGeneratedFolder()), ArticyAssets, true);
 
 	// check if all assets are actually valid (classes not found would result in a nullptr)
-	for (FAssetData& Data : ArticyAssets)
+	for (const FAssetData& Data : ArticyAssets)
 	{
 		UObject* Asset = Data.GetAsset();
 

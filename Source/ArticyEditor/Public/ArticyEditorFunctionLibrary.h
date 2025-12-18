@@ -32,7 +32,7 @@ public:
 	/**
 	 * Forces a complete reimport of the Articy data, resetting all hashes and package definitions.
 	 *
-	 * @param ImportData The Articy import data object to reimport.
+	 * @param UArticyImportData The Articy import data object to reimport.
 	 * @return The number of changes reimported, or -1 if the operation failed.
 	 */
 	static int32 ForceCompleteReimport(UArticyImportData* = nullptr);
@@ -40,7 +40,7 @@ public:
 	/**
 	 * Reimports changes from the Articy data without resetting all data.
 	 *
-	 * @param ImportData The Articy import data object to reimport.
+	 * @param UArticyImportData The Articy import data object to reimport.
 	 * @return The number of changes reimported, or -1 if the operation failed.
 	 */
 	static int32 ReimportChanges(UArticyImportData* = nullptr);
@@ -48,7 +48,7 @@ public:
 	/**
 	 * Regenerates assets from the given Articy import data.
 	 *
-	 * @param ImportData The Articy import data object from which assets are regenerated.
+	 * @param UArticyImportData The Articy import data object from which assets are regenerated.
 	 * @return -1 if the operation failed.
 	 */
 	static int32 RegenerateAssets(UArticyImportData* = nullptr);
@@ -57,7 +57,7 @@ public:
 	 * Ensures that the Articy import data asset is valid and available.
 	 * Generates a new import data asset if necessary.
 	 *
-	 * @param ImportData A pointer to a pointer of the Articy import data object.
+	 * @param UArticyImportData A pointer to a pointer of the Articy import data object.
 	 * @return The result of the ensure operation.
 	 */
 	static EImportDataEnsureResult EnsureImportDataAsset(UArticyImportData**);

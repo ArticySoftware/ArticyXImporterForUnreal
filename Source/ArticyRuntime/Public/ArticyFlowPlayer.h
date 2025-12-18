@@ -9,6 +9,7 @@
 #include "ArticyGlobalVariables.h"
 #include "ArticyRef.h"
 #include "Components/BillboardComponent.h"
+#include "Containers/Queue.h"
 #include "ArticyFlowPlayer.generated.h"
 
 class IArticyNode;
@@ -160,7 +161,7 @@ public:
      * Get the UserMethodsProvider used for resolving user defined methods.
      */
     UFUNCTION(BlueprintPure, Category = "Setup")
-    UObject* GetMethodsProvider() const;
+    UObject* GetMethodsProvider();
 
     //---------------------------------------------------------------------------//
 
@@ -274,6 +275,8 @@ private:
     TQueue<FArticyBranch> BranchQueue;
     FTSTicker::FDelegateHandle TickerHandle;
 
+    UArticyExpressoScripts* CachedExpressoInstance = nullptr;
+
 private:
     /**
      * Updates the list of available branches.
@@ -300,7 +303,6 @@ private:
     IArticyFlowObject* GetUnshadowedNode(IArticyFlowObject* Node);
 
     UArticyDatabase* GetDB() const;
-    UArticyExpressoScripts* GetExpresso() const;
 };
 
 //---------------------------------------------------------------------------//

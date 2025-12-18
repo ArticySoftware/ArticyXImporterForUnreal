@@ -60,7 +60,7 @@ void UArticyPluginSettings::UpdatePackageSettings()
 	TArray<FString> CurrentNames;
 	PackageLoadSettings.GenerateKeyArray(CurrentNames);
 
-	for (FString Name : CurrentNames)
+	for (const FString& Name : CurrentNames)
 	{
 		// if the old name isn't contained in the new packages, remove its loading rule
 		if (!ImportedPackageNames.Contains(Name))
@@ -69,7 +69,7 @@ void UArticyPluginSettings::UpdatePackageSettings()
 		}
 	}
 
-	for (FString Name : ImportedPackageNames)
+	for (const FString& Name : ImportedPackageNames)
 	{
 		// if the new name isn't contained in the serialized data, add it with its default package value
 		if (!CurrentNames.Contains(Name))
@@ -87,7 +87,7 @@ void UArticyPluginSettings::ApplyPreviousSettings() const
 	// restore the package default settings with the cached data of the plugin settings
 	TWeakObjectPtr<UArticyDatabase> OriginalDatabase = UArticyDatabase::GetMutableOriginal();
 
-	for (FString PackageName : OriginalDatabase->GetImportedPackageNames())
+	for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
 	{
 		OriginalDatabase->ChangePackageDefault(FName(*PackageName), GetDefault<UArticyPluginSettings>()->PackageLoadSettings[PackageName]);
 	}

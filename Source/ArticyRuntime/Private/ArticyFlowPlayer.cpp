@@ -105,26 +105,34 @@ void UArticyFlowPlayer::SetCursorTo(TScriptInterface<IArticyFlowObject> Node)
  */
 void UArticyFlowPlayer::Play(int BranchIndex)
 {
-    TArray<FArticyBranch> branches;
+    static const TArray<FArticyBranch>* branchesPtr = &AvailableBranches;
+
     if (IgnoresInvalidBranches())
     {
-        for (auto branch : AvailableBranches)
+        // Only create a new array if filtering is needed
+        static TArray<FArticyBranch> ValidBranches;
+        ValidBranches.Reset(); // Clear the array without reallocating memory
+
+        // Filter valid branches
+        for (const auto& branch : AvailableBranches)
+        {
             if (branch.bIsValid)
-                branches.Add(branch);
-    }
-    else
-    {
-        branches = AvailableBranches;
+            {
+                ValidBranches.Add(branch);
+            }
+        }
+
+        branchesPtr = &ValidBranches;
     }
 
-    //check if the specified branch exists
-    if (!branches.IsValidIndex(BranchIndex))
+    // Use branchesPtr instead of branches
+    if (!branchesPtr->IsValidIndex(BranchIndex))
     {
-        UE_LOG(LogArticyRuntime, Error, TEXT("Branch with index %d does not exist!"), BranchIndex)
-            return;
+        UE_LOG(LogArticyRuntime, Error, TEXT("Branch with index %d does not exist!"), BranchIndex);
+        return;
     }
 
-    PlayBranch(branches[BranchIndex]);
+    PlayBranch((*branchesPtr)[BranchIndex]);
 }
 
 /**
@@ -139,6 +147,11 @@ void UArticyFlowPlayer::FinishCurrentPausedObject(int PinIndex)
     {
         auto outputPins = outputPinOwner->GetOutputPinsPtr();
 
+        int numPins = outputPins->Num();
+        if (numPins > 0 && PinIndex < numPins)
+        {
+            (*outputPins)[PinIndex]->Execute(GetGVs(), GetMethodsProvider());
+        }
         if (outputPins->Num() > 0)
         {
             if (PinIndex < outputPins->Num())
@@ -204,10 +217,13 @@ UArticyGlobalVariables* UArticyFlowPlayer::GetGVs() const
  *
  * @return A pointer to the methods provider object.
  */
-UObject* UArticyFlowPlayer::GetMethodsProvider() const
+UObject* UArticyFlowPlayer::GetMethodsProvider()
 {
-    auto expressoInstance = GetDB()->GetExpressoInstance();
-    auto provider = expressoInstance->GetUserMethodsProviderInterface();
+    if (!CachedExpressoInstance)
+    {
+        CachedExpressoInstance = GetDB()->GetExpressoInstance();
+    }
+    auto provider = CachedExpressoInstance->GetUserMethodsProviderInterface();
 
     if (ensure(provider))
     {
@@ -242,7 +258,7 @@ UObject* UArticyFlowPlayer::GetMethodsProvider() const
                         }
 
                         //and finally we check for a default methods provider, which we can use as fallback
-                        auto defaultUserMethodsProvider = expressoInstance->GetDefaultUserMethodsProvider();
+                        auto defaultUserMethodsProvider = CachedExpressoInstance->GetDefaultUserMethodsProvider();
                         if (defaultUserMethodsProvider && ensure(defaultUserMethodsProvider->GetClass()->ImplementsInterface(provider)))
                             UserMethodsProvider = defaultUserMethodsProvider;
                     }
@@ -265,16 +281,22 @@ IArticyFlowObject* UArticyFlowPlayer::GetUnshadowedNode(IArticyFlowObject* Node)
     auto db = UArticyDatabase::Get(this);
     UArticyPrimitive* UnshadowedObject = db->GetObjectUnshadowed(Cast<UArticyPrimitive>(Node)->GetId());
 
-    // handle pins, because we can not request them directly from the db 
+    // Handle pins, because we can not request them directly from the db 
     if (!UnshadowedObject)
     {
         auto pinOwner = db->GetObjectUnshadowed(Cast<UArticyFlowPin>(Node)->GetOwner()->GetId());
 
         TArray<UArticyFlowPin*> pins;
         auto inputPinsOwner = Cast<IArticyInputPinsProvider>(pinOwner);
-        pins.Append(*inputPinsOwner->GetInputPinsPtr());
+        if (inputPinsOwner)
+        {
+            pins.Append(*inputPinsOwner->GetInputPinsPtr());
+        }
         auto outputPinsOwner = Cast<IArticyOutputPinsProvider>(pinOwner);
-        pins.Append(*outputPinsOwner->GetOutputPinsPtr());
+        if (outputPinsOwner)
+        {
+            pins.Append(*outputPinsOwner->GetOutputPinsPtr());
+        }
 
         auto targetId = Cast<UArticyPrimitive>(Node)->GetId();
         for (auto pin : pins)
@@ -444,7 +466,7 @@ bool UArticyFlowPlayer::OnTick(float DeltaTime)
                 return true;
         }
 
-        for (auto node : Branch.Path)
+        for (auto& node : Branch.Path)
         {
             node->Execute(GetGVs(), GetMethodsProvider());
 
@@ -524,7 +546,7 @@ void UArticyFlowPlayer::SetCursorToStartNode()
         return;
     }
 
-    const auto obj = StartOn.GetObject(this);
+    const auto& obj = StartOn.GetObject(this);
 
     TScriptInterface<IArticyFlowObject> ptr;
     ptr.SetObject(obj);
@@ -552,7 +574,7 @@ bool UArticyFlowPlayer::FastForwardToPause()
     int ffwdIndex;
     for (ffwdIndex = 0; ffwdIndex < firstPath.Num(); ++ffwdIndex)
     {
-        const auto node = firstPath[ffwdIndex];
+        const auto& node = firstPath[ffwdIndex];
         if (ShouldPauseOn(&*node))
         {
             //pause on this node
@@ -562,7 +584,7 @@ bool UArticyFlowPlayer::FastForwardToPause()
         auto bSplitFound = false;
         for (int b = 1; b < AvailableBranches.Num(); ++b)
         {
-            const auto path = AvailableBranches[b].Path;
+            const auto& path = AvailableBranches[b].Path;
             //it shouldn't be possible that one path is a subset of the other one
             //(shorter but all nodes equal to the other path)
             if (!ensure(path.IsValidIndex(ffwdIndex)) || path[ffwdIndex] != node)
@@ -623,4 +645,3 @@ AArticyFlowDebugger::AArticyFlowDebugger()
     ArticyImporterIcon->SetSprite(ImporterIconFinder.Object);
     FlowPlayer->SetIgnoreInvalidBranches(false);
 }
-
