@@ -359,9 +359,10 @@ bool UArticyJSONFactory::ImportFromFile(const FString& FileName, UArticyImportDa
     // Parse outermost JSON object
     TSharedPtr<FJsonObject> JsonParsed;
     const TSharedRef<TJsonReader<TCHAR>> JsonReader = TJsonReaderFactory<TCHAR>::Create(JSON);
-    if (FJsonSerializer::Deserialize(JsonReader, JsonParsed))
+    if (!FJsonSerializer::Deserialize(JsonReader, JsonParsed) || !JsonParsed.IsValid())
     {
-        Asset->ImportFromJson(*Archive, JsonParsed);
+        UE_LOG(LogArticyEditor, Error, TEXT("Failed to parse manifest.json for '%s'"), *FileName);
+        return false;
     }
 
     return true;

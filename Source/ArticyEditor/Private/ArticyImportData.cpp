@@ -858,39 +858,43 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	FString AssetBaseDirectory = FPaths::ProjectContentDir() + TEXT("ArticyContent/Resources/Assets/");
 	ImportAudioAssets(AssetBaseDirectory);
 
-	// if we are generating code, generate and compile it; after it has finished, generate assets and perform post import logic
+	return true;
+}
+
+bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
+{
+	bool bNeedsCodeGeneration = GetSettings().DidObjectDefsOrGVsChange()
+		|| (GetSettings().DidScriptFragmentsChange() && GetSettings().set_UseScriptSupport);
+
 	if (bNeedsCodeGeneration)
 	{
-		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this, bAllowRemoval);
-
+		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this, bAllowRemovalFinal);
 		if (bAnyCodeGenerated)
 		{
 			static FDelegateHandle PostImportHandle;
-
 			if (PostImportHandle.IsValid())
 			{
 				FArticyEditorModule::Get().OnCompilationFinished.Remove(PostImportHandle);
 				PostImportHandle.Reset();
 			}
 
-			// this will have either the current import data or the cached version
 			PostImportHandle = FArticyEditorModule::Get().OnCompilationFinished.AddLambda(
-				[this, bAllowRemoval](UArticyImportData* Data)
+				[this, bAllowRemovalFinal](UArticyImportData* Data)
 				{
 					BuildCachedVersion();
-					CodeGenerator::GenerateAssets(Data, bAllowRemoval);
+					CodeGenerator::GenerateAssets(Data, bAllowRemovalFinal);
 					PostImport();
 				});
+
+			CodeGenerator::Recompile(this);
+			return true;
 		}
 	}
-	// if we are importing but no code needed to be generated, generate assets immediately and perform post import
-	else
-	{
-		BuildCachedVersion();
-		CodeGenerator::GenerateAssets(this, bAllowRemoval);
-		PostImport();
-	}
 
+	// no codegen needed or nothing generated
+	BuildCachedVersion();
+	CodeGenerator::GenerateAssets(this, bAllowRemovalFinal);
+	PostImport();
 	return true;
 }
 

@@ -451,8 +451,13 @@ public:
 
 	void SetInitialImportComplete() { bHasCachedVersion = true; }
 
+	bool FinalizeImport(bool bAllowRemovalFinal);
+
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyLanguages Languages;
+
+	UPROPERTY(Transient)
+	bool bDeferGeneration = false;
 
 	bool bMultiFileMerge = false;
 

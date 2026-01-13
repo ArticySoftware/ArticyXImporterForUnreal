@@ -145,8 +145,6 @@ EImportDataEnsureResult FArticyEditorFunctionLibrary::EnsureImportDataAsset(UArt
  */
 UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 {
-	UArticyImportData* ImportData = nullptr;
-
 	UArticyJSONFactory* Factory = NewObject<UArticyJSONFactory>();
 
 	TArray<FString> ArticyImportFiles;
@@ -217,48 +215,58 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 
 	Outer->FullyLoad();
 
-	const FString BaseFullPath = AbsoluteDirectoryPath / BaseArticyFile;
-	bool bRequired = false;
-
-	// Create the UArticyImportData asset from the base file
-	UObject* ImportDataAsset = Factory->ImportObject(
-		UArticyImportData::StaticClass(),
+	// Create the asset without importing yet
+	const FName AssetName(*FPaths::GetBaseFilename(CleanedPackagePath));
+	UArticyImportData* ImportData = NewObject<UArticyImportData>(
 		Outer,
-		FName(*FPaths::GetBaseFilename(CleanedPackagePath)),
-		EObjectFlags::RF_Standalone | EObjectFlags::RF_Public,
-		BaseFullPath,
-		nullptr,
-		bRequired);
+		UArticyImportData::StaticClass(),
+		AssetName,
+		RF_Standalone | RF_Public
+	);
 
-	if (!ImportDataAsset)
+	if (!ImportData)
 	{
-		ObjectTools::ForceDeleteObjects({ Outer });
-		UE_LOG(LogArticyEditor, Error,
-			TEXT("Failed creation import data asset from '%s'. Aborting process."),
-			*BaseArticyFile);
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to create empty import data asset."));
 		return nullptr;
 	}
 
-	ImportData = Cast<UArticyImportData>(ImportDataAsset);
-	ImportData->bMultiFileMerge = true;
+	// Ensure it shows up in content browser
+	FAssetRegistryModule::AssetCreated(ImportData);
+	Outer->MarkPackageDirty();
 
-	// Apply remaining .articyue files on top of the same ImportData
+	// Multi-file merge mode: merge only, no generation during merges
+	ImportData->bMultiFileMerge = true;
+	ImportData->bDeferGeneration = true;
+
+	// Import base first
+	const FString BaseFullPath = AbsoluteDirectoryPath / BaseArticyFile;
+	if (!Factory->ImportFromFile(BaseFullPath, ImportData))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to import base file '%s'."), *BaseFullPath);
+		return nullptr;
+	}
+
+	// Merge remaining files
 	for (const FString& File : ArticyImportFiles)
 	{
-		if (File == BaseArticyFile)
-			continue;
+		if (File == BaseArticyFile) continue;
 
 		const FString FullPath = AbsoluteDirectoryPath / File;
-		UE_LOG(LogArticyEditor, Log,
-			TEXT("Merging additional Articy export '%s' into existing import data asset."),
-			*FullPath);
+		UE_LOG(LogArticyEditor, Log, TEXT("Merging '%s'..."), *FullPath);
 
 		if (!Factory->ImportFromFile(FullPath, ImportData))
 		{
-			UE_LOG(LogArticyEditor, Warning,
-				TEXT("Failed to merge articy export '%s' into import data; continuing with remaining files."),
-				*FullPath);
+			UE_LOG(LogArticyEditor, Warning, TEXT("Failed to merge '%s'."), *FullPath);
 		}
+	}
+
+	ImportData->bDeferGeneration = false;
+	const bool bAllowRemovalFinal = false;
+
+	if (!ImportData->FinalizeImport(bAllowRemovalFinal))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("FinalizeImport failed."));
+		return nullptr;
 	}
 
 	// Save the resulting combined import data asset
