@@ -112,19 +112,9 @@ namespace ArticyImporterHelpers
 			// If this asset is flagged as MustCreate...
 			if (MustCreate)
 			{
-				// ... Then make sure the asset doesn't already exist.
-				// If it does, throw the most helpful ensure message we can and return nullptr
-				AssetType* Existing = FindObject<AssetType>(AssetPackage, *ActualAssetName);
-				if (!ensureAlwaysMsgf(Existing == nullptr, TEXT(
-					"Warning!! Somehow you have managed to load an old Articy Asset asset (%s) when it\n"
-					"_should_ have been deleted already by DeleteGeneratedAssets() in CodeGenerator.cpp.\n"
-					"This is likely caused by your Source Control plugin in Unreal restoring deleted files\n"
-					"unexpectedly. If you're not sure what's going on, please contact support@articy.com for\n"
-					"assistance with details on how you triggered this issue.\n"
-					"Loading will be cancelled to avoid crashing Unreal."
-				), *ActualAssetName))
+				if (AssetType* Existing = FindObject<AssetType>(AssetPackage, *ActualAssetName))
 				{
-					return nullptr;
+					return Existing;
 				}
 			}
 

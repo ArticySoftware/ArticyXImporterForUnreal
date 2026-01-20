@@ -70,4 +70,8 @@ private:
 	 * @return A pointer to the generated Articy import data asset, or nullptr if the operation failed.
 	 */
 	static UArticyImportData* GenerateImportDataAsset();
+	static bool ImportAllArticyFilesIntoExistingImportData(
+		UArticyImportData* ImportData,
+		const FString& AbsoluteDirectoryPath,
+		const TArray<FString>& ArticyImportFiles);
 };

@@ -365,7 +365,17 @@ bool UArticyJSONFactory::ImportFromFile(const FString& FileName, UArticyImportDa
         return false;
     }
 
-    return true;
+    const bool bOk = Asset->ImportFromJson(*Archive, JsonParsed);
+
+#if WITH_EDITORONLY_DATA
+    if (bOk && Asset->ImportData)
+    {
+        // Important for reimport / tracking: record the source file
+        Asset->ImportData->Update(FileName);
+    }
+#endif
+
+    return bOk;
 }
 
 /**

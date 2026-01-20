@@ -59,6 +59,26 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 		return -1;
 	}
 
+	TArray<FString> ArticyImportFiles;
+	// path is virtual in the beginning
+	const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+	// remove /Game/ so that the non-virtual part remains
+	FString ArticyDirectoryNonVirtual = ArticyDirectory;
+	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
+	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
+	const FString AbsoluteDirectoryPath =
+		IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(
+			*(FPaths::ProjectContentDir() + ArticyDirectoryNonVirtual));
+	IFileManager::Get().FindFiles(ArticyImportFiles, *AbsoluteDirectoryPath, TEXT("articyue"));
+
+	if (ArticyImportFiles.Num() > 1)
+	{
+		const bool bOk = ImportAllArticyFilesIntoExistingImportData(
+			ImportData, AbsoluteDirectoryPath, ArticyImportFiles);
+
+		return bOk ? 0 : -1;
+	}
+
 	const auto& Factory = NewObject<UArticyJSONFactory>();
 	if (Factory)
 	{
@@ -135,6 +155,89 @@ EImportDataEnsureResult FArticyEditorFunctionLibrary::EnsureImportDataAsset(UArt
 	}
 
 	return Result;
+}
+
+bool FArticyEditorFunctionLibrary::ImportAllArticyFilesIntoExistingImportData(
+	UArticyImportData* ImportData,
+	const FString& AbsoluteDirectoryPath,
+	const TArray<FString>& ArticyImportFiles)
+{
+	if (!ImportData) return false;
+
+	UArticyJSONFactory* Factory = NewObject<UArticyJSONFactory>();
+	if (!Factory) return false;
+
+	// Choose base file
+	FString BaseArticyFile;
+	if (ArticyImportFiles.Num() == 1)
+	{
+		BaseArticyFile = ArticyImportFiles[0];
+	}
+	else
+	{
+		for (const FString& Candidate : ArticyImportFiles)
+		{
+			const FString FullCandidatePath = AbsoluteDirectoryPath / Candidate;
+			if (UArticyJSONFactory::IsFullArticyExport(FullCandidatePath))
+			{
+				BaseArticyFile = Candidate;
+				break;
+			}
+		}
+
+		if (BaseArticyFile.IsEmpty())
+		{
+			BaseArticyFile = ArticyImportFiles[0];
+		}
+	}
+
+	// Multi-file merge mode
+	ImportData->bMultiFileMerge = true;
+	ImportData->bDeferGeneration = true;
+
+	const FString BaseFullPath = AbsoluteDirectoryPath / BaseArticyFile;
+	if (!Factory->ImportFromFile(BaseFullPath, ImportData))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Failed to import base file '%s'."), *BaseFullPath);
+		return false;
+	}
+
+	for (const FString& File : ArticyImportFiles)
+	{
+		if (File == BaseArticyFile) continue;
+
+		const FString FullPath = AbsoluteDirectoryPath / File;
+		UE_LOG(LogArticyEditor, Log, TEXT("Merging '%s'..."), *FullPath);
+
+		if (!Factory->ImportFromFile(FullPath, ImportData))
+		{
+			UE_LOG(LogArticyEditor, Warning, TEXT("Failed to merge '%s'."), *FullPath);
+		}
+	}
+
+	ImportData->bDeferGeneration = false;
+
+	const bool bAllowRemovalFinal = false;
+	if (!ImportData->FinalizeImport(bAllowRemovalFinal))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("FinalizeImport failed."));
+		return false;
+	}
+
+	// Mark dirty + save existing package
+	UPackage* Outer = ImportData->GetOutermost();
+	Outer->MarkPackageDirty();
+
+	TArray<UPackage*> FailedToSavePackages;
+	FEditorFileUtils::PromptForCheckoutAndSave({ Outer }, false, false, &FailedToSavePackages);
+
+	if (FailedToSavePackages.Contains(Outer))
+	{
+		UE_LOG(LogArticyEditor, Error, TEXT("Package failed to save: %s"), *Outer->GetName());
+		return false;
+	}
+
+	return true;
 }
 
 /**
