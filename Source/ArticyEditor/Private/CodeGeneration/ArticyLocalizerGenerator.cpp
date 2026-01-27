@@ -42,6 +42,9 @@ void ArticyLocalizerGenerator::GenerateCode(const UArticyImportData* Data, FStri
 
                     header->Method("void", "Reload", "", [&]
                         {
+                            // Clear cache
+                            header->Line(TEXT("KeyToTableCache.Reset();"), true);
+
                             // Add listener for language/locale change events
                             header->Line(TEXT("if (!bListenerSet) {"));
                             header->Line(FString::Printf(TEXT("FInternationalization::Get().OnCultureChanged().AddUObject(this, &%s::Reload);"), *type), true, true, 1);
@@ -152,7 +155,7 @@ void ArticyLocalizerGenerator::IterateStringTables(CodeFileGenerator* Header, co
         {
             FString StringTable = FPaths::GetBaseFilename(*FilePath, true);
             Header->Line(FString::Printf(TEXT("FStringTableRegistry::Get().UnregisterStringTable(FName(\"%s\"));"), *StringTable), true, Indent, IndentOffset);
-            Header->Line(FString::Printf(TEXT("LOCTABLE_FROMFILE_GAME(\"%s\", \"%s\", \"%s/%s.csv\");"), *StringTable, *StringTable, *RelPath, *StringTable), true, Indent, IndentOffset);
+            Header->Line(FString::Printf(TEXT("LOCTABLE_FROMFILE_GAME(\"%s\", \"ARTICY\", \"%s/%s.csv\");"), *StringTable, *RelPath, *StringTable), true, Indent, IndentOffset);
         }
     }
 }

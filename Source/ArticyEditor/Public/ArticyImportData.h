@@ -403,6 +403,15 @@ struct ARTICYEDITOR_API FArticyImportDataStruct
 	TMap<FArticyId, FArticyIdArray> ParentChildrenCache;
 };
 
+USTRUCT()
+struct ARTICYEDITOR_API FArticyCsvRow
+{
+	GENERATED_BODY()
+
+	FString Key;
+	FString SourceString;
+};
+
 /**
  * Main class for handling Articy import data.
  */
@@ -499,5 +508,27 @@ private:
 	TMap<FArticyId, FArticyIdArray> ParentChildrenCache;
 
 	void ImportAudioAssets(const FString& BaseContentDir);
-	int ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
+	int ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
+
+	static void AddRowsUnique(
+		TMap<FString, FString>& Out,
+		const TArray<FArticyCsvRow>& InRows,
+		bool bOverwriteExisting = false)
+	{
+		for (const auto& R : InRows)
+		{
+			if (R.Key.IsEmpty())
+				continue;
+
+			if (bOverwriteExisting)
+			{
+				Out.Add(R.Key, R.SourceString);
+			}
+			else
+			{
+				Out.FindOrAdd(R.Key, R.SourceString);
+			}
+		}
+	}
+
 };

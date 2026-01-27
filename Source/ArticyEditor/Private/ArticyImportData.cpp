@@ -777,19 +777,6 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		Languages.Languages.Add(TEXT(""), Elem.Value);
 	}
 
-	// Create string tables
-	if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
-	{
-		const auto& ObjectDefsText = GetObjectDefs().GetTexts();
-		for (const auto& Language : Languages.Languages)
-		{
-			StringTableGenerator(TEXT("ARTICY"), Language.Key, [&](StringTableGenerator* CsvOutput)
-				{
-					return ProcessStrings(CsvOutput, ObjectDefsText, Language);
-				});
-		}
-	}
-
 	for (const auto& Language : Languages.Languages)
 	{
 		// Handle packages
@@ -845,13 +832,51 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 					}
 				}
 			}
-
-			StringTableGenerator(StringTableFileName, Language.Key,
-				[&](StringTableGenerator* CsvOutput)
-				{
-					return ProcessStrings(CsvOutput, Package.GetTexts(), Language);
-				});
 		}
+	}
+
+	// Create string tables
+	for (const auto& Language : Languages.Languages)
+	{
+		StringTableGenerator(TEXT("ARTICY"), Language.Key,
+			[&](StringTableGenerator* CsvOutput)
+			{
+				// Collect everything into a map to de-dupe keys
+				TMap<FString, FString> Combined;
+
+				// 1) Object definitions text (if applicable)
+				if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
+				{
+					TArray<FArticyCsvRow> ObjRows;
+					ProcessStrings(ObjRows, GetObjectDefs().GetTexts(), Language);
+					AddRowsUnique(Combined, ObjRows);
+				}
+
+				// 2) All included packages
+				for (const auto& Package : Packages)
+				{
+					const FString PackageName = Package.GetName();
+					if (!Package.GetIsIncluded() || PackageName.IsEmpty())
+						continue;
+
+					TArray<FArticyCsvRow> PkgRows;
+					ProcessStrings(PkgRows, Package.GetTexts(), Language);
+
+					AddRowsUnique(Combined, PkgRows);
+				}
+
+				// 3) Write out combined rows
+				Combined.KeySort([](const FString& A, const FString& B) { return A < B; });
+
+				int32 LinesWritten = 0;
+				for (const auto& It : Combined)
+				{
+					CsvOutput->Line(It.Key, It.Value);
+					++LinesWritten;
+				}
+
+				return LinesWritten;
+			});
 	}
 
 	// Import Unreal audio assets
@@ -901,12 +926,12 @@ bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
 /**
  * Processes strings and writes them to a CSV output.
  *
- * @param CsvOutput The CSV output generator.
+ * @param OutRows The output row array.
  * @param Data The map of strings and their associated text data.
  * @param Language The language information.
  * @return The number of processed strings.
  */
-int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
+int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
 {
 	int Counter = 0;
 
@@ -916,13 +941,20 @@ int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMa
 		// Send localized data or key, depending on whether data is available
 		if (Text.Value.Content.Num() > 0)
 		{
+			auto AddLine = [&](const FString& InKey, const FString& InValue)
+			{
+				OutRows.Add(FArticyCsvRow{ InKey, InValue });
+			};
+
 			if (Text.Value.Content.Contains(Language.Key))
 			{
 				// Specific language data
-				CsvOutput->Line(Text.Key, Text.Value.Content[Language.Key].Text);
-				if (!Text.Value.Content[Language.Key].VoAsset.IsEmpty())
+				const auto& Localized = Text.Value.Content[Language.Key];
+				AddLine(Text.Key, Localized.Text);
+
+				if (!Localized.VoAsset.IsEmpty())
 				{
-					CsvOutput->Line(Text.Key + ".VOAsset", Text.Value.Content[Language.Key].VoAsset);
+					AddLine(Text.Key + TEXT(".VOAsset"), Localized.VoAsset);
 				}
 			}
 			else
@@ -930,10 +962,11 @@ int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMa
 				// Infer default from iterator
 				const auto& Iterator = Text.Value.Content.CreateConstIterator();
 				const auto& Elem = *Iterator;
-				CsvOutput->Line(Text.Key, Elem.Value.Text);
+				AddLine(Text.Key, Elem.Value.Text);
+
 				if (!Elem.Value.VoAsset.IsEmpty())
 				{
-					CsvOutput->Line(Text.Key + ".VOAsset", Elem.Value.VoAsset);
+					AddLine(Text.Key + TEXT(".VOAsset"), Elem.Value.VoAsset);
 				}
 			}
 			Counter++;

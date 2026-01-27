@@ -70,14 +70,10 @@ public:
 		FText SourceString = Key;
 
 		// Look up entry in specified string table
-		TOptional<FString> TableName = FTextInspector::GetNamespace(Key);
-		if (!TableName.IsSet())
-		{
-			TableName = TEXT("ARTICY");
-		}
+		const FString TableName = TEXT("ARTICY");
 
 		// Find the table
-		FStringTableConstPtr TablePtr = FStringTableRegistry::Get().FindStringTable(FName(TableName.GetValue()));
+		FStringTableConstPtr TablePtr = FStringTableRegistry::Get().FindStringTable(FName(TableName));
 		if (TablePtr.IsValid())
 		{
 			// Find the entry
