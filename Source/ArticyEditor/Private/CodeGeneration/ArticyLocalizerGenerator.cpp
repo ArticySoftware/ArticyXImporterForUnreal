@@ -42,9 +42,6 @@ void ArticyLocalizerGenerator::GenerateCode(const UArticyImportData* Data, FStri
 
                     header->Method("void", "Reload", "", [&]
                         {
-                            // Clear cache
-                            header->Line(TEXT("KeyToTableCache.Reset();"), true);
-
                             // Add listener for language/locale change events
                             header->Line(TEXT("if (!bListenerSet) {"));
                             header->Line(FString::Printf(TEXT("FInternationalization::Get().OnCultureChanged().AddUObject(this, &%s::Reload);"), *type), true, true, 1);

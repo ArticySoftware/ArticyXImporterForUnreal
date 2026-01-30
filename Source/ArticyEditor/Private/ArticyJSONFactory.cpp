@@ -330,8 +330,7 @@ EReimportResult::Type UArticyJSONFactory::Reimport(UObject* Obj)
     }
 
     Asset->bMultiFileMerge = false;
-
-    CodeGenerator::Recompile(Asset);
+    Asset->FinalizeImport(true);
 
     return EReimportResult::Succeeded;
 }
