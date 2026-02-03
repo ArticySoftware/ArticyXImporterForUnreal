@@ -5,7 +5,7 @@ var class_u_articy_plugin_settings =
     [ "DoesPackageSettingExist", "d8/de1/class_u_articy_plugin_settings.html#a72f42bc96857f69c071baed8c85ce68f", null ],
     [ "UpdatePackageSettings", "d8/de1/class_u_articy_plugin_settings.html#a8435b9bb4721e50345ede644013e58ec", null ],
     [ "UPROPERTY", "d8/de1/class_u_articy_plugin_settings.html#a8a1a3e6a0f78d5063287525d992ac278", null ],
-    [ "ArticyDirectory", "d8/de1/class_u_articy_plugin_settings.html#a994ce842c765b764676ee263aa86ff7f", null ],
+    [ "ArticyDirectory", "d8/de1/class_u_articy_plugin_settings.html#a2af384af957546254f05b6810925a9df", null ],
     [ "bConvertUnityToUnrealRichText", "d8/de1/class_u_articy_plugin_settings.html#a44d7d049be7ecce7f83d9031bc9233af", null ],
     [ "bCreateBlueprintTypeForScriptMethods", "d8/de1/class_u_articy_plugin_settings.html#aaed14540af29071973499abd40dc94f2", null ],
     [ "bKeepDatabaseBetweenWorlds", "d8/de1/class_u_articy_plugin_settings.html#a42f5a4f3cf626b67674071733e4e65af", null ],

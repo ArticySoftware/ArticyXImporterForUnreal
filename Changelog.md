@@ -8,6 +8,11 @@
     - Fix issues with build automation
     - Fix import bugs
     - Style fixes in comments
+    
+## Unreal Importer 1.4.2 Changelog :
+
+- Fixes:
+    - Bug fixes on import and build automation
 
 ## Unreal Importer 1.4.1 Changelog :
 
