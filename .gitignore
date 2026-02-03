@@ -13,3 +13,4 @@ Packages
 *.suo
 *.xcodeproj
 *.xcworkspace
+.DS_Store

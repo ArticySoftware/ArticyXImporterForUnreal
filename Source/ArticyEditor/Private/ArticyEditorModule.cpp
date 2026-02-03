@@ -24,7 +24,7 @@
 #include "Widgets/Images/SImage.h"
 #include "IDirectoryWatcher.h"
 #include "Customizations/ArticyPinFactory.h"
-#include "Customizations/AssetActions/AssetTypeActions_ArticyGv.h"
+#include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
@@ -237,7 +237,7 @@ TSharedRef<SWidget> FArticyEditorModule::OnGenerateArticyToolsMenu() const
 void FArticyEditorModule::RegisterAssetTypeActions()
 {
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGv()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGV()));
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyAlterativeGV()));
 }
 
