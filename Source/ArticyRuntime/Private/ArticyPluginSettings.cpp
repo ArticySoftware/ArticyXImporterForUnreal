@@ -22,7 +22,7 @@ UArticyPluginSettings::UArticyPluginSettings()
 	bUseLegacyImporter = false;
 
 	bSortChildrenAtGeneration = false;
-	ArticyDirectory.Path = TEXT("/Game");
+	ArticyDirectory = TEXT("/Game");
 	// update package load settings after all files have been loaded
 	FAssetRegistryModule& AssetRegistry = FModuleManager::Get().GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	AssetRegistry.Get().OnFilesLoaded().AddUObject(this, &UArticyPluginSettings::UpdatePackageSettings);
@@ -86,12 +86,27 @@ void UArticyPluginSettings::ApplyPreviousSettings() const
 {
 	// restore the package default settings with the cached data of the plugin settings
 	TWeakObjectPtr<UArticyDatabase> OriginalDatabase = UArticyDatabase::GetMutableOriginal();
+	if (!OriginalDatabase.IsValid())
+		return;
+
+	const UArticyPluginSettings* DefaultSettings = GetDefault<UArticyPluginSettings>();
 
 	for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
 	{
-		OriginalDatabase->ChangePackageDefault(FName(*PackageName), GetDefault<UArticyPluginSettings>()->PackageLoadSettings[PackageName]);
+		const FName PackageFName(*PackageName);
+		const auto* Settings = DefaultSettings->PackageLoadSettings.Find(PackageName);
+
+		if (Settings)
+		{
+			OriginalDatabase->ChangePackageDefault(PackageFName, *Settings);
+		}
+		else
+		{
+			UE_LOG(LogArticyRuntime, Warning, TEXT("No PackageLoadSettings found for package: %s"), *PackageName);
+		}
 	}
 }
+
 
 #if WITH_EDITOR
 void UArticyPluginSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

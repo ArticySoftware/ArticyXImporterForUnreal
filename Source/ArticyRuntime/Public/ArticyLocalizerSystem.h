@@ -11,6 +11,7 @@
 #include "UObject/UObjectIterator.h"
 #include "UObject/Package.h"
 #include "Internationalization/StringTableCore.h"
+#include "ArticyLocalizationSubsystem.h"
 #include "ArticyLocalizerSystem.generated.h"
 
 UCLASS(BlueprintType)
@@ -21,32 +22,10 @@ class ARTICYRUNTIME_API UArticyLocalizerSystem : public UObject
 public:
 	static UArticyLocalizerSystem* Get()
 	{
-		static TWeakObjectPtr<UArticyLocalizerSystem> ArticyLocalizerSystem;
-		if (ArticyLocalizerSystem.IsValid())
+		if (UArticyLocalizationSubsystem* Subsys = UArticyLocalizationSubsystem::Get())
 		{
-			return ArticyLocalizerSystem.Get();
+			return Subsys->GetLocalizer();
 		}
-
-		UClass* ParentClass = UArticyLocalizerSystem::StaticClass();
-
-		// Iterate over all classes
-		for (TObjectIterator<UClass> It; It; ++It)
-		{
-			UClass* Class = *It;
-			// Check if the class is derived from the parent class
-			if (Class->IsChildOf(ParentClass) && Class != ParentClass)
-			{
-				// Create an instance of the found subclass
-				UArticyLocalizerSystem* NewLocalizerSystem = NewObject<UArticyLocalizerSystem>(GetTransientPackage(), Class);
-
-				// Assign the instance to the TWeakObjectPtr
-				ArticyLocalizerSystem = NewLocalizerSystem;
-
-				return ArticyLocalizerSystem.Get();
-			}
-		}
-
-		// Handle case where no subclass is found
 		return nullptr;
 	}
 
@@ -61,7 +40,12 @@ public:
 	{
 		if (!bDataLoaded)
 		{
-			Reload();
+			// Subsystem should have loaded it. If not, avoid hitches here.
+			UE_LOG(LogArticyRuntime, Warning, TEXT("String tables are not loaded."))
+
+			// Either return BackupText or Key.
+			if (BackupText) return *BackupText;
+			return Key;
 		}
 
 		const FText MissingEntry = FText::FromString("<MISSING STRING TABLE ENTRY>");

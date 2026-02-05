@@ -61,7 +61,8 @@ public:
 	 * Change only to manually apply a fix!
 	 */
 	UPROPERTY(VisibleAnywhere, config, Category = ImportSettings, meta = (DisplayName = "Articy Directory", ContentDir, LongPackageName))
-	FDirectoryPath ArticyDirectory;
+	FString ArticyDirectory;
+
 
 	/**
 	 * Keeps one instance of the database for the whole game alive, even if the world changes.
