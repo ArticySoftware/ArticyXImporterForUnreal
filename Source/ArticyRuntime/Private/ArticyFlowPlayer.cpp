@@ -539,9 +539,9 @@ void UArticyFlowPlayer::UpdateAvailableBranchesInternal(bool Startup)
  */
 void UArticyFlowPlayer::SetCursorToStartNode()
 {
-    // This ensure Flowplayer construction whithout Throwing
+    // This ensure Flowplayer construction without throwing
     // error message when setup in Actor construction with C++
-    if (StartOn.NoneSet)
+    if (StartOn.GetId().IsNull())
     {
         return;
     }
