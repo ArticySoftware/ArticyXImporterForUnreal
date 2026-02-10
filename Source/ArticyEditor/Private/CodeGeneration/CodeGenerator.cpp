@@ -614,6 +614,26 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 		return;
 	}
 
+	TMap<FArticyId, FArticyId> LatestOwnerByObjectId;
+	for (const FArticyPackageDef& PackDef : Data->GetPackageDefs().GetPackages())
+	{
+		if (!PackDef.GetIsIncluded())
+			continue;
+
+		const FArticyId PackId = PackDef.GetId();
+		for (const FArticyModelDef& Model : PackDef.GetModels())
+		{
+			LatestOwnerByObjectId.Add(Model.GetId(), PackId);
+		}
+	}
+	Data->SetLatestOwnerByObjectId(MoveTemp(LatestOwnerByObjectId));
+
+	if (!ensureAlwaysMsgf(PurgeDuplicateGeneratedObjects(Data),
+		TEXT("Failed to purge duplicate generated Articy objects by ID.")))
+	{
+		return;
+	}
+
 	// Generate the global variables asset
 	GlobalVarsGenerator::GenerateAsset(Data);
 	// Generate the database asset
@@ -826,6 +846,69 @@ bool CodeGenerator::RestoreCachedFiles()
 	}
 
 	return bFilesRestored;
+}
+
+bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
+{
+	const TMap<FArticyId, FArticyId>& Latest = Data->GetLatestOwnerByObjectId();
+	if (Latest.Num() == 0)
+		return true;
+
+	FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	TArray<FAssetData> OutAssets;
+	AssetRegistry.Get().GetAssetsByPath(
+		FName(*ArticyHelpers::GetArticyGeneratedFolder()),
+		OutAssets,
+		true
+	);
+
+	TArray<UObject*> ToDelete;
+	TSet<UArticyPackage*> DirtyPackages;
+
+	for (const FAssetData& AD : OutAssets)
+	{
+		if (!AD.IsValid())
+			continue;
+
+		UObject* Asset = AD.GetAsset();
+		if (!Asset)
+			continue;
+
+		UArticyObject* Obj = Cast<UArticyObject>(Asset);
+		if (!Obj)
+			continue;
+
+		const FArticyId ObjId = Obj->GetId();
+		const FArticyId* WinningPackageId = Latest.Find(ObjId);
+		if (!WinningPackageId)
+			continue;
+
+		UArticyPackage* OuterPack = Cast<UArticyPackage>(Obj->GetOuter());
+		if (!OuterPack)
+			continue;
+
+		// Keep the winning instance; purge only losers
+		if (OuterPack->PackageId == *WinningPackageId)
+			continue;
+
+		// Remove references from the package before deleting
+		OuterPack->RemoveAssetById(ObjId);
+		DirtyPackages.Add(OuterPack);
+
+		ToDelete.Add(Obj);
+	}
+
+	for (UArticyPackage* Pack : DirtyPackages)
+	{
+		Pack->MarkPackageDirty();
+	}
+
+	if (ToDelete.Num() == 0)
+		return true;
+
+	const int32 Deleted = ObjectTools::ForceDeleteObjects(ToDelete, false);
+	return Deleted == ToDelete.Num();
 }
 
 #undef LOCTEXT_NAMESPACE

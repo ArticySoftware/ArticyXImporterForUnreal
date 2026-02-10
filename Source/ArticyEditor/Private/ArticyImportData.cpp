@@ -620,10 +620,10 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		return false; */
 
 	// record old hashes before merge
-	TSet<FString> OldPackageScriptHashes;
+	TMap<FArticyId, FString> OldScriptHashByPackageId;
 	for (const auto& ExistingPackage : PackageDefs.GetPackages())
 	{
-		OldPackageScriptHashes.Add(ExistingPackage.GetScriptFragmentHash());
+		OldScriptHashByPackageId.Add(ExistingPackage.GetId(), ExistingPackage.GetScriptFragmentHash());
 	}
 
 	// import the main sections
@@ -706,19 +706,18 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	}
 
 	const auto& Packages = PackageDefs.GetPackages();
-	if (OldPackageScriptHashes.Num() == Packages.Num())
+	if (OldScriptHashByPackageId.Num() == Packages.Num())
 	{
 		bool bScriptFragmentsChanged = false;
-
-		for (auto& Package : Packages)
+		for (const auto& Package : PackageDefs.GetPackages())
 		{
-			if (!OldPackageScriptHashes.Contains(Package.GetScriptFragmentHash()))
+			const FString* OldHash = OldScriptHashByPackageId.Find(Package.GetId());
+			if (!OldHash || *OldHash != Package.GetScriptFragmentHash())
 			{
 				bScriptFragmentsChanged = true;
 				break;
 			}
 		}
-
 		if (bScriptFragmentsChanged)
 		{
 			Settings.SetScriptFragmentsNeedRebuild();

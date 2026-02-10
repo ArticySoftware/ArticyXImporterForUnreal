@@ -32,6 +32,12 @@ public:
 	void AddAsset(UArticyObject* ArticyObject);
 
 	UFUNCTION()
+	bool RemoveAssetById(const FArticyId& Id);
+
+	UFUNCTION()
+	bool RemoveAsset(UArticyObject* ArticyObject);
+
+	UFUNCTION()
 	const int AssetNum()const;
 
 	UFUNCTION()
@@ -53,6 +59,8 @@ public:
 
 	const bool IsAssetContained(const FArticyId& Id) const;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Package")
+	FArticyId PackageId;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Package")
 	FString Name;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Package")
@@ -135,4 +143,56 @@ inline void UArticyPackage::AddAsset(UArticyObject* ArticyObject)
 		AssetsByTechnicalName.Add(ArticyObject->GetTechnicalName(), ArticyObject);
 		AssetsById.Add(ArticyId, ArticyObject);
 	}
+}
+
+inline bool UArticyPackage::RemoveAssetById(const FArticyId& Id)
+{
+	TSoftObjectPtr<UArticyObject>* FoundPtr = AssetsById.Find(Id);
+	if (!FoundPtr)
+		return false;
+
+	const TSoftObjectPtr<UArticyObject> FoundSoft = *FoundPtr;
+	UArticyObject* Obj = FoundSoft.Get();
+
+	AssetsById.Remove(Id);
+
+	if (Obj)
+	{
+		const FName TechName = Obj->GetTechnicalName();
+
+		if (const TSoftObjectPtr<UArticyObject>* NamePtr = AssetsByTechnicalName.Find(TechName))
+		{
+			// remove only if it points to same object
+			if (NamePtr->ToSoftObjectPath() == FoundSoft.ToSoftObjectPath())
+			{
+				AssetsByTechnicalName.Remove(TechName);
+			}
+		}
+
+		Assets.RemoveSingleSwap(Obj);
+	}
+	else
+	{
+		// resolve-less cleanup
+		Assets.RemoveAllSwap([&](UArticyObject* A)
+			{
+				return A == nullptr || A->GetId() == Id;
+			});
+
+		for (auto It = AssetsByTechnicalName.CreateIterator(); It; ++It)
+		{
+			const TSoftObjectPtr<UArticyObject>& V = It.Value();
+			if (!V.IsValid() || V.ToSoftObjectPath() == FoundSoft.ToSoftObjectPath())
+			{
+				It.RemoveCurrent();
+			}
+		}
+	}
+
+	return true;
+}
+
+inline bool UArticyPackage::RemoveAsset(UArticyObject* ArticyObject)
+{
+	return ArticyObject ? RemoveAssetById(ArticyObject->GetId()) : false;
 }

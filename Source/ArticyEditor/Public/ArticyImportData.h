@@ -461,6 +461,8 @@ public:
 	void SetInitialImportComplete() { bHasCachedVersion = true; }
 
 	bool FinalizeImport(bool bAllowRemovalFinal);
+	void SetLatestOwnerByObjectId(TMap<FArticyId, FArticyId>&& InMap) { LatestOwnerByObjectId = MoveTemp(InMap); }
+	const TMap<FArticyId, FArticyId>& GetLatestOwnerByObjectId() const { return LatestOwnerByObjectId; }
 
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyLanguages Languages;
@@ -506,6 +508,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Imported")
 	TMap<FArticyId, FArticyIdArray> ParentChildrenCache;
+
+	UPROPERTY(Transient)
+	TMap<FArticyId, FArticyId> LatestOwnerByObjectId;
 
 	void ImportAudioAssets(const FString& BaseContentDir);
 	int ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);

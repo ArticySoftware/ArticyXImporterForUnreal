@@ -43,6 +43,13 @@ public:
 	static bool RestoreCachedFiles();
 
 	/**
+	* @brief Purges duplicate objects that were generated from imports.
+	* 
+	* @ return true if any objects were removed, false otherwise.
+	*/
+	static bool PurgeDuplicateGeneratedObjects(UArticyImportData* Data);
+
+	/**
 	 * @brief Generates assets based on the provided import data.
 	 *
 	 * Handles asset generation, including handling renaming and deletion of generated assets.

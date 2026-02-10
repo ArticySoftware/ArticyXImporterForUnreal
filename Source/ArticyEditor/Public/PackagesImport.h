@@ -207,6 +207,13 @@ public:
 	TMap<FString, FArticyTexts> GetTexts() const;
 
 	/**
+	* Gets the models from the package definition.
+	* 
+	* @return An array of models.
+	*/
+	const TArray<FArticyModelDef>& GetModels() const { return Models; }
+
+	/**
 	 * Gets the folder path for the package.
 	 *
 	 * @return The folder path as a string.

@@ -263,13 +263,26 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 	UArticyPackage* ArticyPackage = ArticyImporterHelpers::GenerateAsset<UArticyPackage>(*UArticyPackage::StaticClass()->GetName(), TEXT("ArticyRuntime"), *AssetName, "Packages");
 
 	ArticyPackage->Clear();
+	ArticyPackage->PackageId = Id;
 	ArticyPackage->Name = Name;
 	ArticyPackage->Description = Description;
 	ArticyPackage->bIsDefaultPackage = IsDefaultPackage;
 
+	const TMap<FArticyId, FArticyId>& LatestOwnerByObjectId = Data->GetLatestOwnerByObjectId();
+
 	// Create all contained subassets and register them in the package
 	for (const auto& model : Models)
 	{
+		const FArticyId ObjId = model.GetId();
+
+		if (const FArticyId* Owner = LatestOwnerByObjectId.Find(ObjId))
+		{
+			if (*Owner != this->Id)
+			{
+				continue;
+			}
+		}
+
 		UArticyObject* asset = model.GenerateSubAsset(Data, ArticyPackage); //MM_CHANGE
 
 		if (asset)
