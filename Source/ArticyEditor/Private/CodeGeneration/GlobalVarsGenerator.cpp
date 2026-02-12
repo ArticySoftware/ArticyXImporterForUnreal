@@ -45,7 +45,7 @@ void GlobalVarsGenerator::GenerateCode(const UArticyImportData* Data, FString& O
 						// Generate all the variables in public section
 						header->Line("public:", false, true, -1);
 
-						for (const FArticyGVar var : ns.Variables)
+						for (const FArticyGVar& var : ns.Variables)
 							header->Variable(var.GetCPPTypeString() + "*", var.Variable, "nullptr", var.Description, true,
 								FString::Printf(TEXT("VisibleAnywhere, BlueprintReadOnly, Category=\"%s\""), *ns.Namespace));
 
