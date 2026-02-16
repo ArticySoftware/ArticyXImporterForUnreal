@@ -14,8 +14,6 @@
 #include "ArticyLocalizationSubsystem.h"
 #include "ArticyLocalizerSystem.generated.h"
 
-DEFINE_LOG_CATEGORY(LogArticyRuntime)
-
 UCLASS(BlueprintType)
 class ARTICYRUNTIME_API UArticyLocalizerSystem : public UObject
 {
