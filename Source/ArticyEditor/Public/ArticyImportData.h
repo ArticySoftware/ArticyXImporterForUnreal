@@ -433,6 +433,7 @@ public:
 	const FAdiSettings& GetSettings() const { return Settings; }
 	FAdiSettings& GetSettings() { return Settings; }
 	const FArticyProjectDef& GetProject() const { return Project; }
+	FArticyGVInfo& GetGlobalVars() { return GlobalVariables; }
 	const FArticyGVInfo& GetGlobalVars() const { return GlobalVariables; }
 	const FADIHierarchy& GetHierarchy() const { return Hierarchy; }
 	FArticyObjectDefinitions& GetObjectDefs() { return ObjectDefinitions; }

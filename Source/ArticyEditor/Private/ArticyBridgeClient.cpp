@@ -398,6 +398,149 @@ void FArticyBridgeClientRunnable::UpdateAssetsAndCode(UArticyImportData * Import
     }
 }
 
+FString FArticyBridgeClientRunnable::MakeCppIdentifier(const FString& In)
+{
+    FString Out;
+    Out.Reserve(In.Len());
+
+    for (TCHAR C : In)
+    {
+        if (FChar::IsAlnum(C) || C == TEXT('_'))
+        {
+            Out.AppendChar(C);
+        }
+        else
+        {
+            Out.AppendChar(TEXT('_'));
+        }
+    }
+
+    // Must not start with a digit
+    if (Out.IsEmpty() || FChar::IsDigit(Out[0]))
+    {
+        Out = TEXT("_") + Out;
+    }
+
+    return Out;
+}
+
+bool FArticyBridgeClientRunnable::ApplyBridgeTypeAndDefault(FArticyGVar& Var, const FString& DataType, const TSharedPtr<FJsonObject>& Msg)
+{
+    Var.Type = EArticyType::ADT_String;
+    Var.BoolValue = false;
+    Var.IntValue = 0;
+    Var.StringValue.Reset();
+
+    // Type
+    if (DataType.Equals(TEXT("Boolean"), ESearchCase::IgnoreCase))
+    {
+        Var.Type = EArticyType::ADT_Boolean;
+
+        bool B = false;
+        if (Msg->TryGetBoolField(TEXT("DefaultValue"), B))
+        {
+            Var.BoolValue = B;
+        }
+        return true;
+    }
+
+    if (DataType.Equals(TEXT("Integer"), ESearchCase::IgnoreCase))
+    {
+        Var.Type = EArticyType::ADT_Integer;
+
+        double Num = 0.0;
+        if (Msg->TryGetNumberField(TEXT("DefaultValue"), Num))
+        {
+            Var.IntValue = (int32)Num;
+            return true;
+        }
+
+        FString S;
+        if (Msg->TryGetStringField(TEXT("DefaultValue"), S))
+        {
+            Var.IntValue = FCString::Atoi(*S);
+            return true;
+        }
+
+        return true;
+    }
+
+    // Treat anything else as string
+    Var.Type = EArticyType::ADT_String;
+
+    FString Str;
+    if (Msg->TryGetStringField(TEXT("DefaultValue"), Str))
+    {
+        Var.StringValue = Str;
+        return true;
+    }
+
+    // If DefaultValue is not a string, coerce from raw JSON Value
+    const TSharedPtr<FJsonValue>* Raw = Msg->Values.Find(TEXT("DefaultValue"));
+    if (Raw && Raw->IsValid())
+    {
+        if ((*Raw)->Type == EJson::Boolean) Var.StringValue = (*Raw)->AsBool() ? TEXT("true") : TEXT("false");
+        else if ((*Raw)->Type == EJson::Number) Var.StringValue = FString::SanitizeFloat((*Raw)->AsNumber());
+        else Var.StringValue = TEXT("");
+    }
+
+    return true;
+}
+
+EArticyType FArticyBridgeClientRunnable::BridgeTypeToArticyType(const FString& In)
+{
+    if (In.Equals(TEXT("Boolean"), ESearchCase::IgnoreCase)) return EArticyType::ADT_Boolean;
+    if (In.Equals(TEXT("Integer"), ESearchCase::IgnoreCase)) return EArticyType::ADT_Integer;
+    if (In.Equals(TEXT("String"), ESearchCase::IgnoreCase)) return EArticyType::ADT_String;
+    if (In.Equals(TEXT("MultiLanguageString"), ESearchCase::IgnoreCase)) return EArticyType::ADT_MultiLanguageString;
+    return EArticyType::ADT_String;
+}
+
+FString FArticyBridgeClientRunnable::MakeCppSafeIdentifier(const FString& In, const TCHAR* Fallback)
+{
+    FString Out;
+    Out.Reserve(In.Len());
+
+    for (int32 i = 0; i < In.Len(); ++i)
+    {
+        const TCHAR C = In[i];
+        const bool bAlphaNum = FChar::IsAlnum(C);
+        Out.AppendChar(bAlphaNum ? C : TEXT('_'));
+    }
+
+    if (Out.IsEmpty())
+        Out = Fallback;
+
+    // C++ identifier must not start with a digit
+    if (Out.Len() > 0 && FChar::IsDigit(Out[0]))
+        Out = FString(TEXT("_")) + Out;
+
+    return Out;
+}
+
+FArticyGVNamespace* FArticyBridgeClientRunnable::FindGVNamespace(FArticyGVInfo& GV, const FString& VariableSet)
+{
+    for (FArticyGVNamespace& Ns : GV.Namespaces)
+    {
+        if (Ns.Namespace.Equals(VariableSet, ESearchCase::CaseSensitive) ||
+            Ns.Namespace.Equals(VariableSet, ESearchCase::IgnoreCase))
+        {
+            return &Ns;
+        }
+    }
+    return nullptr;
+}
+
+int32 FArticyBridgeClientRunnable::FindGVVarIndex(const FArticyGVNamespace& Ns, const FString& VarName)
+{
+    for (int32 i = 0; i < Ns.Variables.Num(); ++i)
+    {
+        if (Ns.Variables[i].Variable.Equals(VarName, ESearchCase::IgnoreCase))
+            return i;
+    }
+    return INDEX_NONE;
+}
+
 void FArticyBridgeClientRunnable::ProcessMessage(const FString & MessageType, const TSharedPtr<FJsonObject> Message, UArticyImportData * ImportData)
 {
     if (!ImportData)
@@ -611,7 +754,186 @@ void FArticyBridgeClientRunnable::ProcessMessage(const FString & MessageType, co
         return;
     }
 
-    if (MessageType.Equals(TEXT("GlobalVariableCreated"))) {
+    if (MessageType.Equals(TEXT("GlobalVariableCreated")))
+    {
+        FString VarSet, VarName, DataType, Desc;
+
+        if (!Message->TryGetStringField(TEXT("VariableSet"), VarSet) || VarSet.IsEmpty() ||
+            !Message->TryGetStringField(TEXT("Variable"), VarName) || VarName.IsEmpty() ||
+            !Message->TryGetStringField(TEXT("DataType"), DataType) || DataType.IsEmpty())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("GlobalVariableCreated: Missing VariableSet/Variable/DataType."));
+            return;
+        }
+
+        Message->TryGetStringField(TEXT("Description"), Desc);
+
+        FArticyGVInfo& GV = ImportData->GetGlobalVars();
+        TArray<FArticyGVNamespace>& Namespaces = GV.Namespaces;
+
+        // Find or create namespace
+        FArticyGVNamespace* Ns = nullptr;
+        for (FArticyGVNamespace& Existing : Namespaces)
+        {
+            if (Existing.Namespace.Equals(VarSet))
+            {
+                Ns = &Existing;
+                break;
+            }
+        }
+
+        if (!Ns)
+        {
+            const int32 Idx = Namespaces.AddDefaulted();
+            Ns = &Namespaces[Idx];
+            Ns->Namespace = VarSet;
+            Ns->Description = TEXT("");
+            Ns->CppTypename = MakeCppIdentifier(VarSet);
+        }
+
+        // Find or create variable
+        FArticyGVar* Var = nullptr;
+        for (FArticyGVar& ExistingVar : Ns->Variables)
+        {
+            if (ExistingVar.Variable.Equals(VarName))
+            {
+                Var = &ExistingVar;
+                break;
+            }
+        }
+
+        if (!Var)
+        {
+            const int32 VIdx = Ns->Variables.AddDefaulted();
+            Var = &Ns->Variables[VIdx];
+            Var->Variable = VarName;
+        }
+
+        Var->Description = Desc;
+        ApplyBridgeTypeAndDefault(*Var, DataType, Message);
+
+        ImportData->GetSettings().SetObjectDefinitionsNeedRebuild();
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("GlobalVariableCreated: %s.%s (%s)"), *VarSet, *VarName, *DataType);
+        return;
+    }
+
+    if (MessageType.Equals(TEXT("GlobalVariableRenamed")))
+    {
+        FString VariableSet, OldVariable, NewVariable, DataType, Description;
+        if (!Message->TryGetStringField(TEXT("VariableSet"), VariableSet) || VariableSet.IsEmpty())
+            return;
+        if (!Message->TryGetStringField(TEXT("OldVariable"), OldVariable) || OldVariable.IsEmpty())
+            return;
+        if (!Message->TryGetStringField(TEXT("Variable"), NewVariable) || NewVariable.IsEmpty())
+            return;
+
+        Message->TryGetStringField(TEXT("DataType"), DataType);
+        Message->TryGetStringField(TEXT("Description"), Description);
+
+        // DefaultValue can be bool/int/string depending on DataType
+        const TSharedPtr<FJsonValue>* DefaultValuePtr = Message->Values.Find(TEXT("DefaultValue"));
+
+        FArticyGVInfo& GV = ImportData->GetGlobalVars();
+        FArticyGVNamespace* Ns = FindGVNamespace(GV, VariableSet);
+        if (!Ns)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("GlobalVariableRenamed: Namespace '%s' not found."), *VariableSet);
+            return;
+        }
+
+        const int32 OldIdx = FindGVVarIndex(*Ns, OldVariable);
+        if (OldIdx == INDEX_NONE)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("GlobalVariableRenamed: Variable '%s' not found in '%s'."),
+                *OldVariable, *VariableSet);
+            return;
+        }
+
+        // Rename
+        FArticyGVar& Var = Ns->Variables[OldIdx];
+        Var.Variable = NewVariable;
+        Var.Description = Description;
+
+        if (!DataType.IsEmpty())
+            Var.Type = BridgeTypeToArticyType(DataType);
+
+        if (DefaultValuePtr && DefaultValuePtr->IsValid())
+        {
+            const TSharedPtr<FJsonValue>& DV = *DefaultValuePtr;
+
+            // Reset stored defaults first
+            Var.BoolValue = false;
+            Var.IntValue = 0;
+            Var.StringValue.Empty();
+
+            switch (Var.Type)
+            {
+            case EArticyType::ADT_Boolean:
+                Var.BoolValue = (DV->Type == EJson::Boolean) ? DV->AsBool() : false;
+                break;
+
+            case EArticyType::ADT_Integer:
+                if (DV->Type == EJson::Number) Var.IntValue = (int)DV->AsNumber();
+                else if (DV->Type == EJson::String) LexFromString(Var.IntValue, *DV->AsString());
+                break;
+
+            case EArticyType::ADT_String:
+            case EArticyType::ADT_MultiLanguageString:
+                if (DV->Type == EJson::String) Var.StringValue = DV->AsString();
+                else if (DV->Type == EJson::Number) Var.StringValue = FString::SanitizeFloat(DV->AsNumber());
+                else if (DV->Type == EJson::Boolean) Var.StringValue = DV->AsBool() ? TEXT("true") : TEXT("false");
+                break;
+            }
+        }
+
+        if (Ns->CppTypename.IsEmpty())
+        {
+            Ns->CppTypename = MakeCppSafeIdentifier(Ns->Namespace, TEXT("GVNamespace"));
+        }
+
+        ImportData->GetSettings().SetObjectDefinitionsNeedRebuild();
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("GlobalVariableRenamed: %s.%s -> %s.%s"),
+            *VariableSet, *OldVariable, *VariableSet, *NewVariable);
+        return;
+    }
+
+    if (MessageType.Equals(TEXT("GlobalVariableDeleted")))
+    {
+        FString VariableSet, Variable;
+        if (!Message->TryGetStringField(TEXT("VariableSet"), VariableSet) || VariableSet.IsEmpty())
+            return;
+        if (!Message->TryGetStringField(TEXT("Variable"), Variable) || Variable.IsEmpty())
+            return;
+
+        FArticyGVInfo& GV = ImportData->GetGlobalVars();
+        FArticyGVNamespace* Ns = FindGVNamespace(GV, VariableSet);
+        if (!Ns)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("GlobalVariableDeleted: Namespace '%s' not found."), *VariableSet);
+            return;
+        }
+
+        const int32 Before = Ns->Variables.Num();
+        Ns->Variables.RemoveAll([&](const FArticyGVar& V)
+            {
+                return V.Variable.Equals(Variable, ESearchCase::IgnoreCase);
+            });
+        const int32 Removed = Before - Ns->Variables.Num();
+
+        if (Removed == 0)
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("GlobalVariableDeleted: %s.%s not found (no-op)."), *VariableSet, *Variable);
+            return;
+        }
+
+        ImportData->GetSettings().SetObjectDefinitionsNeedRebuild();
+        UpdateAssetsAndCode(ImportData);
+
+        UE_LOG(LogTemp, Log, TEXT("GlobalVariableDeleted: Removed %d variable(s): %s.%s"), Removed, *VariableSet, *Variable);
         return;
     }
 

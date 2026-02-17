@@ -11,6 +11,11 @@
 #include "SocketSubsystem.h"
 #include "ArticyBridgeClient.generated.h"
 
+struct FArticyGVar;
+struct FArticyGVNamespace;
+struct FArticyGVInfo;
+enum class EArticyType : uint8;
+
 UCLASS()
 class UArticyBridgeClientCommands : public UObject
 {
@@ -76,6 +81,13 @@ public:
 private:
     FCriticalSection TargetMutex;
     TAtomic<bool> bReconnectRequested{ false };
+
+    static FString MakeCppIdentifier(const FString& In);
+    static bool ApplyBridgeTypeAndDefault(FArticyGVar& Var, const FString& DataType, const TSharedPtr<FJsonObject>& Msg);
+    static EArticyType BridgeTypeToArticyType(const FString& In);
+    static FArticyGVNamespace* FindGVNamespace(FArticyGVInfo& GV, const FString& VariableSet);
+    static int32 FindGVVarIndex(const FArticyGVNamespace& Ns, const FString& VarName);
+    static FString MakeCppSafeIdentifier(const FString& In, const TCHAR* Fallback = TEXT("GV"));
 
     void CloseSocket_NoLock()
     {
