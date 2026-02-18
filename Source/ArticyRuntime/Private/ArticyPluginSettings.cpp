@@ -86,10 +86,23 @@ void UArticyPluginSettings::ApplyPreviousSettings() const
 {
 	// restore the package default settings with the cached data of the plugin settings
 	TWeakObjectPtr<UArticyDatabase> OriginalDatabase = UArticyDatabase::GetMutableOriginal();
-
-	for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
+	if (OriginalDatabase.IsValid())
 	{
-		OriginalDatabase->ChangePackageDefault(FName(*PackageName), GetDefault<UArticyPluginSettings>()->PackageLoadSettings[PackageName]);
+		for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
+		{
+			if (GetDefault<UArticyPluginSettings>()->PackageLoadSettings.Contains(PackageName))
+			{
+				OriginalDatabase->ChangePackageDefault(FName(*PackageName), GetDefault<UArticyPluginSettings>()->PackageLoadSettings[PackageName]);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Package name '%s' not found in PackageLoadSettings."), *PackageName);
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ArticyDatabase is nullptr in ApplyPreviousSettings."));
 	}
 }
 
