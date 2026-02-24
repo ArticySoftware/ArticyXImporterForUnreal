@@ -172,12 +172,24 @@ namespace ArticyHelpers
 	inline FText ResolveText(UObject* Outer, const FText* SourceText)
 	{
 		UArticyLocalizerSystem* ArticyLocalizerSystem = UArticyLocalizerSystem::Get();
+		if (!ArticyLocalizerSystem)
+		{
+			return *SourceText;
+		}
 		return ArticyLocalizerSystem->ResolveText(Outer, SourceText);
 	}
 
 	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
 	{
 		UArticyLocalizerSystem* ArticyLocalizerSystem = UArticyLocalizerSystem::Get();
+		if (!ArticyLocalizerSystem)
+		{
+			if (BackupText)
+			{
+				return *BackupText;
+			}
+			return Key;
+		}
 		return ArticyLocalizerSystem->LocalizeString(Outer, Key, ResolveTextExtension, BackupText);
 	}
 
