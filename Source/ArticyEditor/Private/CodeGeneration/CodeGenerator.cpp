@@ -371,14 +371,32 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 			}
 
 			bool ExcludeAsset = false;
+
+			// Determine the package name based on what kind of asset this is
+			FString TargetPackageName = TEXT("");
+
 			if (const UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset))
+			{
+				TargetPackageName = PackageAsset->Name;
+			}
+			else if (const UArticyObject* ArticyObject = Cast<UArticyObject>(Asset))
+			{
+				// If it's an object, get the name of the containing package
+				if (const UArticyPackage* ParentPackage = Cast<UArticyPackage>(ArticyObject->GetOuter()))
+				{
+					TargetPackageName = ParentPackage->Name;
+				}
+			}
+
+			if (!TargetPackageName.IsEmpty())
 			{
 				for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
 				{
-					// Don't delete package assets that are not included in the import
-					if (!PackageDef.GetIsIncluded() && PackageAsset->Name.Equals(PackageDef.GetName()))
+					// Don't delete assets that belong to a package not included in the import
+					if (!PackageDef.GetIsIncluded() && TargetPackageName.Equals(PackageDef.GetName()))
 					{
 						ExcludeAsset = true;
+						break;
 					}
 				}
 			}

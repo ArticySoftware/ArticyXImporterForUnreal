@@ -256,6 +256,16 @@ public:
 	FArticyId GetId() const;
 
 	/**
+	 * Sets whether a package should be included.
+	 * 
+	 * 
+	 */
+	void SetIsIncluded(bool bInIsIncluded) 
+	{ 
+		IsIncluded = bInIsIncluded; 
+	}
+
+	/**
 	 * Checks if the package is included.
 	 *
 	 * @return True if the package is included, false otherwise.

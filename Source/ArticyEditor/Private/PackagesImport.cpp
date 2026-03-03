@@ -179,11 +179,11 @@ void FArticyPackageDef::ImportFromJson(const UArticyArchiveReader& Archive, cons
 
 	JSON_TRY_HEX_ID(JsonPackage, Id);
 	JSON_TRY_BOOL(JsonPackage, IsIncluded);
+	JSON_TRY_STRING(JsonPackage, Name);
 
 	if (!IsIncluded)
 		return;
 
-	JSON_TRY_STRING(JsonPackage, Name);
 	JSON_TRY_STRING(JsonPackage, Description);
 	JSON_TRY_BOOL(JsonPackage, IsDefaultPackage);
 	JSON_TRY_STRING(JsonPackage, ScriptFragmentHash);
@@ -259,6 +259,14 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 	AssetPackage->FullyLoad();
 
 	const FString AssetName = FPaths::GetBaseFilename(PackageName);
+
+	// If the package is not included in a partial export, skip generation
+	if (!IsIncluded)
+	{
+		const FString ObjectPath = PackagePath + TEXT(".") + AssetName;
+		UArticyPackage* ExistingPackage = LoadObject<UArticyPackage>(nullptr, *ObjectPath);
+		return ExistingPackage;
+	}
 
 	UArticyPackage* ArticyPackage = ArticyImporterHelpers::GenerateAsset<UArticyPackage>(*UArticyPackage::StaticClass()->GetName(), TEXT("ArticyRuntime"), *AssetName, "Packages");
 
@@ -431,6 +439,7 @@ void FArticyPackageDefs::ImportFromJson(
 			{
 				bExistingPackageFound = true;
 
+				ExistingPackage.SetIsIncluded(TempMeta.GetIsIncluded());
 				const FString OldName = ExistingPackage.GetName();
 				const FString NewName = TempMeta.GetName();
 
