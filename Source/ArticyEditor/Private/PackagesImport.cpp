@@ -180,13 +180,12 @@ void FArticyPackageDef::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	JSON_TRY_HEX_ID(JsonPackage, Id);
 	JSON_TRY_BOOL(JsonPackage, IsIncluded);
 	JSON_TRY_STRING(JsonPackage, Name);
-
-	if (!IsIncluded)
-		return;
-
 	JSON_TRY_STRING(JsonPackage, Description);
 	JSON_TRY_BOOL(JsonPackage, IsDefaultPackage);
 	JSON_TRY_STRING(JsonPackage, ScriptFragmentHash);
+
+	if (!IsIncluded)
+		return;
 
 	TSharedPtr<FJsonObject> Files;
 	JSON_TRY_OBJECT(JsonPackage, Files, {
