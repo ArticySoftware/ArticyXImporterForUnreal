@@ -410,6 +410,7 @@ struct ARTICYEDITOR_API FArticyCsvRow
 
 	FString Key;
 	FString SourceString;
+	FString PackageId;
 };
 
 /**
@@ -513,10 +514,55 @@ private:
 	TMap<FArticyId, FArticyId> LatestOwnerByObjectId;
 
 	void ImportAudioAssets(const FString& BaseContentDir);
-	int ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language);
+	int ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language, const FString& PackageId);
+
+	static void LoadExistingRows(
+		const FString& CsvPath,
+		TMap<FString, FArticyCsvRow>& OutRows)
+	{
+		if (!FPaths::FileExists(CsvPath))
+			return;
+
+		FString FileContent;
+		if (!FFileHelper::LoadFileToString(FileContent, *CsvPath))
+			return;
+
+		TArray<FString> Lines;
+		FileContent.ParseIntoArrayLines(Lines);
+
+		int LineNumber = 0;
+		for (const FString& Line : Lines)
+		{
+			// Skip the header row
+			if (LineNumber++ == 0)
+				continue;
+
+			TArray<FString> Parts;
+			Line.ParseIntoArray(Parts, TEXT(","), true);
+
+			if (Parts.Num() < 3)
+				continue;
+
+			auto Unquote = [](FString S)
+				{
+					S.TrimStartAndEndInline();
+					S.RemoveFromStart(TEXT("\""));
+					S.RemoveFromEnd(TEXT("\""));
+					S.ReplaceInline(TEXT("\"\""), TEXT("\""));
+					return S;
+				};
+
+			FArticyCsvRow Row;
+			Row.Key = Unquote(Parts[0]);
+			Row.SourceString = Unquote(Parts[1]);
+			Row.PackageId = Unquote(Parts[2]);
+
+			OutRows.Add(Row.Key, Row);
+		}
+	}
 
 	static void AddRowsUnique(
-		TMap<FString, FString>& Out,
+		TMap<FString, FArticyCsvRow>& Out,
 		const TArray<FArticyCsvRow>& InRows,
 		bool bOverwriteExisting = false)
 	{
@@ -527,11 +573,11 @@ private:
 
 			if (bOverwriteExisting)
 			{
-				Out.Add(R.Key, R.SourceString);
+				Out.Add(R.Key, R);
 			}
 			else
 			{
-				Out.FindOrAdd(R.Key, R.SourceString);
+				Out.FindOrAdd(R.Key, R);
 			}
 		}
 	}

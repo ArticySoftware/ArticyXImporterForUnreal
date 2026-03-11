@@ -10,9 +10,17 @@
 #include "HAL/PlatformFileManager.h"
 #include "SourceControlHelpers.h"
 
-void StringTableGenerator::Line(const FString& Key, const FString& SourceString)
+void StringTableGenerator::Line(const FString& Key, const FString& SourceString, const FString& PackageId)
 {
-    FileContent += TEXT("\"") + Key.Replace(TEXT("\""), TEXT("\"\"")) + TEXT("\",\"") + SourceString.Replace(TEXT("\""), TEXT("\"\"")) + TEXT("\",\"") + TEXT("\"\n");
+    FString EscapedKey = Key.Replace(TEXT("\""), TEXT("\"\""));
+    FString EscapedValue = SourceString.Replace(TEXT("\""), TEXT("\"\""));
+    FString EscapedPackage = PackageId.Replace(TEXT("\""), TEXT("\"\""));
+
+    FileContent += FString::Printf(
+        TEXT("\"%s\",\"%s\",\"%s\"\n"),
+        *EscapedKey,
+        *EscapedValue,
+        *EscapedPackage);
 }
 
 void StringTableGenerator::WriteToFile() const

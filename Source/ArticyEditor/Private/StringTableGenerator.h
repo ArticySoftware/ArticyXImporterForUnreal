@@ -51,7 +51,9 @@ public:
      * @param Key The key for the string entry.
      * @param SourceString The source string for the entry.
      */
-    void Line(const FString& Key = "", const FString& SourceString = "");
+    void Line(const FString& Key = "", const FString& SourceString = "", const FString& PackageId = "");
+
+    const FString& GetPath() const { return Path; }
 
 private:
 
@@ -98,7 +100,7 @@ StringTableGenerator::StringTableGenerator(const FString& TableName, const FStri
     }
     Path += TEXT(".csv");
 
-    Line("Key", "SourceString");
+    Line("Key", "SourceString", "PackageId");
     bool bContentWritten = false;
     if (ensure(!std::is_null_pointer<Lambda>::value))
         bContentWritten = ContentGenerator(this) != 0;

@@ -841,13 +841,34 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 			[&](StringTableGenerator* CsvOutput)
 			{
 				// Collect everything into a map to de-dupe keys
-				TMap<FString, FString> Combined;
+				TMap<FString, FArticyCsvRow> Combined;
+
+				// Load existing rows first
+				LoadExistingRows(CsvOutput->GetPath(), Combined);
+
+				TSet<FString> UpdatedPackages;
+
+				for (const auto& Package : Packages)
+				{
+					if (Package.GetIsIncluded())
+					{
+						UpdatedPackages.Add(Package.GetId().ToString());
+					}
+				}
+
+				for (auto It = Combined.CreateIterator(); It; ++It)
+				{
+					if (UpdatedPackages.Contains(It.Value().PackageId))
+					{
+						It.RemoveCurrent();
+					}
+				}
 
 				// 1) Object definitions text (if applicable)
 				if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
 				{
 					TArray<FArticyCsvRow> ObjRows;
-					ProcessStrings(ObjRows, GetObjectDefs().GetTexts(), Language);
+					ProcessStrings(ObjRows, GetObjectDefs().GetTexts(), Language, TEXT("ObjectDefs"));
 					AddRowsUnique(Combined, ObjRows);
 				}
 
@@ -859,7 +880,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 						continue;
 
 					TArray<FArticyCsvRow> PkgRows;
-					ProcessStrings(PkgRows, Package.GetTexts(), Language);
+					ProcessStrings(PkgRows, Package.GetTexts(), Language, Package.GetId().ToString());
 
 					AddRowsUnique(Combined, PkgRows);
 				}
@@ -870,7 +891,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 				int32 LinesWritten = 0;
 				for (const auto& It : Combined)
 				{
-					CsvOutput->Line(It.Key, It.Value);
+					CsvOutput->Line(It.Key, It.Value.SourceString, It.Value.PackageId);
 					++LinesWritten;
 				}
 
@@ -930,7 +951,7 @@ bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
  * @param Language The language information.
  * @return The number of processed strings.
  */
-int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
+int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language, const FString& PackageId)
 {
 	int Counter = 0;
 
@@ -942,7 +963,7 @@ int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap
 		{
 			auto AddLine = [&](const FString& InKey, const FString& InValue)
 			{
-				OutRows.Add(FArticyCsvRow{ InKey, InValue });
+					OutRows.Add(FArticyCsvRow{ InKey, InValue, PackageId });
 			};
 
 			if (Text.Value.Content.Contains(Language.Key))
@@ -972,7 +993,7 @@ int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap
 		}
 	}
 
-	return Counter > 0;
+	return Counter;
 }
 
 /**
