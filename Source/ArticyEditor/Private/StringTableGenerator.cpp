@@ -10,17 +10,36 @@
 #include "HAL/PlatformFileManager.h"
 #include "SourceControlHelpers.h"
 
+static void EscapeCsv(const FString& In, FStringBuilderBase& Out)
+{
+    for (TCHAR C : In)
+    {
+        if (C == '"')
+        {
+            Out.Append(TEXT("\"\""));
+        }
+        else
+        {
+            Out.AppendChar(C);
+        }
+    }
+}
+
 void StringTableGenerator::Line(const FString& Key, const FString& SourceString, const FString& PackageId)
 {
-    FString EscapedKey = Key.Replace(TEXT("\""), TEXT("\"\""));
-    FString EscapedValue = SourceString.Replace(TEXT("\""), TEXT("\"\""));
-    FString EscapedPackage = PackageId.Replace(TEXT("\""), TEXT("\"\""));
+    TStringBuilder<1024> LineBuilder;
 
-    FileContent += FString::Printf(
-        TEXT("\"%s\",\"%s\",\"%s\"\n"),
-        *EscapedKey,
-        *EscapedValue,
-        *EscapedPackage);
+    LineBuilder.AppendChar('"');
+    EscapeCsv(Key, LineBuilder);
+    LineBuilder.Append(TEXT("\",\""));
+
+    EscapeCsv(SourceString, LineBuilder);
+    LineBuilder.Append(TEXT("\",\""));
+
+    EscapeCsv(PackageId, LineBuilder);
+    LineBuilder.Append(TEXT("\"\n"));
+
+    FileContent.Append(LineBuilder.ToString());
 }
 
 void StringTableGenerator::WriteToFile() const

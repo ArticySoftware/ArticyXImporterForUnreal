@@ -10,6 +10,7 @@
 #include "ArticyPackage.h"
 #include "ArticyArchiveReader.h"
 #include "StringTableGenerator.h"
+#include "Serialization/Csv/CsvParser.h"
 #include "ArticyImportData.generated.h"
 
 class UArticyImportData;
@@ -527,37 +528,22 @@ private:
 		if (!FFileHelper::LoadFileToString(FileContent, *CsvPath))
 			return;
 
-		TArray<FString> Lines;
-		FileContent.ParseIntoArrayLines(Lines);
+		FCsvParser Parser(FileContent);
+		const auto& Rows = Parser.GetRows();
 
-		int LineNumber = 0;
-		for (const FString& Line : Lines)
+		for (int32 i = 1; i < Rows.Num(); i++) // skip header
 		{
-			// Skip the header row
-			if (LineNumber++ == 0)
+			const auto& Row = Rows[i];
+
+			if (Row.Num() < 3)
 				continue;
 
-			TArray<FString> Parts;
-			Line.ParseIntoArray(Parts, TEXT(","), true);
+			FArticyCsvRow CsvRow;
+			CsvRow.Key = Row[0];
+			CsvRow.SourceString = Row[1];
+			CsvRow.PackageId = Row[2];
 
-			if (Parts.Num() < 3)
-				continue;
-
-			auto Unquote = [](FString S)
-				{
-					S.TrimStartAndEndInline();
-					S.RemoveFromStart(TEXT("\""));
-					S.RemoveFromEnd(TEXT("\""));
-					S.ReplaceInline(TEXT("\"\""), TEXT("\""));
-					return S;
-				};
-
-			FArticyCsvRow Row;
-			Row.Key = Unquote(Parts[0]);
-			Row.SourceString = Unquote(Parts[1]);
-			Row.PackageId = Unquote(Parts[2]);
-
-			OutRows.Add(Row.Key, Row);
+			OutRows.Add(CsvRow.Key, CsvRow);
 		}
 	}
 

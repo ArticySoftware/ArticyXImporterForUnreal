@@ -221,7 +221,6 @@ void FArticyPackageDef::ImportFromJson(const UArticyArchiveReader& Archive, cons
 			return;
 		}
 
-		Texts.Reset();
 		GatherText(TextData);
 		});
 }
@@ -344,7 +343,7 @@ FString FArticyPackageDef::GetFolderName() const
  *
  * @return The package name as a string.
  */
-const FString FArticyPackageDef::GetName() const
+const FString& FArticyPackageDef::GetName() const
 {
 	return Name;
 }
@@ -417,8 +416,9 @@ void FArticyPackageDefs::ImportFromJson(
 	TArray<FArticyPackageDef> PackagesToRemove;
 
 	// Iterate over existing packages
-	for (auto& ExistingPackage : Packages)
+	for (int32 i = 0; i < Packages.Num(); ++i)
 	{
+		FArticyPackageDef& ExistingPackage = Packages[i];
 		OldPackageScriptHashes.Add(ExistingPackage.GetScriptFragmentHash());
 
 		bool bExistingPackageFound = false;
@@ -445,10 +445,7 @@ void FArticyPackageDefs::ImportFromJson(
 				// If IsIncluded is set on the new package, replace the existing package
 				if (TempMeta.GetIsIncluded())
 				{
-					ExistingPackage.ImportFromJson(Archive, obj);
-
-					// Useful if we ever decide to rename included packages 
-					ExistingPackage.SetName(OldName);
+					ExistingPackage = TempMeta;
 				}
 
 				if (!NewName.Equals(OldName))
@@ -667,6 +664,8 @@ void FArticyPackageDefs::GatherScripts(UArticyImportData* Data) const
  */
 void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
 {
+	Texts.Reset();
+
 	for (auto JsonValue = Json->Values.CreateConstIterator(); JsonValue; ++JsonValue)
 	{
 		const FString KeyName = (*JsonValue).Key;
@@ -683,7 +682,7 @@ void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
  *
  * @return A map of text data.
  */
-TMap<FString, FArticyTexts> FArticyPackageDef::GetTexts() const
+const TMap<FString, FArticyTexts>& FArticyPackageDef::GetTexts() const
 {
 	return Texts;
 }

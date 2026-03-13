@@ -776,64 +776,6 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		Languages.Languages.Add(TEXT(""), Elem.Value);
 	}
 
-	for (const auto& Language : Languages.Languages)
-	{
-		// Handle packages
-		for (const auto& Package : Packages)
-		{
-			const FString PackageName = Package.GetName();
-			const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
-			if (!Package.GetIsIncluded() || PackageName.IsEmpty())
-				continue;
-
-			if (!PackageName.Equals(Package.GetPreviousName()))
-			{
-				// Needs rename
-				const FString OldStringTableFileName = Package.GetPreviousName().Replace(TEXT(" "), TEXT("_"));
-				IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-				ISourceControlModule& SCModule = ISourceControlModule::Get();
-
-				bool bCheckOutEnabled = false;
-				if (SCModule.IsEnabled())
-				{
-					bCheckOutEnabled = ISourceControlModule::Get().GetProvider().UsesCheckout();
-				}
-
-				// Work out the old and new file paths
-				FString OldPath, NewPath;
-				const FString OldFilePath = TEXT("ArticyContent/Generated") / OldStringTableFileName;
-				const FString NewFilePath = TEXT("ArticyContent/Generated") / StringTableFileName;
-				if (Language.Key.IsEmpty())
-				{
-					OldPath = FPaths::ProjectContentDir() / OldFilePath;
-					NewPath = FPaths::ProjectContentDir() / NewFilePath;
-				}
-				else {
-					OldPath = FPaths::ProjectContentDir() / TEXT("L10N") / Language.Key / OldFilePath;
-					NewPath = FPaths::ProjectContentDir() / TEXT("L10N") / Language.Key / NewFilePath;
-				}
-				OldPath += TEXT(".csv");
-				NewPath += TEXT(".csv");
-
-				// Check out and rename
-				if (PlatformFile.FileExists(*OldPath))
-				{
-					if (bCheckOutEnabled)
-						USourceControlHelpers::CheckOutFile(*OldPath);
-
-					// Rename the file
-					PlatformFile.MoveFile(*NewPath, *OldPath);
-
-					if (bCheckOutEnabled)
-					{
-						USourceControlHelpers::MarkFileForAdd(*NewPath);
-						USourceControlHelpers::MarkFileForDelete(*OldPath);
-					}
-				}
-			}
-		}
-	}
-
 	// Create string tables
 	for (const auto& Language : Languages.Languages)
 	{
@@ -852,15 +794,19 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 				{
 					if (Package.GetIsIncluded())
 					{
-						UpdatedPackages.Add(Package.GetId().ToString());
+						UpdatedPackages.Add(Package.GetId().ToAssetFriendlyString());
 					}
 				}
 
-				for (auto It = Combined.CreateIterator(); It; ++It)
+				for (auto It = Combined.CreateIterator(); It; )
 				{
 					if (UpdatedPackages.Contains(It.Value().PackageId))
 					{
 						It.RemoveCurrent();
+					}
+					else
+					{
+						++It;
 					}
 				}
 
@@ -880,7 +826,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 						continue;
 
 					TArray<FArticyCsvRow> PkgRows;
-					ProcessStrings(PkgRows, Package.GetTexts(), Language, Package.GetId().ToString());
+					ProcessStrings(PkgRows, Package.GetTexts(), Language, Package.GetId().ToAssetFriendlyString());
 
 					AddRowsUnique(Combined, PkgRows);
 				}

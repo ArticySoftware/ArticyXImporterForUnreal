@@ -204,7 +204,7 @@ public:
 	 *
 	 * @return A map of text data.
 	 */
-	TMap<FString, FArticyTexts> GetTexts() const;
+	const TMap<FString, FArticyTexts>& GetTexts() const;
 
 	/**
 	* Gets the models from the package definition.
@@ -232,7 +232,7 @@ public:
 	 *
 	 * @return The package name as a string.
 	 */
-	const FString GetName() const;
+	const FString& GetName() const;
 
 	/**
 	 * Gets the previous name of the package.
