@@ -93,7 +93,27 @@ UArticyObject* FArticyModelDef::GenerateSubAsset(const UArticyImportData* Data, 
 	auto uclass = ConstructorHelpersInternal::FindOrLoadClass(fullClassName, UArticyObject::StaticClass());
 	if (uclass)
 	{
-		auto obj = ArticyImporterHelpers::GenerateSubAsset<UArticyObject>(*className, FApp::GetProjectName(), GetNameAndId(), Outer);
+		// Try to reuse existing asset
+		if (UArticyObject* Existing = UArticyObject::FindAsset(GetId()))
+		{
+			// Reattach if outer changed
+			if (Existing->GetOuter() != Outer)
+			{
+				Existing->Rename(nullptr, Outer);
+			}
+
+			// Reinitialize with new data
+			Existing->Initialize();
+			Data->GetObjectDefs().InitializeModel(Existing, *this, Data, Outer->GetName());
+
+			Existing->MarkPackageDirty();
+			return Existing;
+		}
+
+		// Otherwise create new
+		auto obj = ArticyImporterHelpers::GenerateSubAsset<UArticyObject>(
+			*className, FApp::GetProjectName(), GetNameAndId(), Outer);
+
 		FAssetRegistryModule::AssetCreated(Cast<UObject>(obj));
 		if (ensure(obj))
 		{
