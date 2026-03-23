@@ -367,10 +367,25 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 
 		for (const TWeakObjectPtr<UArticyObject> ArticyObject : ArticyPackage->GetAssets())
 		{
-			FAssetData AssetItem(ArticyObject.Get());
-			if (ArticyObject.IsValid() && TestAgainstFrontendFilters(AssetItem))
+			if (!ArticyObject.IsValid())
 			{
-				FilteredObjects.Add(ArticyObject);
+				continue;
+			}
+
+			const FArticyId Id = ArticyObject->GetId();
+			UArticyObject* ResolvedObject = UArticyObject::FindAsset(Id);
+
+			// Skip unresolved references
+			if (!ResolvedObject)
+			{
+				continue;
+			}
+
+			FAssetData AssetItem(ResolvedObject);
+
+			if (TestAgainstFrontendFilters(AssetItem))
+			{
+				FilteredObjects.Add(ResolvedObject);
 			}
 		}
 	}
