@@ -119,7 +119,15 @@ void SArticyObjectAssetPicker::Tick(const FGeometry& AllottedGeometry, const dou
 	// reference: assetview.cpp:1189
 	if (bSlowFullListRefreshRequested)
 	{
-		RefreshSourceItems();
+		if (AssetView.IsValid())
+		{
+			AssetView->ClearSelection();
+		}
+
+		AsyncTask(ENamedThreads::GameThread, [this]()
+			{
+				RefreshSourceItems();
+			});
 		bSlowFullListRefreshRequested = false;
 	}
 }
@@ -145,9 +153,25 @@ void SArticyObjectAssetPicker::CreateInternalWidgets()
 				.SelectionMode(ESelectionMode::Single)
 				.ListItemsSource(&FilteredObjects)
 				.OnGenerateTile(this, &SArticyObjectAssetPicker::MakeTileViewWidget)
+				.OnSelectionChanged(this, &SArticyObjectAssetPicker::SelectAsset)
+				.OnItemToString_Debug_Lambda([](TWeakObjectPtr<UArticyObject> Item)
+					{
+						if (!Item.IsValid())
+						{
+							return FString(TEXT("Invalid WeakPtr"));
+						}
+
+						UArticyObject* Obj = Item.Get();
+
+						if (!IsValid(Obj))
+						{
+							return FString(TEXT("Destroyed UObject"));
+						}
+
+						return Obj->GetName();
+					})
 				.ItemHeight(this, &SArticyObjectAssetPicker::GetTileViewHeight)
 				.ItemWidth(this, &SArticyObjectAssetPicker::GetTileViewWidth)
-				.OnSelectionChanged(this, &SArticyObjectAssetPicker::SelectAsset)
 				.ItemAlignment(EListItemAlignment::EvenlyDistributed)
 		];
 
@@ -278,33 +302,64 @@ FText SArticyObjectAssetPicker::GetChosenClassName() const
  * @param OwnerTable The owner table for the widget.
  * @return A shared reference to the created tile view widget.
  */
-TSharedRef<class ITableRow> SArticyObjectAssetPicker::MakeTileViewWidget(
-	TWeakObjectPtr<UArticyObject> Entity, const TSharedRef<STableViewBase>& OwnerTable) const
+TSharedRef<ITableRow> SArticyObjectAssetPicker::MakeTileViewWidget(
+	TWeakObjectPtr<UArticyObject> Entity,
+	const TSharedRef<STableViewBase>& OwnerTable) const
 {
-	TSharedPtr<STableRow<TWeakObjectPtr<UArticyObject>>> TableRowWidget;
-	SAssignNew(TableRowWidget, STableRow<TWeakObjectPtr<UArticyObject>>, OwnerTable)
+	// Always create the row first
+	TSharedRef<STableRow<TWeakObjectPtr<UArticyObject>>> TableRowWidget =
+		SNew(STableRow<TWeakObjectPtr<UArticyObject>>, OwnerTable)
 #if ENGINE_MAJOR_VERSION == 4
 		.Style(FEditorStyle::Get(), "ContentBrowser.AssetListView.TableRow")
 #endif
-		.Cursor(true ? EMouseCursor::GrabHand : EMouseCursor::Default)
+		.Cursor(EMouseCursor::GrabHand)
 		.Padding(3.f);
 
+	// Validate before doing anything else
+	if (!Entity.IsValid())
+	{
+		TableRowWidget->SetContent(
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Invalid Item")))
+		);
+
+		return TableRowWidget;
+	}
+
+	UArticyObject* SafeObject = Entity.Get();
+
+	if (!IsValid(SafeObject))
+	{
+		TableRowWidget->SetContent(
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Destroyed Object")))
+		);
+
+		return TableRowWidget;
+	}
+
+	// safe to use from here
+	const FArticyId SafeId = SafeObject->GetId();
+
 	FUIAction CopyAction;
-	CopyAction.ExecuteAction = FExecuteAction::CreateSP(this, &SArticyObjectAssetPicker::OnCopyProperty,
-		Entity->GetId());
+	CopyAction.ExecuteAction = FExecuteAction::CreateSP(
+		this,
+		&SArticyObjectAssetPicker::OnCopyProperty,
+		SafeId
+	);
 
 	// create the new tile view; the object to display is fixed so it can't change without the asset picker being recreated.
 	TSharedRef<SArticyObjectTileView> Item =
 		SNew(SArticyObjectTileView)
 		.bIsReadOnly(true)
 		.CopyAction(CopyAction)
-		.ArticyIdToDisplay(Entity->GetId())
+		.ArticyIdToDisplay(SafeId)
 		.ThumbnailSize(FArticyObjectAssetPicketConstants::TileSize)
 		.ThumbnailPadding(FArticyObjectAssetPicketConstants::ThumbnailPadding);
 
 	TableRowWidget->SetContent(Item);
 
-	return TableRowWidget.ToSharedRef();
+	return TableRowWidget;
 }
 
 /**
@@ -346,6 +401,7 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 {
 	ArticyPackageDataAssets.Reset();
 	FilteredObjects.Reset();
+	TArray<TWeakObjectPtr<UArticyObject>> NewFilteredObjects;
 
 	// Load the asset registry module
 	static const FName AssetRegistryName(TEXT("AssetRegistry"));
@@ -353,7 +409,6 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 		AssetRegistryName);
 
 	// retrieve all articy packages
-
 #if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >0
 	AssetRegistryModule.Get().GetAssetsByClass(UArticyPackage::StaticClass()->GetClassPathName(), ArticyPackageDataAssets);
 #else
@@ -364,6 +419,10 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 	for (const FAssetData& ArticyPackageAssetData : ArticyPackageDataAssets)
 	{
 		UArticyPackage* ArticyPackage = Cast<UArticyPackage>(ArticyPackageAssetData.GetAsset());
+		if (!ArticyPackage)
+		{
+			continue;
+		}
 
 		for (const TWeakObjectPtr<UArticyObject> ArticyObject : ArticyPackage->GetAssets())
 		{
@@ -376,7 +435,7 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 			UArticyObject* ResolvedObject = UArticyObject::FindAsset(Id);
 
 			// Skip unresolved references
-			if (!ResolvedObject)
+			if (!ResolvedObject || !IsValid(ResolvedObject))
 			{
 				continue;
 			}
@@ -385,12 +444,24 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 
 			if (TestAgainstFrontendFilters(AssetItem))
 			{
-				FilteredObjects.Add(ResolvedObject);
+				NewFilteredObjects.Add(ResolvedObject);
 			}
 		}
 	}
 
-	AssetView->RequestListRefresh();
+	// swap only once
+	FilteredObjects = MoveTemp(NewFilteredObjects);
+
+	// extra safety cleanup
+	FilteredObjects.RemoveAll([](const TWeakObjectPtr<UArticyObject>& Obj)
+		{
+			return !Obj.IsValid();
+		});
+
+	if (AssetView.IsValid())
+	{
+		AssetView->RequestListRefresh();
+	}
 }
 
 /**
@@ -424,7 +495,7 @@ void SArticyObjectAssetPicker::SetSearchBoxText(const FText& InSearchText) const
  */
 void SArticyObjectAssetPicker::OnFrontendFiltersChanged()
 {
-	RefreshSourceItems();
+	RequestSlowFullListRefresh();
 }
 
 /**
@@ -485,6 +556,11 @@ void SArticyObjectAssetPicker::RequestSlowFullListRefresh()
  */
 void SArticyObjectAssetPicker::SelectAsset(TWeakObjectPtr<UArticyObject> AssetItem, ESelectInfo::Type SelectInfo) const
 {
+	if (!AssetItem.IsValid())
+	{
+		return; // prevent bad selection
+	}
+
 	const FAssetData NewAsset(AssetItem.Get());
 	OnAssetSelected.ExecuteIfBound(NewAsset);
 	FSlateApplication::Get().DismissAllMenus();
