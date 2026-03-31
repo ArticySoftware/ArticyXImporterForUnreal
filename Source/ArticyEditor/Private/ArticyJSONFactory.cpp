@@ -77,10 +77,10 @@ UObject* UArticyJSONFactory::FactoryCreateFile(UClass* InClass, UObject* InParen
 
     // Properly update the config file and delete previous import assets
     UArticyPluginSettings* CDO_Settings = GetMutableDefault<UArticyPluginSettings>();
-    if (!CDO_Settings->ArticyDirectory.Path.Equals(Path))
+    if (!CDO_Settings->ArticyDirectory.Equals(Path))
     {
         // Update the directory path in the configuration
-        CDO_Settings->ArticyDirectory.Path = Path;
+        CDO_Settings->ArticyDirectory = Path;
         FString ConfigName = CDO_Settings->GetDefaultConfigFilename();
         GConfig->SetString(TEXT("/Script/ArticyRuntime.ArticyPluginSettings"), TEXT("ArticyDirectory"), *Path, ConfigName);
         GConfig->FindConfigFile(ConfigName)->Dirty = true;
