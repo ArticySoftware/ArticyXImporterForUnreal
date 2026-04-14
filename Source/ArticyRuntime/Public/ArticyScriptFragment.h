@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "ArticyBaseObject.h"
+#include "ArticyPausableType.h"
 #include "Interfaces/ArticyNode.h"
 #include "Interfaces/ArticyConditionProvider.h"
 #include "Interfaces/ArticyInstructionProvider.h"
