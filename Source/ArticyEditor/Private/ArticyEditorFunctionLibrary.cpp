@@ -10,7 +10,10 @@
 #include "ObjectTools.h"
 #include "FileHelpers.h"
 #include "HAL/FileManager.h"
+#include "Misc/MessageDialog.h"
 #include "Misc/Paths.h"
+
+#define LOCTEXT_NAMESPACE "ArticyEditorFunctionLibrary"
 
 /**
  * Forces a complete reimport of the Articy data.
@@ -21,6 +24,53 @@
  */
 int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* ImportData)
 {
+	// A full reimport clears hashes and package definitions and rebuilds the
+	// project from scratch, so it can only succeed when a full articy export is
+	// available. Selective (partial) exports omit package data by design and
+	// are only valid as incremental "Import Changes" merges — proceeding with
+	// one here would leave the generated assets missing packages.
+	{
+		const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+		FString ArticyDirectoryNonVirtual = ArticyDirectory;
+		ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
+		ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
+		const FString AbsoluteDirectoryPath =
+			IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(
+				*(FPaths::ProjectContentDir() + ArticyDirectoryNonVirtual));
+
+		TArray<FString> ArticyImportFiles;
+		IFileManager::Get().FindFiles(ArticyImportFiles, *AbsoluteDirectoryPath, TEXT("articyue"));
+
+		if (ArticyImportFiles.Num() > 0)
+		{
+			bool bHasFullExport = false;
+			for (const FString& Candidate : ArticyImportFiles)
+			{
+				if (UArticyJSONFactory::IsFullArticyExport(AbsoluteDirectoryPath / Candidate))
+				{
+					bHasFullExport = true;
+					break;
+				}
+			}
+
+			if (!bHasFullExport)
+			{
+				const FText Message = LOCTEXT("FullReimportRequiresFullExport",
+					"Full Reimport aborted: no full articy export was found in the articy "
+					"directory. The available .articyue files are selective (partial) "
+					"exports, which carry only a subset of the package data and can only "
+					"be used with 'Import Changes'. Export the full project from "
+					"articy:draft X and try again.");
+				UE_LOG(LogArticyEditor, Error, TEXT("%s"), *Message.ToString());
+				if (!GIsRunningUnattendedScript)
+				{
+					FMessageDialog::Open(EAppMsgType::Ok, Message);
+				}
+				return -1;
+			}
+		}
+	}
+
 	const EImportDataEnsureResult Result = EnsureImportDataAsset(&ImportData);
 	// if we generated the import data asset we will cause a full reimport, so stop here
 	if (Result == Generation)
@@ -382,3 +432,5 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 
 	return ImportData;
 }
+
+#undef LOCTEXT_NAMESPACE
