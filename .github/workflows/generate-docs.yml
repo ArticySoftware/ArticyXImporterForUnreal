@@ -30,10 +30,6 @@ jobs:
           path: 'Reference/'
 
   deploy_docs:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     needs: generate_docs
 
     permissions:
