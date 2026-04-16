@@ -1,0 +1,27 @@
+name: Generate and deploy docs
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  generate_docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Build docs
+        uses: mattnotmitt/doxygen-action@v1.12
+      - name: Check GitHub Pages status
+        uses: crazy-max/ghaction-github-status@v3
+        with:
+          pages_threshold: major_outage
+      - name: Deploy to GH pages
+        uses: crazy-max/ghaction-github-pages@v5
+        with:
+          target_branch: gh-pages
+          build_dir: Reference
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
