@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "ArticyFlowPlayer.h"
 #include "ArticyInstructionProvider.generated.h"
 
 UINTERFACE(meta=(CannotImplementInterfaceInBlueprint))

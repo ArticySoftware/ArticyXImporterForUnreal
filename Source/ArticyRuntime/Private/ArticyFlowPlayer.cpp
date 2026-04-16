@@ -521,6 +521,11 @@ void UArticyFlowPlayer::UpdateAvailableBranchesInternal(bool Startup)
         for (int32 i = 0; i < AvailableBranches.Num(); i++)
             AvailableBranches[i].Index = i;
 
+        if (SortBranches != nullptr)
+        {
+            AvailableBranches.Sort(SortBranches);
+        }
+
         // If we're just starting up, check if we should fast-forward
         if (Startup && FastForwardToPause())
         {
