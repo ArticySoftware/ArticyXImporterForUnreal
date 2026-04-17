@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: recursive
       - name: Build docs
-        uses: mattnotmitt/doxygen-action@v1.12
+        uses: mattnotmitt/doxygen-action@edge
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v6
       - name: Check GitHub Pages status
