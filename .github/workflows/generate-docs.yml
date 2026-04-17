@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
       - name: Build docs
         uses: mattnotmitt/doxygen-action@v1.12
       - name: Setup GitHub Pages
