@@ -4,7 +4,7 @@ When you export your data from **articy:draft X** into your Unreal project, the 
 
 ### Simple Object Access
 
-The most basic way to access an Articy object is by querying it directly from the **ArticyDatabase** using its **Id** or **Technical Name**.
+The most basic way to access an Articy object is by querying it directly from the [**ArticyDatabase**](@ref UArticyDatabase) using its **Id** or **Technical Name**.
 
 **In C++**
 
