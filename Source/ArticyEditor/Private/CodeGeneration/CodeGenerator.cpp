@@ -23,7 +23,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Misc/FileHelper.h"
 #include "ObjectTools.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "Misc/App.h"
 #include "Misc/MessageDialog.h"
 #include "Dialogs/Dialogs.h"

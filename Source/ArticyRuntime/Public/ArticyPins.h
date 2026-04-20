@@ -5,8 +5,8 @@
 #pragma once
 
 #include "ArticyObject.h"
-#include "ArticyHelpers.h"
 #include "ArticyBaseTypes.h"
+#include "ArticyPausableType.h"
 #include "Interfaces/ArticyFlowObject.h"
 #include "Interfaces/ArticyConditionProvider.h"
 #include "Interfaces/ArticyInstructionProvider.h"

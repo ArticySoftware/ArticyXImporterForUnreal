@@ -105,26 +105,6 @@ var hierarchy =
       [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
       [ "UArticyScriptCondition", "d0/d55/class_u_articy_script_condition.html", null ]
     ] ],
-    [ "IArticyFlowObject", "de/dec/class_i_articy_flow_object.html", [
-      [ "IArticyInputPinsProvider", "d6/dea/class_i_articy_input_pins_provider.html", [
-        [ "UArticyNode", "db/d87/class_u_articy_node.html", [
-          [ "UArticyCondition", "df/dc2/class_u_articy_condition.html", null ],
-          [ "UArticyDialogue", "db/d67/class_u_articy_dialogue.html", null ],
-          [ "UArticyDialogueFragment", "d8/d19/class_u_articy_dialogue_fragment.html", null ],
-          [ "UArticyFlowFragment", "d9/de9/class_u_articy_flow_fragment.html", null ],
-          [ "UArticyHub", "d0/d41/class_u_articy_hub.html", null ],
-          [ "UArticyInstruction", "dd/d2b/class_u_articy_instruction.html", null ],
-          [ "UArticyJump", "dc/daa/class_u_articy_jump.html", null ]
-        ] ]
-      ] ],
-      [ "IArticyOutputPinsProvider", "df/d85/class_i_articy_output_pins_provider.html", [
-        [ "UArticyNode", "db/d87/class_u_articy_node.html", null ]
-      ] ],
-      [ "UArticyFlowPin", "d0/d34/class_u_articy_flow_pin.html", [
-        [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
-        [ "UArticyOutputPin", "d7/d3b/class_u_articy_output_pin.html", null ]
-      ] ]
-    ] ],
     [ "IArticyHyperlinkHandler", "d1/dd3/class_i_articy_hyperlink_handler.html", null ],
     [ "IArticyIdPropertyWidgetCustomization", "d2/d84/class_i_articy_id_property_widget_customization.html", [
       [ "FArticyButtonCustomization", "dc/d06/class_f_articy_button_customization.html", null ]
@@ -138,6 +118,26 @@ var hierarchy =
       [ "UArticyScriptInstruction", "de/d38/class_u_articy_script_instruction.html", null ]
     ] ],
     [ "IArticyReflectable", "d9/d2d/class_i_articy_reflectable.html", [
+      [ "IArticyFlowObject", "de/dec/class_i_articy_flow_object.html", [
+        [ "IArticyInputPinsProvider", "d6/dea/class_i_articy_input_pins_provider.html", [
+          [ "UArticyNode", "db/d87/class_u_articy_node.html", [
+            [ "UArticyCondition", "df/dc2/class_u_articy_condition.html", null ],
+            [ "UArticyDialogue", "db/d67/class_u_articy_dialogue.html", null ],
+            [ "UArticyDialogueFragment", "d8/d19/class_u_articy_dialogue_fragment.html", null ],
+            [ "UArticyFlowFragment", "d9/de9/class_u_articy_flow_fragment.html", null ],
+            [ "UArticyHub", "d0/d41/class_u_articy_hub.html", null ],
+            [ "UArticyInstruction", "dd/d2b/class_u_articy_instruction.html", null ],
+            [ "UArticyJump", "dc/daa/class_u_articy_jump.html", null ]
+          ] ]
+        ] ],
+        [ "IArticyOutputPinsProvider", "df/d85/class_i_articy_output_pins_provider.html", [
+          [ "UArticyNode", "db/d87/class_u_articy_node.html", null ]
+        ] ],
+        [ "UArticyFlowPin", "d0/d34/class_u_articy_flow_pin.html", [
+          [ "UArticyInputPin", "d2/d83/class_u_articy_input_pin.html", null ],
+          [ "UArticyOutputPin", "d7/d3b/class_u_articy_output_pin.html", null ]
+        ] ]
+      ] ],
       [ "IArticyObjectWith_Base", "df/d1c/class_i_articy_object_with___base.html", [
         [ "IArticyObjectWithAttachments", "d0/d67/class_i_articy_object_with_attachments.html", null ],
         [ "IArticyObjectWithColor", "d2/d4f/class_i_articy_object_with_color.html", null ],

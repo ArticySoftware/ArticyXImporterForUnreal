@@ -8,7 +8,7 @@
 #include "Misc/FileHelper.h"
 #include "ISourceControlModule.h"
 #include "ISourceControlProvider.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "SourceControlHelpers.h"
 
 void CodeFileGenerator::Line(const FString& Line, const bool bSemicolon, const bool bIndent, const int IndentOffset)

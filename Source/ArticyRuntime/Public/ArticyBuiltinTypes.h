@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "ArticyPins.h"
+#include "ArticyBaseObject.h"
 #include "ArticyBaseTypes.h"
-#include "ArticyScriptFragment.h"
+#include "ArticyObject.h"
+#include "ArticyPins.h"
 
 #include "ArticyBuiltinTypes.generated.h"
 

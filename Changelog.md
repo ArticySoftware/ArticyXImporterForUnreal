@@ -1,3 +1,34 @@
+## Unreal Importer 1.5.0 Changelog :
+
+- New Features:
+    - Unreal Engine 5.7 support
+- Changes:
+    - Improved safety of cached setting handling
+- Fixes:
+    - Fix issues with build automation
+    - Fix import bugs
+    - Style fixes in comments
+    
+## Unreal Importer 1.4.2 Changelog :
+
+- Fixes:
+    - Bug fixes on import and build automation
+
+## Unreal Importer 1.4.1 Changelog :
+
+- Fixes:
+    - Adjust binding for menu on Unreal Engine 5.6
+
+## Unreal Importer 1.4.0 Changelog :
+
+- New Features:
+    - Unreal Engine 5.6 support
+
+## Unreal Importer 1.3.3 Changelog :
+
+- New Features:
+    - Database lifecycle management
+
 ## Unreal Importer 1.3.2 Changelog :
 
 - Fixes:

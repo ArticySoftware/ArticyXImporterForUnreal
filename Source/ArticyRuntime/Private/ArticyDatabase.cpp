@@ -180,6 +180,36 @@ void UArticyDatabase::Init()
 }
 
 /**
+ * Explicit initialize.
+ * @param WorldContext any UObject in the target world
+ */
+void UArticyDatabase::Initialize(const UObject* WorldContext)
+{
+	// this will clone & Init internally
+	UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+	if (DB && !DB->bIsInitialized)
+	{
+		DB->bIsInitialized = true;
+		UE_LOG(LogArticyRuntime, Verbose, TEXT("ArticyDatabase initialized for world %s"), *WorldContext->GetName());
+	}
+}
+
+/**
+ * Explicit deinitialize.
+ * @param WorldContext any UObject in the target world
+ */
+void UArticyDatabase::Deinitialize(const UObject* WorldContext)
+{
+	UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+	if (!DB || !DB->bIsInitialized)
+		return;
+
+	DB->UnloadDatabase();
+	DB->bIsInitialized = false;
+	UE_LOG(LogArticyRuntime, Verbose, TEXT("ArticyDatabase deinitialized"));
+}
+
+/**
  * Retrieves the Articy database instance for the given world context.
  * @param WorldContext The context from which to retrieve the database.
  * @return A pointer to the Articy database instance.

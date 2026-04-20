@@ -14,7 +14,7 @@
 #include "SourceControlHelpers.h"
 #include "Internationalization/StringTableRegistry.h"
 #include "Misc/Paths.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "Internationalization/Internationalization.h"
 #include "Internationalization/Culture.h"

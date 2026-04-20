@@ -7,7 +7,7 @@
 #include "Misc/FileHelper.h"
 #include "ISourceControlModule.h"
 #include "ISourceControlProvider.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 #include "SourceControlHelpers.h"
 
 void StringTableGenerator::Line(const FString& Key, const FString& SourceString)

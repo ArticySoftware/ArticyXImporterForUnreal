@@ -24,7 +24,7 @@
 #include "Widgets/Images/SImage.h"
 #include "IDirectoryWatcher.h"
 #include "Customizations/ArticyPinFactory.h"
-#include "Customizations/AssetActions/AssetTypeActions_ArticyGv.h"
+#include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
@@ -175,6 +175,19 @@ void FArticyEditorModule::RegisterArticyToolbar()
 {
 #if ENGINE_MAJOR_VERSION >= 5
 	// Grab the appropriate toolbar menu so we can extend it
+#if ENGINE_MINOR_VERSION >= 6
+	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
+
+	{
+		// Create a new section for Articy utilities
+		FToolMenuSection& Section = Menu->AddSection("ArticyUtilities", LOCTEXT("ArticyUtilities", "Articy Utilities"));
+
+		// Add buttons
+		auto Placeholder = TAttribute<FText>();
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.40"));
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.Type.Document.64"));
+	}
+#else
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.LevelToolbarQuickSettings");
 
 	{
@@ -185,6 +198,8 @@ void FArticyEditorModule::RegisterArticyToolbar()
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands);
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands);
 	}
+#endif
+
 #else 
 	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
 	{
@@ -222,7 +237,7 @@ TSharedRef<SWidget> FArticyEditorModule::OnGenerateArticyToolsMenu() const
 void FArticyEditorModule::RegisterAssetTypeActions()
 {
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGv()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGV()));
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyAlterativeGV()));
 }
 

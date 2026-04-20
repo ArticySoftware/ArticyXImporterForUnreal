@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ArticyPausableType.h"
 #include "ArticyPins.h"
 #include "Interfaces/ArticyNode.h"
 

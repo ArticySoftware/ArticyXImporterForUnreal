@@ -60,5 +60,5 @@ var NAVTREEINDEX =
 "df/d68/class_f_frontend_filter___articy_object.html#a3768bfbecb1f05f787106541d85b1abb"
 ];
 
-var SYNCONMSG = 'click to disable panel synchronisation';
-var SYNCOFFMSG = 'click to enable panel synchronisation';
+var SYNCONMSG = 'click to disable panel synchronization';
+var SYNCOFFMSG = 'click to enable panel synchronization';

@@ -4,9 +4,13 @@
 
 #pragma once
 
-#include "ArticyFlowPlayer.h"
+#include "ArticyPausableType.h"
 #include "ArticyReflectable.h"
+
 #include "ArticyFlowObject.generated.h"
+
+struct FArticyBranch;
+class UArticyFlowPlayer;
 
 UINTERFACE(MinimalAPI, BlueprintType)
 class UArticyFlowObject : public UArticyReflectable { GENERATED_BODY() };
@@ -15,7 +19,7 @@ class UArticyFlowObject : public UArticyReflectable { GENERATED_BODY() };
  * All objects that are part of a flow (i.e. can be traversed by the Flow Player) need
  * to implement this interface.
  */
-class IArticyFlowObject
+class IArticyFlowObject : public IArticyReflectable
 {
 	GENERATED_BODY()
 
