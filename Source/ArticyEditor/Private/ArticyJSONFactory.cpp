@@ -372,12 +372,26 @@ bool UArticyJSONFactory::ImportFromFile(const FString& FileName, UArticyImportDa
 #if WITH_EDITORONLY_DATA
     if (bOk && Asset->ImportData)
     {
-        // Multi-file merges must record each file at its own index so auto-reimport
-        // matches every one of them, not just the last.
-        const int32 Index = Asset->bMultiFileMerge
-            ? Asset->ImportData->SourceData.SourceFiles.Num()
-            : 0;
-        Asset->ImportData->Update(FileName, Index);
+        if (Asset->bMultiFileMerge)
+        {
+            // Reuse an existing slot for this file if it's already tracked, otherwise append;
+            // every file needs its own entry so auto-reimport can match any of them.
+            TArray<FString> ExistingPaths;
+            Asset->ImportData->ExtractFilenames(ExistingPaths);
+            int32 Index = ExistingPaths.IndexOfByPredicate([&FileName](const FString& Existing)
+            {
+                return FPaths::IsSamePath(Existing, FileName);
+            });
+            if (Index == INDEX_NONE)
+            {
+                Index = Asset->ImportData->SourceData.SourceFiles.AddDefaulted();
+            }
+            Asset->ImportData->UpdateFilenameOnly(FileName, Index);
+        }
+        else
+        {
+            Asset->ImportData->Update(FileName);
+        }
     }
 #endif
 

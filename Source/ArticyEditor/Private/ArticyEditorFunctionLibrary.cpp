@@ -7,6 +7,7 @@
 #include "ArticyEditorModule.h"
 #include "ArticyJSONFactory.h"
 #include "CodeGeneration/CodeGenerator.h"
+#include "EditorFramework/AssetImportData.h"
 #include "ObjectTools.h"
 #include "FileHelpers.h"
 #include "HAL/FileManager.h"
