@@ -195,6 +195,12 @@ bool FArticyEditorFunctionLibrary::ImportAllArticyFilesIntoExistingImportData(
 	ImportData->bMultiFileMerge = true;
 	ImportData->bDeferGeneration = true;
 
+	// Drop stale entries so auto-reimport matches only the current export set.
+	if (ImportData->ImportData)
+	{
+		ImportData->ImportData->SourceData.SourceFiles.Reset();
+	}
+
 	const FString BaseFullPath = AbsoluteDirectoryPath / BaseArticyFile;
 	if (!Factory->ImportFromFile(BaseFullPath, ImportData))
 	{

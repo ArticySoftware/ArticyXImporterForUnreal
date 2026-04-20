@@ -572,6 +572,33 @@ void UArticyImportData::PostInitProperties()
 #endif
 }
 
+void UArticyImportData::PostLoad()
+{
+	Super::PostLoad();
+
+#if WITH_EDITORONLY_DATA
+	// Migrate legacy ".articyue4" source paths so UE's auto-reimport can match today's
+	// ".articyue" exports back to this asset.
+	if (ImportData)
+	{
+		bool bUpdated = false;
+		for (FAssetImportInfo::FSourceFile& SourceFile : ImportData->SourceData.SourceFiles)
+		{
+			if (SourceFile.RelativeFilename.EndsWith(TEXT(".articyue4")))
+			{
+				SourceFile.RelativeFilename.RemoveFromEnd(TEXT("4"));
+				bUpdated = true;
+			}
+		}
+
+		if (bUpdated)
+		{
+			MarkPackageDirty();
+		}
+	}
+#endif
+}
+
 #if WITH_EDITORONLY_DATA
 /**
  * Retrieves asset registry tags for the import data.

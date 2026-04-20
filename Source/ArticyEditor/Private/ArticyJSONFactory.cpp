@@ -299,6 +299,9 @@ EReimportResult::Type UArticyJSONFactory::Reimport(UObject* Obj)
     UE_LOG(LogArticyEditor, Log,
         TEXT("Reimport: using '%s' as base Articy export."), *BaseFullPath);
 
+    // Drop stale entries so auto-reimport matches only the current export set.
+    Asset->ImportData->SourceData.SourceFiles.Reset();
+
     Asset->bMultiFileMerge = false;
     if (!ImportFromFile(BaseFullPath, Asset))
     {
@@ -369,8 +372,12 @@ bool UArticyJSONFactory::ImportFromFile(const FString& FileName, UArticyImportDa
 #if WITH_EDITORONLY_DATA
     if (bOk && Asset->ImportData)
     {
-        // Important for reimport / tracking: record the source file
-        Asset->ImportData->Update(FileName);
+        // Multi-file merges must record each file at its own index so auto-reimport
+        // matches every one of them, not just the last.
+        const int32 Index = Asset->bMultiFileMerge
+            ? Asset->ImportData->SourceData.SourceFiles.Num()
+            : 0;
+        Asset->ImportData->Update(FileName, Index);
     }
 #endif
 
