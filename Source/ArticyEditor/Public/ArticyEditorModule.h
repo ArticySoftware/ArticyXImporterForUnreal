@@ -67,6 +67,7 @@ public:
 
 	void RegisterArticyToolbar();
 	void RegisterAssetTypeActions();
+	void RegisterAutoReimportExclusions();
 	void RegisterConsoleCommands();
 	/** Registers all default widget extensions. As of this point, the articy button */
 	void RegisterDefaultArticyIdPropertyWidgetExtensions() const;
