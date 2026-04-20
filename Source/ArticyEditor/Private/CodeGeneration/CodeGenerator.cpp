@@ -906,9 +906,8 @@ bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
 		if (!OuterPack)
 			continue;
 
-		// Pre-migration package from an older plugin version: PackageId was
-		// added as a UPROPERTY on this branch and is unset on assets saved by
-		// earlier releases. Skip the purge so FArticyPackageDef::GeneratePackageAsset
+		// Plugin versions prior to 1.6.0 did not have the PackageId UPROPERTY.
+		// Skip the purge so FArticyPackageDef::GeneratePackageAsset
 		// can populate PackageId and so FArticyModelDef::GenerateSubAsset can
 		// reuse the existing sub-assets via FindAsset — otherwise every
 		// master-era object is force-deleted on first reimport, which either
