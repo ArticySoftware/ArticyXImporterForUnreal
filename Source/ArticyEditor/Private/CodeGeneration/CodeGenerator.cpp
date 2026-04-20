@@ -906,6 +906,7 @@ bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
 		if (!OuterPack)
 			continue;
 
+		// PackageId was introduced for selective import.
 		// Plugin versions prior to 1.6.0 did not have the PackageId UPROPERTY.
 		// Skip the purge so FArticyPackageDef::GeneratePackageAsset
 		// can populate PackageId and so FArticyModelDef::GenerateSubAsset can
