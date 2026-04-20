@@ -906,6 +906,17 @@ bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
 		if (!OuterPack)
 			continue;
 
+		// PackageId was introduced for selective import.
+		// Plugin versions prior to 1.6.0 did not have the PackageId UPROPERTY.
+		// Skip the purge so FArticyPackageDef::GeneratePackageAsset
+		// can populate PackageId and so FArticyModelDef::GenerateSubAsset can
+		// reuse the existing sub-assets via FindAsset — otherwise every
+		// master-era object is force-deleted on first reimport, which either
+		// fails the ensure in GenerateAssets or silently invalidates every
+		// external FArticyRef/FArticyId the user has in blueprints and levels.
+		if (OuterPack->PackageId.IsNull())
+			continue;
+
 		// Keep the winning instance; purge only losers
 		if (OuterPack->PackageId == *WinningPackageId)
 			continue;
