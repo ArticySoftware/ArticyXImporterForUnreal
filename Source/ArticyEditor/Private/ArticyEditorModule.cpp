@@ -30,6 +30,7 @@
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Customizations/Details/ArticyRefCustomization.h"
+#include "Settings/EditorLoadingSavingSettings.h"
 #include "Slate/GV/SArticyGlobalVariablesDebugger.h"
 
 #if ENGINE_MAJOR_VERSION >= 5
@@ -55,6 +56,7 @@ void FArticyEditorModule::StartupModule()
 	CustomizationManager = MakeShareable(new FArticyEditorCustomizationManager);
 
 	RegisterAssetTypeActions();
+	RegisterAutoReimportExclusions();
 	RegisterConsoleCommands();
 	RegisterDefaultArticyIdPropertyWidgetExtensions();
 	RegisterDetailCustomizations();
@@ -111,6 +113,35 @@ void FArticyEditorModule::RegisterGraphPinFactory() const
 void FArticyEditorModule::RegisterConsoleCommands()
 {
 	ConsoleCommands = new FArticyEditorConsoleCommands(*this);
+}
+
+/**
+ * Tell UE's auto-reimport watcher to ignore the localization CSVs we generate so it
+ * doesn't prompt the user to import them as DataTables.
+ */
+void FArticyEditorModule::RegisterAutoReimportExclusions()
+{
+	UEditorLoadingSavingSettings* Settings = GetMutableDefault<UEditorLoadingSavingSettings>();
+	if (!Settings)
+	{
+		return;
+	}
+
+	const FString ExcludePattern = TEXT("*ArticyContent/Generated/*.csv");
+
+	for (FAutoReimportDirectoryConfig& Config : Settings->AutoReimportDirectorySettings)
+	{
+		const bool bAlreadyExcluded = Config.Wildcards.ContainsByPredicate(
+			[&](const FAutoReimportWildcard& W) { return !W.bInclude && W.Wildcard == ExcludePattern; });
+
+		if (!bAlreadyExcluded)
+		{
+			FAutoReimportWildcard Exclusion;
+			Exclusion.Wildcard = ExcludePattern;
+			Exclusion.bInclude = false;
+			Config.Wildcards.Add(Exclusion);
+		}
+	}
 }
 
 /**
