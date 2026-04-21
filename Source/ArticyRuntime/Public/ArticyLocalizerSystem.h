@@ -40,9 +40,6 @@ public:
 	{
 		if (!bDataLoaded)
 		{
-			// Subsystem should have loaded it. If not, avoid hitches here.
-			UE_LOG(LogArticyRuntime, Warning, TEXT("String tables are not loaded."))
-
 			// Either return BackupText or Key.
 			if (BackupText) return *BackupText;
 			return Key;

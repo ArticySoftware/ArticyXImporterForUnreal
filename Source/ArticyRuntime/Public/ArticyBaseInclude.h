@@ -15,6 +15,7 @@
 #include "ArticyEntity.h"
 #include "ArticyFlowClasses.h"
 #include "ArticyBuiltinTypes.h"
+#include "ArticyScriptFragment.h"
 
 //provider interfaces
 #include "Interfaces/ArticyObjectWithAttachments.h"
