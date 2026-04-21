@@ -75,7 +75,7 @@ public:
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Start Node"), Category = "Setup")
     FArticyRef GetStartNode() { return StartOn; }
 
-    /** Gets the last set StartOn node */
+    /** Sets whether invalid branches should be excluded from AvailableBranches. */
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Set Ignore Invalid Branches"), Category = "Setup")
     void SetIgnoreInvalidBranches(bool bNewIgnoreInvalidBranches) { bIgnoreInvalidBranches = bNewIgnoreInvalidBranches; }
 
