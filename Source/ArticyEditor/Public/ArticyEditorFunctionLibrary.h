@@ -62,6 +62,8 @@ public:
 	 */
 	static EImportDataEnsureResult EnsureImportDataAsset(UArticyImportData**);
 
+	static void SetForcedArticyDirectory(const FString& InPath);
+
 private:
 	/**
 	 * Generates a new Articy import data asset.
@@ -74,4 +76,6 @@ private:
 		UArticyImportData* ImportData,
 		const FString& AbsoluteDirectoryPath,
 		const TArray<FString>& ArticyImportFiles);
+
+	static FString ForcedArticyDirectory;
 };

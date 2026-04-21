@@ -16,6 +16,13 @@
 
 #define LOCTEXT_NAMESPACE "ArticyEditorFunctionLibrary"
 
+FString FArticyEditorFunctionLibrary::ForcedArticyDirectory;
+
+void FArticyEditorFunctionLibrary::SetForcedArticyDirectory(const FString& InPath)
+{
+	ForcedArticyDirectory = InPath;
+}
+
 /**
  * Forces a complete reimport of the Articy data.
  * Resets all hashes and package definitions, ensuring that all changes are reimported.
@@ -31,7 +38,7 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	// are only valid as incremental "Import Changes" merges — proceeding with
 	// one here would leave the generated assets missing packages.
 	{
-		const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+		const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory;
 		FString ArticyDirectoryNonVirtual = ArticyDirectory;
 		ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
 		ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
@@ -73,11 +80,6 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	}
 
 	const EImportDataEnsureResult Result = EnsureImportDataAsset(&ImportData);
-	// if we generated the import data asset we will cause a full reimport, so stop here
-	if (Result == Generation)
-	{
-		return 0;
-	}
 	if (Result == Failure)
 	{
 		return -1;
@@ -88,7 +90,8 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	ImportData->Settings.ObjectDefinitionsTextHash.Reset();
 	ImportData->Settings.ScriptFragmentsHash.Reset();
 	ImportData->PackageDefs.ResetPackages();
-	return ReimportChanges(ImportData);
+	const int32 Changes = ReimportChanges(ImportData);
+	return CodeGenerator::GenerateAssets(ImportData), Changes;
 }
 
 /**
@@ -112,7 +115,7 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 
 	TArray<FString> ArticyImportFiles;
 	// path is virtual in the beginning
-	const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+	const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory;
 	// remove /Game/ so that the non-virtual part remains
 	FString ArticyDirectoryNonVirtual = ArticyDirectory;
 	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
@@ -149,19 +152,16 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 int32 FArticyEditorFunctionLibrary::RegenerateAssets(UArticyImportData* ImportData)
 {
 	const EImportDataEnsureResult Result = EnsureImportDataAsset(&ImportData);
-	// if we generated the import data asset we will cause a full reimport, so stop here
-	if (Result == EImportDataEnsureResult::Generation)
-	{
-		return 0;
-	}
 	if (Result == EImportDataEnsureResult::Failure)
 	{
+		UE_LOG(LogArticyEditor, Error, TEXT("RegenerateAssets: could not load import data"));
 		return -1;
 	}
 
+	// Always generate assets, even if we just created the import data
 	CodeGenerator::GenerateAssets(ImportData);
 
-	return -1;
+	return 0;
 }
 
 /**
@@ -309,7 +309,9 @@ UArticyImportData* FArticyEditorFunctionLibrary::GenerateImportDataAsset()
 
 	TArray<FString> ArticyImportFiles;
 	// path is virtual in the beginning
-	const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+	const FString ArticyDirectory = ForcedArticyDirectory.IsEmpty()
+		? GetDefault<UArticyPluginSettings>()->ArticyDirectory
+		: ForcedArticyDirectory;
 	// remove /Game/ so that the non-virtual part remains
 	FString ArticyDirectoryNonVirtual = ArticyDirectory;
 	ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));

@@ -4,9 +4,13 @@
 
 #pragma once
 
-#include "ArticyFlowPlayer.h"
+#include "ArticyPausableType.h"
 #include "ArticyReflectable.h"
+
 #include "ArticyFlowObject.generated.h"
+
+struct FArticyBranch;
+class UArticyFlowPlayer;
 
 UINTERFACE(MinimalAPI, BlueprintType)
 class UArticyFlowObject : public UArticyReflectable { GENERATED_BODY() };

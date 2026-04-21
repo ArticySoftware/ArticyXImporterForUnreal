@@ -86,7 +86,7 @@ namespace ArticyHelpers
 
 	inline FString GetArticyFolder()
 	{
-		return GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+		return GetDefault<UArticyPluginSettings>()->ArticyDirectory;
 	}
 
 	inline FString GetArticyResourcesFolder()

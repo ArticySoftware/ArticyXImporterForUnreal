@@ -4,60 +4,20 @@
 
 #pragma once
 
+#include "ArticyBranch.h"
+#include "ArticyBranchSorters.h"
 #include "ArticyRuntimeModule.h"
 #include "ArticyDatabase.h"
 #include "ArticyGlobalVariables.h"
+#include "ArticyPausableType.h"
 #include "ArticyRef.h"
 #include "Components/BillboardComponent.h"
 #include "Containers/Queue.h"
 #include "ArticyFlowPlayer.generated.h"
 
+struct FArticyBranch;
 class IArticyNode;
 class IArticyFlowObject;
-
-/**
- * Enum representing the various types of Articy flow nodes that can be paused on.
- */
-UENUM(BlueprintType, meta = (Bitflags))
-enum class EArticyPausableType : uint8
-{
-    FlowFragment,
-    Dialogue,
-    DialogueFragment,
-    Hub,
-    Jump,
-    Condition,
-    Instruction,
-    Pin
-};
-ENUM_CLASS_FLAGS(EArticyPausableType);
-
-/**
- * Represents a branch in the Articy flow, which consists of a path of nodes.
- */
-USTRUCT(BlueprintType)
-struct ARTICYRUNTIME_API FArticyBranch
-{
-    GENERATED_BODY()
-
-public:
-
-    /**
-     * The list of nodes this branch contains.
-     */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-    TArray<TScriptInterface<IArticyFlowObject>> Path;
-
-    /** This is true if all conditions along the path evaluate to true. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-    bool bIsValid = true;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
-    int32 Index = -1;
-
-    /** Retrieve the last object in the path. */
-    TScriptInterface<IArticyFlowObject> GetTarget() const;
-};
 
 /**
  * This component handles traversal of the flow, starting and halting at specific nodes.
@@ -244,6 +204,11 @@ protected:
     /** All the branches available at the current flow position. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flow")
     TArray<FArticyBranch> AvailableBranches;
+
+    /**
+     * The function to use to sort branches after determining the available branches. Defaults to sorting by position.
+     */
+    TFunction<bool(const FArticyBranch&, const FArticyBranch&)> SortBranches = ArticyBranchSorters::FArticyBranchPositionSorter();
 
     //---------------------------------------------------------------------------//
 

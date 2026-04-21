@@ -24,6 +24,7 @@
 #include "Misc/FileHelper.h"
 #include "Factories/SoundFactory.h"
 #include "UObject/SavePackage.h"
+#include "UObject/MetaData.h"
 
 #define LOCTEXT_NAMESPACE "ArticyImportData"
 
@@ -976,108 +977,214 @@ int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap
  */
 void UArticyImportData::ImportAudioAssets(const FString& BaseContentDir)
 {
-    TArray<FString> FilesToImport;
+	TArray<FString> FilesToImport;
 
-    // Recursively find all .wav and .ogg files in the base directory
-    IFileManager& FileManager = IFileManager::Get();
-    FileManager.FindFilesRecursive(FilesToImport, *BaseContentDir, TEXT("*.wav"), true, false, false);
-    FileManager.FindFilesRecursive(FilesToImport, *BaseContentDir, TEXT("*.ogg"), true, false, false);
+	// Recursively find all .wav and .ogg files in the base directory
+	IFileManager& FileManager = IFileManager::Get();
+	FileManager.FindFilesRecursive(FilesToImport, *BaseContentDir, TEXT("*.wav"), true, false, false);
+	FileManager.FindFilesRecursive(FilesToImport, *BaseContentDir, TEXT("*.ogg"), true, false, false);
 
-    IAssetRegistry& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
+	FAssetRegistryModule& AssetRegistryModule =
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
-    for (const FString& FilePath : FilesToImport)
-    {
-        // Calculate the relative path from the base directory
-        FString RelativePath = FilePath;
-        FPaths::MakePathRelativeTo(RelativePath, *BaseContentDir);
+	IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
 
-        // Determine the package path based on the relative path
-        FString PackagePath = TEXT("/Game/ArticyContent/Resources/Assets/") + FPaths::GetPath(RelativePath);
-        FString FileName = FPaths::GetBaseFilename(FilePath);
-        FString PackageFileName = FPaths::Combine(PackagePath, FileName + TEXT(".uasset"));
+	// Metadata helpers
+	auto GetMetaValue = [](UPackage* Package, UObject* Object, const TCHAR* Key) -> FString
+		{
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+			if (!Package) return FString();
+			return Package->GetMetaData().GetValue(Object, Key);
+#else
+			if (!Package) return FString();
+			UMetaData* MetaData = Package->GetMetaData();
+			return MetaData ? MetaData->GetValue(Object, Key) : FString();
+#endif
+		};
 
+	auto SetMetaValue = [](UPackage* Package, UObject* Object, const TCHAR* Key, const FString& Value)
+		{
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+			if (!Package) return;
+			Package->GetMetaData().SetValue(Object, Key, *Value);
+#else
+			if (!Package) return;
+			UMetaData* MetaData = Package->GetMetaData();
+			if (!MetaData)
+			{
+				MetaData = NewObject<UMetaData>(Package, NAME_None, RF_Standalone);
+				Package->SetMetaData(MetaData);
+			}
+			MetaData->SetValue(Object, Key, *Value);
+#endif
+		};
+
+	for (const FString& FilePath : FilesToImport)
+	{
+		// Calculate the relative path from the base directory
+		FString RelativePath = FilePath;
+		FPaths::MakePathRelativeTo(RelativePath, *BaseContentDir);
+
+		// Determine the package path based on the relative path
+		FString PackagePath = TEXT("/Game/ArticyContent/Resources/Assets/") + FPaths::GetPath(RelativePath);
+		FString FileName = FPaths::GetBaseFilename(FilePath);
+
+		FString PackageName = PackagePath / FileName;
+		FString ObjectPath = PackageName + TEXT(".") + FileName;
+
+		// Compute source hash
+		const FString SourceHash = LexToString(FMD5Hash::HashFile(*FilePath));
+
+		// Lookup via AssetRegistry first
 #if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 1
-        FAssetData AssetData = AssetRegistry.GetAssetByObjectPath(FSoftObjectPath(*PackageFileName));
+		FAssetData AssetData = AssetRegistry.GetAssetByObjectPath(FSoftObjectPath(ObjectPath));
 #else
-        FAssetData AssetData = AssetRegistry.GetAssetByObjectPath(FName(*PackageFileName));
+		FAssetData AssetData = AssetRegistry.GetAssetByObjectPath(FName(*ObjectPath));
 #endif
 
-        if (!AssetData.IsValid())
-        {
-            // Check if the .uasset file exists on disk and delete it if stale
-            FString PackageFilename;
-            if (FPackageName::TryConvertLongPackageNameToFilename(PackageFileName, PackageFilename))
-            {
-                FString FullPackageFilename = PackageFilename;
-                if (FPaths::FileExists(FullPackageFilename))
-                {
-                    UE_LOG(LogArticyEditor, Warning, TEXT("Deleting stale .uasset: %s"), *FullPackageFilename);
-                    IFileManager::Get().Delete(*FullPackageFilename);
-                }
-            }
-        }
+		// Try to load existing asset
+		USoundWave* ExistingSound = nullptr;
 
-        // Create a new package
-        UPackage* Package = CreatePackage(*FPaths::Combine(PackagePath, FileName));
-        if (!Package)
-        {
-            UE_LOG(LogArticyEditor, Error, TEXT("Failed to create package for: %s"), *FileName);
-            continue;
-        }
+		if (AssetData.IsValid())
+		{
+			ExistingSound = Cast<USoundWave>(AssetData.GetAsset());
+		}
 
-        Package->FullyLoad();
+		bool bNeedsImport = true;
 
-        // Create a new USoundWave object
-        USoundWave* NewSoundWave = NewObject<USoundWave>(Package, FName(*FileName), RF_Public | RF_Standalone);
-        if (!NewSoundWave)
-        {
-            UE_LOG(LogArticyEditor, Error, TEXT("Failed to create USoundWave for: %s"), *FileName);
-            continue;
-        }
+		if (ExistingSound)
+		{
+			UPackage* Package = ExistingSound->GetOutermost();
+			const FString StoredHash = GetMetaValue(Package, ExistingSound, TEXT("SourceHash"));
 
-        // Import the sound file
-        bool bCancelled = false;
-        USoundFactory* Factory = NewObject<USoundFactory>();
-        if (!Factory)
-        {
-            UE_LOG(LogArticyEditor, Error, TEXT("Failed to create USoundFactory for: %s"), *FileName);
-            continue;
-        }
+			if (StoredHash == SourceHash)
+			{
+				UE_LOG(LogArticyEditor, Verbose, TEXT("Skipping unchanged audio: %s"), *FileName);
+				bNeedsImport = false;
+			}
+		}
 
-        Factory->SuppressImportDialogs(); // Suppress overwrite prompts
-        Factory->bAutoCreateCue = false;
+		if (!bNeedsImport)
+		{
+			continue;
+		}
 
-        UObject* ImportedAsset = Factory->ImportObject(NewSoundWave->GetClass(), Package, FName(*FileName), RF_Public | RF_Standalone, FilePath, nullptr, bCancelled);
-        if (!ImportedAsset || bCancelled)
-        {
-            UE_LOG(LogArticyEditor, Error, TEXT("Failed to import sound file: %s"), *FilePath);
-            continue;
-        }
+		// Create or load package
+		UPackage* Package = CreatePackage(*PackageName);
+		if (!Package)
+		{
+			UE_LOG(LogArticyEditor, Error, TEXT("Failed to create package: %s"), *PackageName);
+			continue;
+		}
 
-        // Notify the asset registry
-        FAssetRegistryModule::AssetCreated(NewSoundWave);
-        Package->MarkPackageDirty();
+		Package->FullyLoad();
 
-        // Save the package
-        FString PackageOutFileName = FPackageName::LongPackageNameToFilename(Package->GetName(), FPackageName::GetAssetPackageExtension());
+		if (ExistingSound)
+		{
+			// Reimport existing
+			UE_LOG(LogArticyEditor, Log, TEXT("Reimporting audio: %s"), *FileName);
 
-#if (ENGINE_MAJOR_VERSION >= 5)
-        FSavePackageArgs SaveArgs;
-        SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
-        SaveArgs.Error = GError;
-        SaveArgs.bForceByteSwapping = false;
-        SaveArgs.bWarnOfLongFilename = false;
-        if (!UPackage::SavePackage(Package, NewSoundWave, *PackageOutFileName, SaveArgs))
+			// Snapshot required metadata
+			const FString PreviousHash = GetMetaValue(ExistingSound->GetOutermost(), ExistingSound, TEXT("SourceHash"));
+
+			ExistingSound->Modify();
+
+			if (!ExistingSound->AssetImportData)
+			{
+				ExistingSound->AssetImportData = NewObject<UAssetImportData>(ExistingSound);
+			}
+
+			ExistingSound->AssetImportData->Update(FilePath);
+
+			const bool bSuccess = FReimportManager::Instance()->Reimport(ExistingSound, true);
+
+			if (!bSuccess)
+			{
+				UE_LOG(LogArticyEditor, Error, TEXT("Failed to reimport: %s"), *FilePath);
+				continue;
+			}
+
+			// Update hash after restore
+			SetMetaValue(Package, ExistingSound, TEXT("SourceHash"), SourceHash);
+
+			Package->MarkPackageDirty();
+		}
+		else
+		{
+			// Import new
+			UE_LOG(LogArticyEditor, Log, TEXT("Importing new audio: %s"), *FileName);
+
+			USoundFactory* Factory = NewObject<USoundFactory>();
+			if (!Factory)
+			{
+				UE_LOG(LogArticyEditor, Error, TEXT("Failed to create USoundFactory"));
+				continue;
+			}
+
+			Factory->SuppressImportDialogs();
+			Factory->bAutoCreateCue = false;
+
+			bool bCancelled = false;
+
+			UObject* ImportedObject = Factory->ImportObject(
+				USoundWave::StaticClass(),
+				Package,
+				FName(*FileName),
+				RF_Public | RF_Standalone,
+				FilePath,
+				nullptr,
+				bCancelled
+			);
+
+			if (!ImportedObject || bCancelled)
+			{
+				UE_LOG(LogArticyEditor, Error, TEXT("Failed to import: %s"), *FilePath);
+				continue;
+			}
+
+			USoundWave* NewSound = Cast<USoundWave>(ImportedObject);
+			if (!NewSound)
+			{
+				UE_LOG(LogArticyEditor, Error, TEXT("Imported object is not USoundWave: %s"), *FileName);
+				continue;
+			}
+
+			if (!NewSound->AssetImportData)
+			{
+				NewSound->AssetImportData = NewObject<UAssetImportData>(NewSound);
+			}
+
+			NewSound->AssetImportData->Update(FilePath);
+
+			// Store hash
+			SetMetaValue(Package, NewSound, TEXT("SourceHash"), SourceHash);
+
+			FAssetRegistryModule::AssetCreated(NewSound);
+			Package->MarkPackageDirty();
+		}
+
+		// Save package
+		FString PackageFilename = FPackageName::LongPackageNameToFilename(
+			Package->GetName(),
+			FPackageName::GetAssetPackageExtension()
+		);
+
+#if ENGINE_MAJOR_VERSION >= 5
+		FSavePackageArgs SaveArgs;
+		SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+		SaveArgs.Error = GError;
+
+		if (!UPackage::SavePackage(Package, nullptr, *PackageFilename, SaveArgs))
 #else
-        if (!UPackage::SavePackage(Package, NewSoundWave, RF_Public | RF_Standalone, *PackageOutFileName, GError))
+		if (!UPackage::SavePackage(Package, nullptr, RF_Public | RF_Standalone, *PackageFilename, GError))
 #endif
-        {
-            UE_LOG(LogArticyEditor, Error, TEXT("Failed to save package: %s"), *PackageOutFileName);
-            continue;
-        }
+		{
+			UE_LOG(LogArticyEditor, Error, TEXT("Failed to save package: %s"), *PackageFilename);
+			continue;
+		}
 
-        UE_LOG(LogArticyEditor, Log, TEXT("Successfully imported and saved sound asset: %s"), *FileName);
-    }
+		UE_LOG(LogArticyEditor, Log, TEXT("Processed audio asset: %s"), *FileName);
+	}
 }
 
 /**

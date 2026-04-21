@@ -7,6 +7,7 @@
 #include "ArticyObject.h"
 #include "ArticyFlowObject.h"
 #include "ArticyInputPinsProvider.h"
+#include "ArticyPausableType.h"
 #include "ArticyOutputPinsProvider.h"
 
 #include "ArticyNode.generated.h"
