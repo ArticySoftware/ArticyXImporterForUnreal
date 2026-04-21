@@ -424,6 +424,7 @@ class ARTICYEDITOR_API UArticyImportData : public UDataAsset
 
 public:
 	void PostInitProperties() override;
+	void PostLoad() override;
 
 	UPROPERTY(VisibleAnywhere, Instanced, Category = ImportSettings)
 	class UAssetImportData* ImportData;
