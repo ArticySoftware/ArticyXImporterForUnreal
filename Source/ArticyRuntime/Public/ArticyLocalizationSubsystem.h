@@ -27,5 +27,8 @@ private:
 	UPROPERTY()
 	TObjectPtr<UArticyLocalizerSystem> Localizer;
 
+	FDelegateHandle PostEngineInitHandle;
+
+	void InitializeLocalizer();
 	UArticyLocalizerSystem* CreateGeneratedLocalizer();
 };
