@@ -246,7 +246,7 @@ EReimportResult::Type UArticyJSONFactory::Reimport(UObject* Obj)
     else
     {
         // Fallback: use plugin settings directory (same as GenerateImportDataAsset)
-        const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory.Path;
+        const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory;
         FString ArticyDirectoryNonVirtual = ArticyDirectory;
         ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/Game"));
         ArticyDirectoryNonVirtual.RemoveFromStart(TEXT("/"));
