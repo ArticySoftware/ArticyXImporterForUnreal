@@ -24,6 +24,7 @@ struct FAdiSettings
 	GENERATED_BODY()
 
 public:
+	/** Name of the text formatter used by the articy project. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString set_TextFormatter = "";
 
@@ -31,42 +32,62 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	bool set_UseScriptSupport = false;
 
+	/** Comma-separated list of node type names included in this export. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString set_IncludedNodes = "";
 
+	/** The articy id of the rule set used by this export. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FArticyId RuleSetId;
 
+	/** The articy:draft X export format version this import data was produced from. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ExportVersion = "";
 
+	/** Hash of the global variables section; used to decide whether GV code needs regeneration. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString GlobalVariablesHash = "";
 
+	/** Hash of the object definitions section; used to decide whether object-def code needs regeneration. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ObjectDefinitionsHash = "";
 
+	/** Hash of the object-definitions localized texts section. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ObjectDefinitionsTextHash = "";
 
+	/** Hash of the script fragments section; used to decide whether expresso code needs regeneration. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ScriptFragmentsHash = "";
 
+	/** Hash of the hierarchy section; used to decide whether hierarchy-driven code needs regeneration. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString HierarchyHash = "";
 
+	/** Hash of the script methods section; used to decide whether the user-methods interface needs regeneration. */
 	UPROPERTY(VisibleAnywhere, Category = "Settings")
 	FString ScriptMethodsHash = "";
 
+	/**
+	 * Populates this settings object from the Settings section of the articy JSON export.
+	 *
+	 * @param JsonRoot The JSON object containing the Settings section.
+	 */
 	void ImportFromJson(const TSharedPtr<FJsonObject> JsonRoot);
 
+	/** Returns true if object definitions or global variables have changed since the last rebuild. */
 	bool DidObjectDefsOrGVsChange() const { return bObjectDefsOrGVsChanged; }
+	/** Returns true if the script fragments have changed since the last rebuild. */
 	bool DidScriptFragmentsChange() const { return bScriptFragmentsChanged; }
 
+	/** Marks object definitions and global variables as up-to-date with the generated code. */
 	void SetObjectDefinitionsRebuilt() { bObjectDefsOrGVsChanged = false; }
+	/** Marks script fragments as up-to-date with the generated code. */
 	void SetScriptFragmentsRebuilt() { bScriptFragmentsChanged = false; }
 
+	/** Marks object definitions and global variables as needing regeneration. */
 	void SetObjectDefinitionsNeedRebuild() { bObjectDefsOrGVsChanged = true; }
+	/** Marks script fragments as needing regeneration. */
 	void SetScriptFragmentsNeedRebuild() { bScriptFragmentsChanged = true; }
 
 
@@ -90,15 +111,25 @@ struct FArticyProjectDef
 	GENERATED_BODY()
 
 public:
+	/** Display name of the articy:draft project. */
 	UPROPERTY(VisibleAnywhere, Category = "Project")
 	FString Name;
+	/** Extended/detailed name of the project. */
 	UPROPERTY(VisibleAnywhere, Category = "Project")
 	FString DetailName;
+	/** Unique GUID of the articy:draft project. */
 	UPROPERTY(VisibleAnywhere, Category = "Project")
 	FString Guid;
+	/** Technical name of the project; used as the prefix for generated classes (e.g. <TechnicalName>Database). */
 	UPROPERTY(VisibleAnywhere, Category = "Project")
 	FString TechnicalName;
 
+	/**
+	 * Populates this project definition from the Project section of the articy JSON export.
+	 *
+	 * @param JsonRoot The JSON object containing the Project section.
+	 * @param Settings The import settings, updated to reflect any relevant project-level changes.
+	 */
 	void ImportFromJson(const TSharedPtr<FJsonObject> JsonRoot, FAdiSettings& Settings);
 };
 
@@ -108,9 +139,13 @@ public:
 UENUM()
 enum class EArticyType : uint8
 {
+	/** Boolean variable. */
 	ADT_Boolean,
+	/** 32-bit signed integer variable. */
 	ADT_Integer,
+	/** Single-language string variable. */
 	ADT_String,
+	/** String variable with per-language values. */
 	ADT_MultiLanguageString
 };
 
@@ -123,24 +158,36 @@ struct FArticyGVar
 	GENERATED_BODY()
 
 public:
+	/** The variable's name within its namespace. */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	FString Variable;
+	/** The variable's articy type. */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	EArticyType Type = EArticyType::ADT_String;
+	/** The variable's description, as authored in articy:draft. */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	FString Description;
 
+	/** The initial value for a boolean variable (ADT_Boolean). */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	bool BoolValue = false;
+	/** The initial value for an integer variable (ADT_Integer). */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	int IntValue = 0;
+	/** The initial value for a string variable (ADT_String / ADT_MultiLanguageString). */
 	UPROPERTY(VisibleAnywhere, Category = "Variable")
 	FString StringValue;
 
 	/** Returns the UArticyVariable type to be used for this variable. */
 	FString GetCPPTypeString() const;
+	/** Returns the C++ literal representation of this variable's initial value. */
 	FString GetCPPValueString() const;
 
+	/**
+	 * Populates this variable from a JSON entry in the GlobalVariables section of the articy export.
+	 *
+	 * @param JsonVar The JSON value describing the variable.
+	 */
 	void ImportFromJson(const TSharedPtr<FJsonObject> JsonVar);
 };
 

@@ -93,6 +93,13 @@ public:
      */
     bool ImportFromFile(const FString& FileName, UArticyImportData* Asset) const;
 
+    /**
+     * Checks whether the given articy export archive is a full export (every package IsIncluded == true)
+     * as opposed to a selective/partial export.
+     *
+     * @param FullArchivePath Absolute path to the .articyue archive to inspect.
+     * @return true if the archive is a full export, false if it is selective or cannot be read.
+     */
     static bool IsFullArticyExport(const FString& FullArchivePath);
 
 private:
