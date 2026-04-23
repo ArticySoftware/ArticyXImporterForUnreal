@@ -70,13 +70,13 @@ UArticyObject* Manfred = UArticyDatabase::Get(WorldContext)->GetObjectByName("Ch
 *Contents have been trimmed for readability*
 
 - `@tabs` begins a new tab section. Tabs have to be placed within its `{}`
-- `@tab` begins a new tab. There are 3 parameters to pass withing its `{}`:
+- `@tab` begins a new tab. There are 3 parameters to pass within its `{}`:
     1. The label of the tab. This will be printed to the screen. (e.g. `C++`)
     2. (optional) The group identifier. This will be used to identify tabs of the same group for the code example language selection (see customisations below). (e.g. `cpp`)
     3. The contents
 
 > [!note]
-> Note that Markdown will handle contents indented by 4 or more spaces as code blocks. It is advised to not indent tabs to evade this behaviour. When using lists this rule extends to 8 or more spaces, because lists allow to continue a list item's content by intenting by 4 spaces.
+> Note that Markdown will handle content indented by 4 or more spaces as code blocks. It is advised to not indent tabs to evade this behaviour. When using lists this rule extends to 8 or more spaces, because lists allow to continue a list item's content by intenting by 4 spaces.
 
 ## Customisations
 
