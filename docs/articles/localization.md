@@ -1,4 +1,4 @@
-# Localization
+\page localization Localization
 
 The **ArticyImporter** plugin for Unreal Engine processes localization data from **articy:draft X** and integrates it with Unreal's localization system. This allows developers to access and manage localized content efficiently in both C++ and Blueprint. Localization data is automatically stored in **String Tables** as CSV files, located within `ArticyContent/Generated`. These string tables are loaded at runtime, and Unreal’s standard localization tools can be used to manage them. Additionally, the generated CSV files must be included in the built game package to ensure proper functionality in shipped products.
 

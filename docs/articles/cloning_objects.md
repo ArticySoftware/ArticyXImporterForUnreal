@@ -1,4 +1,4 @@
-# Cloning Objects
+\page cloningObjects Cloning Objects
 
 In Unreal, as in Unity, the data imported from **articy:draft** is generally treated as a single instance. This means that any modifications made to an object are persistent across all references to that object. However, in some situations, you may want to create independent copies of an object so that changes do not affect the original. This process is known as **cloning**, and it allows for multiple instances of an object to be handled separately.
 

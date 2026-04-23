@@ -1,4 +1,4 @@
-# Dialogues and Flow Traversal
+\page dialoguesFlowTraversal Dialogues and Flow Traversal
 
 In *articy:draft*, you can design complex flows to create branching dialogues, menu systems, AI behavior, and more. These flows consist of nodes, connections, and scripts, enabling you to craft dynamic, interactive systems. Once you've created these flows, you can traverse them inside Unreal Engine using the `UArticyFlowPlayer` component.
 

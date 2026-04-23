@@ -1,4 +1,4 @@
-# Object Handling with FArticyRef
+\page objectHandlingArticyRef Object Handling with FArticyRef
 
 In this section, we'll show how you can use **ArticyRef** in Unreal to reference Articy objects dynamically, allowing for flexible and reusable code both in C++ and Blueprints.
 

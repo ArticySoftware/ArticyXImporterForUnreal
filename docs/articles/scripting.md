@@ -1,4 +1,4 @@
-# Scripting
+\page scripting Scripting
 
 Articy:draft features its own scripting language, called **articy:expresso**, which is used for controlling narrative logic, conditions, and variables. The **ArticyXImporter** plugin imports these scripts into Unreal Engine, giving developers the flexibility to utilize them in both **Blueprint** and **C++**. Additionally, the **ArticyFlowPlayer** component leverages these scripts when traversing flows, handling conditions and instructions automatically.
 

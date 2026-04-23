@@ -1,4 +1,4 @@
-# Build Server Integration
+\page buildServerIntegration Build Server Integration
 
 Integrating **articy:draft** into your build server workflows is crucial for automating the import process of narrative content into your Unreal Engine projects. This section outlines how to use **ArticyImport** commandlets for automation, the available options, and how to integrate them into your CI/CD pipelines.
 

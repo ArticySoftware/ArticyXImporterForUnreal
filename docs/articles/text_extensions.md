@@ -1,4 +1,4 @@
-# Text Extensions
+\page textExtensions Text extensions
 
 In Unreal Engine, the **ArticyImporter** plugin automatically processes text through an advanced text processing system known as **Text Extensions**, similar to the Unity version. This system allows you to use global variables, object properties, and other dynamic values inside text fields. You can insert special tokens into strings, which are then resolved at runtime to produce final, localized output. This guide covers how to use text extensions, including token formatting, variable substitution, and advanced use cases.
 

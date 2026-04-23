@@ -33,19 +33,19 @@ The purpose of this plugin is to easily import and integrate **articy:draft X** 
 
 The **Articy Flow Player** is an essential tool for traversing your dialogue and narrative flows. It handles branching paths, evaluates conditions, and manages callbacks to your game code to control the player’s narrative choices. 
 
-You can learn more about setting up dialogues and managing branching stories in the [Dialogues and Flow Traversal](Dialogues-and-Flow-Traversal) section.
+You can learn more about setting up dialogues and managing branching stories in the [Dialogues and Flow Traversal](@ref dialoguesFlowTraversal) section.
 
 ### Global Variables and Scripting
 
-Global variables imported from articy:draft X can be used to track game states and progress, while **Custom Script Methods** allow you to define and execute complex game logic. For detailed usage, see the [Scripting and How to Use It](Scripting-and-How-to-Use-It) section.
+Global variables imported from articy:draft X can be used to track game states and progress, while **Custom Script Methods** allow you to define and execute complex game logic. For detailed usage, see the [Scripting and How to Use It](@ref scripting) section.
 
 ### Object Handling
 
-To access and manipulate objects, the **ArticyRef** struct provides an easy way to interact with entities, dialogues, and templates from your articy:draft X project. Check out the [Basic Object Handling](tutorials/basic_object_handling.md) and [Object Handling with ArticyRef](Object-Handling-with-ArticyRef) sections for more details.
+To access and manipulate objects, the **ArticyRef** struct provides an easy way to interact with entities, dialogues, and templates from your articy:draft X project. Check out the [Basic Object Handling](@ref basicObjectHandling) and [Object Handling with ArticyRef](@ref objectHandlingArticyRef) sections for more details.
 
 ### Localization and Text Extensions
 
-For handling different languages and text formats, you can use Unreal’s localization system along with text extensions from articy:draft X. More information is available in the [Localization](Localization) and [Text Extensions](Text-Extensions) sections.
+For handling different languages and text formats, you can use Unreal’s localization system along with text extensions from articy:draft X. More information is available in the [Localization](@ref localization) and [Text Extensions](@ref textExtensions) sections.
 
 ---
 

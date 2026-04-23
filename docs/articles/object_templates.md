@@ -1,4 +1,4 @@
-# Object Templates
+\page objectTemplates Object Templates
 
 When exporting data from **articy:draft X** into Unreal, the **ArticyXImporter** plugin imports not only the objects but also their templates. This section covers how templates work in Unreal and how to interact with them effectively using C++ and Blueprint.
 

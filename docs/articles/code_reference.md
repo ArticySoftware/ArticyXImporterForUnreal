@@ -1,4 +1,4 @@
-# Code Reference
+\page codeReference Code Reference
 
 This page provides an overview of code for the **ArticyX Importer** plugin for **Unreal Engine**, covering key classes and functionalities. The **ArticyX Importer** enables seamless integration of **articy:draft** assets and data into **Unreal Engine** projects, automating various processes such as importing, asset generation, and scripting.
 

@@ -1,4 +1,4 @@
-# Common Issues
+\page commonIssues Common Issues
 
 This page covers common issues developers encounter when using the **ArticyX Importer** plugin for **Unreal Engine**. It also includes solutions based on feedback from support cases. Please refer to this page if you run into problems with importing, asset packaging, or localization.
 

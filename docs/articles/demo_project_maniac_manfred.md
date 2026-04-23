@@ -1,4 +1,4 @@
-# Demo project Maniac Manfred
+\page demoProjectManiacManfred Demo project Maniac Manfred
 
 ## Introduction
 

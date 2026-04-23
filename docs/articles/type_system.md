@@ -1,4 +1,4 @@
-# Type System
+\page typeSystem Type System
 
 The **ArticyImporter** plugin for Unreal Engine provides a built-in **Type System**, which offers an optimized way to get meta-information about types, classes, and properties without using Unreal's built-in reflection system. The Articy Type System operates similarly to Unreal's reflection but is specifically tailored for working with Articy data types and is optimized for performance.
 
