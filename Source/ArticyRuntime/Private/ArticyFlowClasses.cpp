@@ -4,6 +4,10 @@
 
 #include "ArticyFlowClasses.h"
 
+#include "ArticyBranch.h"
+#include "ArticyDatabase.h"
+#include "ArticyFlowPlayer.h"
+
 /**
  * Retrieves the target object of the jump.
  *

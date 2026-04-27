@@ -4,6 +4,8 @@
 
 #include "Interfaces/ArticyInputPinsProvider.h"
 
+#include "ArticyFlowPlayer.h"
+
 /**
  * @brief Tries to submerge into InputPins and explore connections.
  *
