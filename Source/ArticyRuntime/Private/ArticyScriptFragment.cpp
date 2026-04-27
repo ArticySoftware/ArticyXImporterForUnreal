@@ -4,6 +4,7 @@
 
 #include "ArticyScriptFragment.h"
 #include "ArticyExpressoScripts.h"
+#include "ArticyFlowPlayer.h"
 
 /**
  * Computes and returns a hash of the expression.
