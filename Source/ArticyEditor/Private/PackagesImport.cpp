@@ -264,8 +264,8 @@ void FArticyPackageDef::GatherScripts(UArticyImportData* Data) const
  */
 UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data) const
 {
-	const FString PackageName = GetFolder();
-	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageName;
+	const FString PackageFolder = GetFolder();
+	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageFolder;
 
 	// @TODO Engine Versioning
 #if ENGINE_MAJOR_VERSION >= 5 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
@@ -276,7 +276,8 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 
 	AssetPackage->FullyLoad();
 
-	const FString AssetName = FPaths::GetBaseFilename(PackageName);
+	// Asset filename is derived from the package Id, not Name, so renames in articy:draft do not change the path.
+	const FString AssetName = GetAssetFileName();
 
 	// If the package is not included in a partial export, skip generation
 	if (!IsIncluded)
@@ -328,12 +329,23 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 
 /**
  * Gets the folder path for the package.
+ * Keyed by the package FArticyId so renames in articy:draft don't relocate the asset.
  *
  * @return The folder path as a string.
  */
 FString FArticyPackageDef::GetFolder() const
 {
-	return (FString(TEXT("Packages")) / Name).Replace(TEXT(" "), TEXT("_"));
+	return FString(TEXT("Packages")) / GetAssetFileName();
+}
+
+/**
+ * Gets the canonical on-disk asset name derived from the package's FArticyId.
+ *
+ * @return The asset file name as a string.
+ */
+FString FArticyPackageDef::GetAssetFileName() const
+{
+	return FString::Printf(TEXT("Pkg_%016llX"), Id.Get());
 }
 
 /**

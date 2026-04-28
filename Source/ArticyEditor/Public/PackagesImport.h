@@ -215,6 +215,7 @@ public:
 
 	/**
 	 * Gets the folder path for the package.
+	 * The folder is keyed by the package's FArticyId so that renames in articy:draft do not move the on-disk asset.
 	 *
 	 * @return The folder path as a string.
 	 */
@@ -226,6 +227,14 @@ public:
 	 * @return The folder name as a string.
 	 */
 	FString GetFolderName() const;
+
+	/**
+	 * Gets the canonical on-disk asset name derived from the package's FArticyId.
+	 * Package identity is keyed by Id, not Name, so that articy:draft renames do not change the asset path.
+	 *
+	 * @return The asset file name as a string.
+	 */
+	FString GetAssetFileName() const;
 
 	/**
 	 * Gets the name of the package.
