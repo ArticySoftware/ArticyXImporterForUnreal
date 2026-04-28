@@ -264,8 +264,8 @@ void FArticyPackageDef::GatherScripts(UArticyImportData* Data) const
  */
 UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data) const
 {
-	const FString PackageName = GetFolder();
-	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageName;
+	const FString PackageFolder = GetFolder();
+	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageFolder;
 
 	// @TODO Engine Versioning
 #if ENGINE_MAJOR_VERSION >= 5 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
@@ -276,13 +276,19 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 
 	AssetPackage->FullyLoad();
 
-	const FString AssetName = FPaths::GetBaseFilename(PackageName);
+	// Filename is Id-derived; articy:draft renames don't relocate the asset.
+	const FString AssetName = GetAssetFileName();
 
-	// If the package is not included in a partial export, skip generation
+	// Partial export: skip data regen but still refresh manifest flags on the existing asset.
 	if (!IsIncluded)
 	{
 		const FString ObjectPath = PackagePath + TEXT(".") + AssetName;
 		UArticyPackage* ExistingPackage = LoadObject<UArticyPackage>(nullptr, *ObjectPath);
+		if (ExistingPackage && ExistingPackage->bIsDefaultPackage != IsDefaultPackage)
+		{
+			ExistingPackage->bIsDefaultPackage = IsDefaultPackage;
+			ExistingPackage->MarkPackageDirty();
+		}
 		return ExistingPackage;
 	}
 
@@ -327,13 +333,23 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 }
 
 /**
- * Gets the folder path for the package.
+ * Gets the folder path for the package. Keyed by FArticyId, not Name.
  *
  * @return The folder path as a string.
  */
 FString FArticyPackageDef::GetFolder() const
 {
-	return (FString(TEXT("Packages")) / Name).Replace(TEXT(" "), TEXT("_"));
+	return FString(TEXT("Packages")) / GetAssetFileName();
+}
+
+/**
+ * Gets the canonical Id-derived on-disk asset name.
+ *
+ * @return The asset file name as a string.
+ */
+FString FArticyPackageDef::GetAssetFileName() const
+{
+	return FString::Printf(TEXT("Pkg_%016llX"), Id.Get());
 }
 
 /**
@@ -466,6 +482,11 @@ void FArticyPackageDefs::ImportFromJson(
 				if (TempMeta.GetIsIncluded())
 				{
 					ExistingPackage = TempMeta;
+				}
+				else
+				{
+					// Propagate manifest-level flags on partial reimports too.
+					ExistingPackage.SetIsDefaultPackage(TempMeta.GetIsDefaultPackage());
 				}
 
 				if (!NewName.Equals(OldName))

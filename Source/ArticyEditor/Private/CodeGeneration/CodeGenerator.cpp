@@ -343,9 +343,9 @@ void CodeGenerator::Recompile(UArticyImportData* Data)
 }
 
 /**
- * @brief Deletes generated assets based on package definitions.
+ * @brief Deletes generated assets not retained by the package definitions.
  *
- * Removes assets not included in the import, handling invalid assets appropriately.
+ * Match key is FArticyId; falls back to Name for pre-1.6.0 assets without PackageId.
  *
  * @param PackageDefs The package definitions used to determine which assets to delete.
  * @return true if all invalid assets were successfully deleted, false otherwise.
@@ -372,28 +372,37 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 
 			bool ExcludeAsset = false;
 
-			// Determine the package name based on what kind of asset this is
+			// Match by PackageId; fall back to Name for legacy assets.
+			FArticyId TargetPackageId;
 			FString TargetPackageName = TEXT("");
 
 			if (const UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset))
 			{
+				TargetPackageId = PackageAsset->PackageId;
 				TargetPackageName = PackageAsset->Name;
 			}
 			else if (const UArticyObject* ArticyObject = Cast<UArticyObject>(Asset))
 			{
-				// If it's an object, get the name of the containing package
 				if (const UArticyPackage* ParentPackage = Cast<UArticyPackage>(ArticyObject->GetOuter()))
 				{
+					TargetPackageId = ParentPackage->PackageId;
 					TargetPackageName = ParentPackage->Name;
 				}
 			}
 
-			if (!TargetPackageName.IsEmpty())
+			const bool bHasId = !TargetPackageId.IsNull();
+			if (bHasId || !TargetPackageName.IsEmpty())
 			{
 				for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
 				{
-					// Don't delete assets that belong to a package not included in the import
-					if (!PackageDef.GetIsIncluded() && TargetPackageName.Equals(PackageDef.GetName()))
+					if (PackageDef.GetIsIncluded())
+						continue;
+
+					const bool bMatches = bHasId
+						? (PackageDef.GetId() == TargetPackageId)
+						: TargetPackageName.Equals(PackageDef.GetName());
+
+					if (bMatches)
 					{
 						ExcludeAsset = true;
 						break;
@@ -424,11 +433,11 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 }
 
 /**
- * @brief Renames generated assets based on package definitions.
+ * @brief Migrates package assets to the canonical Id-based path (GetAssetFileName).
  *
- * This function handles renaming of package assets when their names have changed.
+ * Match by PackageId; falls back to Name for legacy assets pre-Id naming.
  *
- * @param PackageDefs The package definitions containing the new asset names.
+ * @param PackageDefs The package definitions containing the canonical Id-based names.
  * @return true if all renaming operations succeeded, false otherwise.
  */
 bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
@@ -449,35 +458,54 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 				continue;
 			}
 
-			if (UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset))
+			UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset);
+			if (!PackageAsset)
 			{
-				for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
+				continue;
+			}
+
+			// Match by PackageId; fall back to Name for legacy assets.
+			const FArticyPackageDef* MatchingDef = nullptr;
+			for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
+			{
+				if (!PackageAsset->PackageId.IsNull())
 				{
-					// Skip included packages - we delete them anyway
-					if (PackageDef.GetIsIncluded())
+					if (PackageDef.GetId() == PackageAsset->PackageId)
 					{
-						continue;
+						MatchingDef = &PackageDef;
+						break;
 					}
-
-					// Only check packages with name changes
-					if (PackageDef.GetName().Equals(PackageDef.GetPreviousName()))
-					{
-						continue;
-					}
-
-					// Rename the asset
-					FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-					TArray<FAssetRenameData> AssetsAndNames;
-					const FString OldName = PackageAsset->GetName();
-					const FString PackagePath = FPackageName::GetLongPackagePath(PackageAsset->GetOutermost()->GetName());
-					new(AssetsAndNames)FAssetRenameData(PackageAsset, PackagePath, PackageDef.GetName());
-					AssetToolsModule.Get().RenameAssets(AssetsAndNames);
-
-					FAssetRegistryModule::AssetRenamed(PackageAsset, PackagePath / OldName);
-					PackageAsset->MarkPackageDirty();
-					PackageAsset->GetOuter()->MarkPackageDirty();
+				}
+				else if (PackageDef.GetName().Equals(PackageAsset->Name))
+				{
+					MatchingDef = &PackageDef;
+					break;
 				}
 			}
+
+			if (!MatchingDef)
+			{
+				continue;
+			}
+
+			const FString CanonicalName = MatchingDef->GetAssetFileName();
+			const FString CanonicalFolder = ArticyHelpers::GetArticyGeneratedFolder() / MatchingDef->GetFolder();
+			const FString CurrentName = PackageAsset->GetName();
+			const FString CurrentFolder = FPackageName::GetLongPackagePath(PackageAsset->GetOutermost()->GetName());
+
+			if (CanonicalName.Equals(CurrentName) && CanonicalFolder.Equals(CurrentFolder))
+			{
+				continue;
+			}
+
+			FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
+			TArray<FAssetRenameData> AssetsAndNames;
+			new(AssetsAndNames)FAssetRenameData(PackageAsset, CanonicalFolder, CanonicalName);
+			AssetToolsModule.Get().RenameAssets(AssetsAndNames);
+
+			FAssetRegistryModule::AssetRenamed(PackageAsset, CurrentFolder / CurrentName);
+			PackageAsset->MarkPackageDirty();
+			PackageAsset->GetOuter()->MarkPackageDirty();
 		}
 	}
 

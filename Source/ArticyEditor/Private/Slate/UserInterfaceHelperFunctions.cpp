@@ -14,6 +14,7 @@
 #include "ArticyEditorStyle.h"
 #include "ArticyFlowClasses.h"
 #include "ArticyEntity.h"
+#include "ArticyScriptFragment.h"
 #include "Interfaces/ArticyObjectWithColor.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Styling/ISlateStyle.h"

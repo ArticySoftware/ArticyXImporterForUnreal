@@ -50,8 +50,6 @@ private:
 	UPROPERTY()
 	TObjectPtr<UArticyLocalizerSystem> Localizer;
 
-<<<<<<< Updated upstream
-=======
 	/** Handle to the deferred OnPostEngineInit callback used to run the first Reload(). */
 	FDelegateHandle PostEngineInitHandle;
 
@@ -62,6 +60,5 @@ private:
 	 *
 	 * @return A new generated localizer instance, or nullptr if no suitable subclass was found.
 	 */
->>>>>>> Stashed changes
 	UArticyLocalizerSystem* CreateGeneratedLocalizer();
 };

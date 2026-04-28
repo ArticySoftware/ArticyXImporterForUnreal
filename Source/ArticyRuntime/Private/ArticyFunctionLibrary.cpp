@@ -2,8 +2,8 @@
 // Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
-#include "ArticyBranch.h"
 #include "ArticyFunctionLibrary.h"
+#include "ArticyBranch.h"
 #include "ArticyObject.h"
 #include "ArticyFlowPlayer.h"
 #include "Interfaces/ArticyFlowObject.h"

@@ -4,6 +4,9 @@
 
 #include "Interfaces/ArticyOutputPinsProvider.h"
 
+#include "ArticyBranch.h"
+#include "ArticyFlowPlayer.h"
+
 /**
  * @brief Explores the output pins of the provider.
  *
