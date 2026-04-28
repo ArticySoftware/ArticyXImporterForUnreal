@@ -276,14 +276,19 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 
 	AssetPackage->FullyLoad();
 
-	// Asset filename is derived from the package Id, not Name, so renames in articy:draft do not change the path.
+	// Filename is Id-derived; articy:draft renames don't relocate the asset.
 	const FString AssetName = GetAssetFileName();
 
-	// If the package is not included in a partial export, skip generation
+	// Partial export: skip data regen but still refresh manifest flags on the existing asset.
 	if (!IsIncluded)
 	{
 		const FString ObjectPath = PackagePath + TEXT(".") + AssetName;
 		UArticyPackage* ExistingPackage = LoadObject<UArticyPackage>(nullptr, *ObjectPath);
+		if (ExistingPackage && ExistingPackage->bIsDefaultPackage != IsDefaultPackage)
+		{
+			ExistingPackage->bIsDefaultPackage = IsDefaultPackage;
+			ExistingPackage->MarkPackageDirty();
+		}
 		return ExistingPackage;
 	}
 
@@ -328,8 +333,7 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 }
 
 /**
- * Gets the folder path for the package.
- * Keyed by the package FArticyId so renames in articy:draft don't relocate the asset.
+ * Gets the folder path for the package. Keyed by FArticyId, not Name.
  *
  * @return The folder path as a string.
  */
@@ -339,7 +343,7 @@ FString FArticyPackageDef::GetFolder() const
 }
 
 /**
- * Gets the canonical on-disk asset name derived from the package's FArticyId.
+ * Gets the canonical Id-derived on-disk asset name.
  *
  * @return The asset file name as a string.
  */
@@ -478,6 +482,11 @@ void FArticyPackageDefs::ImportFromJson(
 				if (TempMeta.GetIsIncluded())
 				{
 					ExistingPackage = TempMeta;
+				}
+				else
+				{
+					// Propagate manifest-level flags on partial reimports too.
+					ExistingPackage.SetIsDefaultPackage(TempMeta.GetIsDefaultPackage());
 				}
 
 				if (!NewName.Equals(OldName))

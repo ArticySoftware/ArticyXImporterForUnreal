@@ -214,8 +214,7 @@ public:
 	const TArray<FArticyModelDef>& GetModels() const { return Models; }
 
 	/**
-	 * Gets the folder path for the package.
-	 * The folder is keyed by the package's FArticyId so that renames in articy:draft do not move the on-disk asset.
+	 * Gets the folder path for the package. Keyed by FArticyId, not Name.
 	 *
 	 * @return The folder path as a string.
 	 */
@@ -229,8 +228,7 @@ public:
 	FString GetFolderName() const;
 
 	/**
-	 * Gets the canonical on-disk asset name derived from the package's FArticyId.
-	 * Package identity is keyed by Id, not Name, so that articy:draft renames do not change the asset path.
+	 * Gets the canonical Id-derived on-disk asset name.
 	 *
 	 * @return The asset file name as a string.
 	 */
@@ -280,6 +278,20 @@ public:
 	 * @return True if the package is included, false otherwise.
 	 */
 	bool GetIsIncluded() const;
+
+	/**
+	 * Gets the manifest's IsDefaultPackage flag.
+	 *
+	 * @return True if the manifest marks this package as default-loaded.
+	 */
+	bool GetIsDefaultPackage() const { return IsDefaultPackage; }
+
+	/**
+	 * Sets the manifest's IsDefaultPackage flag.
+	 *
+	 * @param bInIsDefault The new flag value.
+	 */
+	void SetIsDefaultPackage(bool bInIsDefault) { IsDefaultPackage = bInIsDefault; }
 
 	/**
 	 * Gets the script fragment hash for the package definition.

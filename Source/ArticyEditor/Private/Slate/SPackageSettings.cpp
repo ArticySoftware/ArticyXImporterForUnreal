@@ -82,6 +82,7 @@ void SPackageSettings::OnCheckStateChanged(ECheckBoxState NewState) const
 
 	UArticyPluginSettings* settings = GetMutableDefault<UArticyPluginSettings>();
 	settings->PackageLoadSettings.Add(PackageToDisplay.ToString(), bChecked);
+	settings->SaveConfig();
 }
 
 /**

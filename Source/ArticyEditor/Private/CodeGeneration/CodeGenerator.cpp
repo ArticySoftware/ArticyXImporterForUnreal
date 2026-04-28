@@ -343,13 +343,9 @@ void CodeGenerator::Recompile(UArticyImportData* Data)
 }
 
 /**
- * @brief Deletes generated assets based on package definitions.
+ * @brief Deletes generated assets not retained by the package definitions.
  *
- * Removes assets not included in the import, handling invalid assets appropriately.
- * Identification is keyed off FArticyId (UArticyPackage::PackageId), so articy:draft renames
- * cannot cause the wrong package's assets to be retained or deleted. A legacy fallback to
- * Name matching is preserved for assets imported by plugin versions prior to 1.6.0
- * that did not yet populate PackageId.
+ * Match key is FArticyId; falls back to Name for pre-1.6.0 assets without PackageId.
  *
  * @param PackageDefs The package definitions used to determine which assets to delete.
  * @return true if all invalid assets were successfully deleted, false otherwise.
@@ -376,7 +372,7 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 
 			bool ExcludeAsset = false;
 
-			// Identify the owning package by Id where available, falling back to Name for legacy assets.
+			// Match by PackageId; fall back to Name for legacy assets.
 			FArticyId TargetPackageId;
 			FString TargetPackageName = TEXT("");
 
@@ -437,14 +433,9 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 }
 
 /**
- * @brief Migrates generated package assets to their canonical Id-based on-disk path.
+ * @brief Migrates package assets to the canonical Id-based path (GetAssetFileName).
  *
- * Package identity is keyed by FArticyId, not by Name. This function detects any package asset
- * whose on-disk name does not match the canonical Id-derived name (FArticyPackageDef::GetAssetFileName)
- * and renames it in place. This covers two scenarios:
- *  - Legacy assets imported by plugin versions that named packages by Name; matched by Name fallback.
- *  - Stale assets where the path drifted from the current Id-based canonical form; matched by PackageId.
- * Once stable Id-based naming is in effect, articy:draft renames no longer require any rename work.
+ * Match by PackageId; falls back to Name for legacy assets pre-Id naming.
  *
  * @param PackageDefs The package definitions containing the canonical Id-based names.
  * @return true if all renaming operations succeeded, false otherwise.
@@ -473,7 +464,7 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 				continue;
 			}
 
-			// Match the asset to its definition by PackageId, falling back to Name for legacy assets.
+			// Match by PackageId; fall back to Name for legacy assets.
 			const FArticyPackageDef* MatchingDef = nullptr;
 			for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
 			{

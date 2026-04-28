@@ -45,6 +45,10 @@ const UArticyPluginSettings* UArticyPluginSettings::Get()
 	return Settings.Get();
 }
 
+/**
+ * Prunes overrides for removed packages and re-applies the survivors. Untoggled packages
+ * are left alone so the manifest's IsDefaultPackage stays authoritative.
+ */
 void UArticyPluginSettings::UpdatePackageSettings()
 {
 	TWeakObjectPtr<UArticyDatabase> ArticyDatabase = UArticyDatabase::GetMutableOriginal();
@@ -56,54 +60,42 @@ void UArticyPluginSettings::UpdatePackageSettings()
 
 	TArray<FString> ImportedPackageNames = ArticyDatabase->GetImportedPackageNames();
 
-	// remove outdated settings
 	TArray<FString> CurrentNames;
 	PackageLoadSettings.GenerateKeyArray(CurrentNames);
 
+	bool bRemoved = false;
 	for (const FString& Name : CurrentNames)
 	{
-		// if the old name isn't contained in the new packages, remove its loading rule
 		if (!ImportedPackageNames.Contains(Name))
 		{
 			PackageLoadSettings.Remove(Name);
+			bRemoved = true;
 		}
 	}
 
-	for (const FString& Name : ImportedPackageNames)
+	if (bRemoved)
 	{
-		// if the new name isn't contained in the serialized data, add it with its default package value
-		if (!CurrentNames.Contains(Name))
-		{
-			PackageLoadSettings.Add(Name, ArticyDatabase->IsPackageDefaultPackage(Name));
-		}
+		SaveConfig();
 	}
 
-	// apply previously existing settings for the packages so that user tweaked values don't get reset
 	ApplyPreviousSettings();
 }
 
+/**
+ * Applies persisted overrides to UArticyPackage::bIsDefaultPackage. Packages without an
+ * entry keep the manifest value written by FArticyPackageDef::GeneratePackageAsset.
+ */
 void UArticyPluginSettings::ApplyPreviousSettings() const
 {
-	// restore the package default settings with the cached data of the plugin settings
 	TWeakObjectPtr<UArticyDatabase> OriginalDatabase = UArticyDatabase::GetMutableOriginal();
 	if (!OriginalDatabase.IsValid())
 		return;
 
 	const UArticyPluginSettings* DefaultSettings = GetDefault<UArticyPluginSettings>();
 
-	for (const FString& PackageName : OriginalDatabase->GetImportedPackageNames())
+	for (const TPair<FString, bool>& Override : DefaultSettings->PackageLoadSettings)
 	{
-		const FName PackageFName(*PackageName);
-		const auto* Settings = DefaultSettings->PackageLoadSettings.Find(PackageName);
-
-		if (Settings)
-		{
-			OriginalDatabase->ChangePackageDefault(PackageFName, *Settings);
-		}
-		else
-		{
-			UE_LOG(LogArticyRuntime, Warning, TEXT("No PackageLoadSettings found for package: %s"), *PackageName);
-		}
+		OriginalDatabase->ChangePackageDefault(FName(*Override.Key), Override.Value);
 	}
 }
 
