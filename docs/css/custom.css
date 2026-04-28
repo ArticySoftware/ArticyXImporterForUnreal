@@ -1,0 +1,8 @@
+.tabbed > ul {
+    background-color: oklch(from var(--page-background-color) calc(l - 0.05) c h);
+    padding: var(--spacing-medium);
+}
+
+html.dark_mode .tabbed > ul {
+    background-color: oklch(from var(--page-background-color) calc(l - 0.05) c h);
+}

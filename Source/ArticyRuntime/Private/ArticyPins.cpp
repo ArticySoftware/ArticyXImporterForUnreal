@@ -6,6 +6,7 @@
 #include "ArticyBaseTypes.h"
 #include "ArticyBuiltinTypes.h"
 #include "ArticyExpressoScripts.h"
+#include "ArticyFlowPlayer.h"
 
 void UArticyFlowPin::InitFromJson(TSharedPtr<FJsonValue> Json) 
 {
