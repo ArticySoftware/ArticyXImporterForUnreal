@@ -882,6 +882,75 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 
 bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
 {
+	// A not-included package without an on-disk asset would break codegen mid-flight.
+	{
+		TArray<FString> MissingPackageNames;
+		if (!PackageDefs.ValidateAssetsExist(MissingPackageNames))
+		{
+			const FString Joined = FString::Join(MissingPackageNames, TEXT(", "));
+			UE_LOG(LogArticyEditor, Error,
+				TEXT("Aborting Articy import: package(s) [%s] are not included in the export and have no previously imported asset. ")
+				TEXT("Re-export from articy:draft with these package(s) included at least once."), *Joined);
+
+			const FText Title = LOCTEXT("ArticyImportAbortedTitle", "Articy Import Aborted");
+			const FText Message = FText::Format(
+				LOCTEXT("ArticyImportAborted",
+					"The Articy export omits the following package(s), but no previously imported asset exists for them:\n\n{0}\n\n"
+					"Re-export from articy:draft with these package(s) included at least once before performing a partial export.\n\n"
+					"No changes have been made."),
+				FText::FromString(Joined));
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 24
+			OpenMsgDlgInt(EAppMsgType::Ok, Message, Title);
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			FMessageDialog::Open(EAppMsgType::Ok, Message, Title);
+#else
+			FMessageDialog::Open(EAppMsgType::Ok, Message, &Title);
+#endif
+			return false;
+		}
+	}
+
+	// Not-included assets serialized against the old types would deserialize as garbage
+	// against the regenerated classes.
+	if (GetSettings().DidObjectDefsOrGVsChange())
+	{
+		TArray<FString> NotIncludedPackageNames;
+		for (const FArticyPackageDef& Pack : PackageDefs.GetPackages())
+		{
+			if (!Pack.GetIsIncluded())
+			{
+				NotIncludedPackageNames.Add(Pack.GetName());
+			}
+		}
+
+		if (NotIncludedPackageNames.Num() > 0)
+		{
+			const FString Joined = FString::Join(NotIncludedPackageNames, TEXT(", "));
+			UE_LOG(LogArticyEditor, Error,
+				TEXT("Aborting Articy import: object definitions changed but the export omits package(s) [%s]. ")
+				TEXT("Their on-disk assets were serialized against the previous types and would no longer match. ")
+				TEXT("Re-export from articy:draft with all packages included."), *Joined);
+
+			const FText Title = LOCTEXT("ArticyImportAbortedDefsChangedTitle", "Articy Import Aborted");
+			const FText Message = FText::Format(
+				LOCTEXT("ArticyImportAbortedDefsChanged",
+					"The Articy export changes object/global-variable definitions but omits the following package(s):\n\n{0}\n\n"
+					"Their on-disk assets were serialized against the previous types and would deserialize incorrectly "
+					"against the regenerated types — properties may return values that were never set in articy.\n\n"
+					"Re-export from articy:draft with all packages included.\n\n"
+					"No changes have been made."),
+				FText::FromString(Joined));
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 24
+			OpenMsgDlgInt(EAppMsgType::Ok, Message, Title);
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			FMessageDialog::Open(EAppMsgType::Ok, Message, Title);
+#else
+			FMessageDialog::Open(EAppMsgType::Ok, Message, &Title);
+#endif
+			return false;
+		}
+	}
+
 	bool bNeedsCodeGeneration = GetSettings().DidObjectDefsOrGVsChange()
 		|| (GetSettings().DidScriptFragmentsChange() && GetSettings().set_UseScriptSupport);
 

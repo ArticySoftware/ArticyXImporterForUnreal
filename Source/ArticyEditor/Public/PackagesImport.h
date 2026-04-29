@@ -371,6 +371,14 @@ public:
 	bool ValidateImport(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json);
 
 	/**
+	 * Verifies every not-included package has an existing on-disk asset to refresh.
+	 *
+	 * @param OutMissingPackageNames Names of packages with no on-disk asset.
+	 * @return True if all not-included packages have an asset on disk.
+	 */
+	bool ValidateAssetsExist(TArray<FString>& OutMissingPackageNames) const;
+
+	/**
 	 * Gathers scripts from all package definitions and adds them to the ArticyImportData.
 	 *
 	 * @param Data A pointer to the UArticyImportData object.

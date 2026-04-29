@@ -474,7 +474,12 @@ void FArticyPackageDefs::ImportFromJson(
 			{
 				bExistingPackageFound = true;
 
-				ExistingPackage.SetIsIncluded(TempMeta.GetIsIncluded());
+				// Supplemental merges OR; a base/single-file pass overwrites.
+				const bool bMergedIsIncluded = bAllowRemoval
+					? TempMeta.GetIsIncluded()
+					: (ExistingPackage.GetIsIncluded() || TempMeta.GetIsIncluded());
+				ExistingPackage.SetIsIncluded(bMergedIsIncluded);
+
 				const FString OldName = ExistingPackage.GetName();
 				const FString NewName = TempMeta.GetName();
 
@@ -688,6 +693,32 @@ bool FArticyPackageDefs::ValidateImport(
 }
 
 /**
+ * Verifies every not-included package has an existing on-disk asset to refresh.
+ *
+ * @param OutMissingPackageNames Names of packages with no on-disk asset.
+ * @return True if all not-included packages have an asset on disk.
+ */
+bool FArticyPackageDefs::ValidateAssetsExist(TArray<FString>& OutMissingPackageNames) const
+{
+	OutMissingPackageNames.Reset();
+
+	for (const FArticyPackageDef& Pack : Packages)
+	{
+		if (Pack.GetIsIncluded())
+			continue;
+
+		const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / Pack.GetFolder();
+		const FString ObjectPath = PackagePath + TEXT(".") + Pack.GetAssetFileName();
+		if (!LoadObject<UArticyPackage>(nullptr, *ObjectPath))
+		{
+			OutMissingPackageNames.Add(Pack.GetName());
+		}
+	}
+
+	return OutMissingPackageNames.Num() == 0;
+}
+
+/**
  * Gathers scripts from all package definitions and adds them to the ArticyImportData.
  *
  * @param Data A pointer to the UArticyImportData object.
@@ -752,7 +783,11 @@ void FArticyPackageDefs::GenerateAssets(UArticyImportData* Data) const
 
 	for (auto pack : Packages)
 	{
-		ArticyPackages.Add(pack.GeneratePackageAsset(Data));
+		// Null when a not-included package has no existing asset to refresh.
+		if (UArticyPackage* GeneratedPackage = pack.GeneratePackageAsset(Data))
+		{
+			ArticyPackages.Add(GeneratedPackage);
+		}
 	}
 
 	// Store gathered information about who has which children in generated assets
