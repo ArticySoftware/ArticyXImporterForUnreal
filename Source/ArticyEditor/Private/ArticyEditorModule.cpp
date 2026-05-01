@@ -27,6 +27,7 @@
 #include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
+#include "Customizations/Details/ArticyObjectFTextCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Customizations/Details/ArticyRefCustomization.h"
@@ -170,6 +171,11 @@ void FArticyEditorModule::RegisterDetailCustomizations() const
 	PropertyModule.RegisterCustomPropertyTypeLayout("ArticyRef", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FArticyRefCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout("ArticyPluginSettings", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyPluginSettingsCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout("ArticyGlobalVariables", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyGVCustomization::MakeInstance));
+
+	// Resolve articy localization keys when the details panel renders FText fields on
+	// UArticyObject / UArticyBaseFeature subclasses. Inherited by all generated subclasses.
+	PropertyModule.RegisterCustomClassLayout("ArticyObject", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyObjectFTextCustomization::MakeInstance));
+	PropertyModule.RegisterCustomClassLayout("ArticyBaseFeature", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyObjectFTextCustomization::MakeInstance));
 
 	PropertyModule.NotifyCustomizationModuleChanged();
 }
