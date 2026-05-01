@@ -9,18 +9,28 @@
 #include "Interfaces/ArticyInputPinsProvider.h"
 #include "Interfaces/ArticyObjectWithPosition.h"
 
+/**
+ * Collection of branch sorting predicates used by UArticyFlowPlayer when
+ * ordering the available branches after exploration.
+ */
 namespace ArticyBranchSorters
 {
     /**
      * Sorts branches according to their target's:
-     * 
+     *
      * - position in the flow graph, if the target is a positional object or an input pin with a target that is a positional object
      * - index of an input pin
      * - position of an outgoing connection's target
      */
     struct FArticyBranchPositionSorter
     {
-        
+        /**
+         * Compares two branches and returns true if A should be ordered before B.
+         *
+         * @param A The first branch to compare.
+         * @param B The second branch to compare.
+         * @return True if A should come before B in the sorted order.
+         */
         FORCEINLINE bool operator()(const FArticyBranch& A, const FArticyBranch& B) const
         {
             const IArticyObjectWithPosition* APos = Cast<IArticyObjectWithPosition>(A.GetTarget().GetInterface());
@@ -50,6 +60,14 @@ namespace ArticyBranchSorters
             return true;
         }
         
+        /**
+         * Returns true if APosObj's graph position should sort before BPosObj's.
+         * Compares X first, then Y as a tiebreaker.
+         *
+         * @param APosObj The first positional object.
+         * @param BPosObj The second positional object.
+         * @return True if A should come before B.
+         */
         FORCEINLINE static bool IsPositionSmaller(const IArticyObjectWithPosition* APosObj, const IArticyObjectWithPosition* BPosObj)
         {
             if (APosObj != nullptr && BPosObj != nullptr)
@@ -63,6 +81,15 @@ namespace ArticyBranchSorters
             return true;
         }
         
+        /**
+         * Returns true if AInputPin should sort before BInputPin.
+         * Sorts first by owner position; when owners match, falls back to the
+         * pin's index within its owner's input pin list.
+         *
+         * @param AInputPin The first input pin.
+         * @param BInputPin The second input pin.
+         * @return True if A should come before B.
+         */
         FORCEINLINE static bool IsInputPinSmaller(const UArticyInputPin* AInputPin, const UArticyInputPin* BInputPin)
         {
             if (AInputPin != nullptr && BInputPin != nullptr)
@@ -90,6 +117,14 @@ namespace ArticyBranchSorters
             return true;
         }
         
+        /**
+         * Returns true if AOutgoingConnection should sort before BOutgoingConnection,
+         * based on the graph position of their target objects.
+         *
+         * @param AOutgoingConnection The first outgoing connection.
+         * @param BOutgoingConnection The second outgoing connection.
+         * @return True if A should come before B.
+         */
         FORCEINLINE static bool IsOutgoingConnectionSmaller(const UArticyOutgoingConnection* AOutgoingConnection, const UArticyOutgoingConnection* BOutgoingConnection)
         {
             const IArticyObjectWithPosition* APosObj = Cast<IArticyObjectWithPosition>(AOutgoingConnection->GetTarget());

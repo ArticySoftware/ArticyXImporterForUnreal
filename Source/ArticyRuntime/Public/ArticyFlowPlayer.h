@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -31,12 +31,17 @@ class ARTICYRUNTIME_API UArticyFlowPlayer : public UActorComponent
 
 public:
 
+    /** Starts the component. Sets the Cursor to the StartOn node and updates available branches. */
     void BeginPlay() override;
+    /** Ends the component. Unregisters the ticker used to drain the branch queue. */
     void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     //---------------------------------------------------------------------------//
 
-    //EArticyPausableType
+    /**
+     * Bitmask of EArticyPausableType values the flow player should pause on.
+     * Defaults to pausing on dialogue fragments, dialogues and flow fragments.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup", meta = (Bitmask, BitmaskEnum = "/Script/ArticyRuntime.EArticyPausableType"))
     uint8 PauseOn = 1 << uint8(EArticyPausableType::DialogueFragment)
         | 1 << uint8(EArticyPausableType::Dialogue)
@@ -49,6 +54,7 @@ public:
     template<typename Lambda>
     void ShadowedOperation(Lambda Operation) const;
 
+    /** Returns the current shadow level (0 == live state, higher values == nested shadow operations). */
     uint32 GetShadowLevel() const { return ShadowLevel; }
 
     //---------------------------------------------------------------------------//
@@ -57,6 +63,7 @@ public:
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Set Start Node (ArticyRef)"), Category = "Setup")
     void SetStartNode(FArticyRef NewId);
 
+    /** Set the StartOn node to a certain node, identified by its ArticyId. */
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Set Start Node (ArticyID)"), Category = "Setup")
     void SetStartNodeById(FArticyId NewId);
 
@@ -68,7 +75,7 @@ public:
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Start Node"), Category = "Setup")
     FArticyRef GetStartNode() { return StartOn; }
 
-    /** Gets the last set StartOn node */
+    /** Sets whether invalid branches should be excluded from AvailableBranches. */
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Set Ignore Invalid Branches"), Category = "Setup")
     void SetIgnoreInvalidBranches(bool bNewIgnoreInvalidBranches) { bIgnoreInvalidBranches = bNewIgnoreInvalidBranches; }
 
@@ -104,10 +111,12 @@ public:
      */
     TArray<FArticyBranch> Explore(IArticyFlowObject* Node, bool bShadowed, int32 Depth, bool IncludeCurrent = true);
 
+    /** Sets the bitmask of node types the flow player should pause on. */
     void SetPauseOn(EArticyPausableType Types);
     /** Returns true if Node is one of the PauseOn types. */
     bool ShouldPauseOn(IArticyFlowObject* Node) const;
 
+    /** Returns true if Node is one of the PauseOn types. */
     UFUNCTION(BlueprintCallable, Category = "Flow")
     bool ShouldPauseOn(TScriptInterface<IArticyFlowObject> Node) const;
 
@@ -139,6 +148,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Setup")
     bool IgnoresInvalidBranches() const { return bIgnoreInvalidBranches; }
 
+    /**
+     * Ticker callback used to drain queued branches and replay them.
+     *
+     * @param DeltaTime The time elapsed since the last tick.
+     * @return True to keep the ticker registered, false to unregister.
+     */
     bool OnTick(float DeltaTime);
 
     DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPushState);
@@ -198,6 +213,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
     bool bIgnoreInvalidBranches = true;
 
+    /** The node the flow player starts on and the node the cursor resets to when the player restarts. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup", meta = (ArticyClassRestriction = "ArticyNode"))
     FArticyRef StartOn;
 
@@ -237,9 +253,12 @@ private:
     UPROPERTY(Transient, VisibleAnywhere, Category = "Debug")
     mutable uint32 ShadowLevel = 0;
 
+    /** Branches queued for replay. Drained by the ticker one branch per tick. */
     TQueue<FArticyBranch> BranchQueue;
+    /** Handle to the ticker that drains BranchQueue. */
     FTSTicker::FDelegateHandle TickerHandle;
 
+    /** Cached expresso scripts instance used by this flow player. */
     UArticyExpressoScripts* CachedExpressoInstance = nullptr;
 
 private:
@@ -267,6 +286,7 @@ private:
     /** Returns a ptr to the unshadowed object of this node */
     IArticyFlowObject* GetUnshadowedNode(IArticyFlowObject* Node);
 
+    /** Returns the database the flow player is bound to. */
     UArticyDatabase* GetDB() const;
 };
 
@@ -330,10 +350,12 @@ class AArticyFlowDebugger : public AActor
 public:
     AArticyFlowDebugger();
 public:
+    /** The flow player component attached to the debugger actor. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
     UArticyFlowPlayer* FlowPlayer = nullptr;
 private:
 
+    /** Billboard icon shown in the editor viewport to identify the debugger. */
     UPROPERTY()
     UBillboardComponent* ArticyImporterIcon = nullptr;
 };
