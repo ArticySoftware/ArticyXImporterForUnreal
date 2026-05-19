@@ -59,7 +59,7 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Add(TEXT("point"), PREDEFINE_TYPE_EXT(FVector2D, "FVector2D::ZeroVector", [](PROP_SETTER_PARAMS) { return ArticyHelpers::ParseFVector2DFromJson(Json); }));
 	Types.Add(TEXT("size"), PREDEFINE_TYPE(FArticySize));
 	Types.Add(TEXT("float"), PREDEFINE_TYPE_EXT(float, "0.f", [](PROP_SETTER_PARAMS) { return Json->IsNull() ? 0.f : static_cast<float>(Json->AsNumber()); }));
-	Types.Add(TEXT("ArticyString"), TextType);
+	Types.Add(TEXT("ArticyString"), PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; }));
 	Types.Add(TEXT("ArticyMultiLanguageString"), TextType);
 
 	auto int32Info = PREDEFINE_TYPE_EXT(int32, "0", [](PROP_SETTER_PARAMS) {
