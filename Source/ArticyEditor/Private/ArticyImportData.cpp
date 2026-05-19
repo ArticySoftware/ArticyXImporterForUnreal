@@ -805,11 +805,15 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	}
 
 	// Create string tables
+	TSet<FString> GeneratedCsvPaths;
 	for (const auto& Language : Languages.Languages)
 	{
 		StringTableGenerator(TEXT("ARTICY"), Language.Key,
 			[&](StringTableGenerator* CsvOutput)
 			{
+				// Track even when no rows are written, so a partial import keeps unchanged files.
+				GeneratedCsvPaths.Add(FPaths::ConvertRelativePathToFull(CsvOutput->GetPath()));
+
 				// Collect everything into a map to de-dupe keys
 				TMap<FString, FArticyCsvRow> Combined;
 
@@ -873,11 +877,89 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 			});
 	}
 
+	// Drop stale string table .csv files from older imports.
+	CleanupStaleStringTableFiles(GeneratedCsvPaths);
+
 	// Import Unreal audio assets
 	FString AssetBaseDirectory = FPaths::ProjectContentDir() + TEXT("ArticyContent/Resources/Assets/");
 	ImportAudioAssets(AssetBaseDirectory);
 
 	return true;
+}
+
+void UArticyImportData::CleanupStaleStringTableFiles(const TSet<FString>& KeepCsvFullPaths) const
+{
+	auto NormalizeKey = [](const FString& InPath) -> FString
+	{
+		FString Full = FPaths::ConvertRelativePathToFull(InPath);
+		FPaths::NormalizeFilename(Full);
+		return Full.ToLower();
+	};
+
+	TSet<FString> Keep;
+	Keep.Reserve(KeepCsvFullPaths.Num());
+	for (const FString& P : KeepCsvFullPaths)
+	{
+		Keep.Add(NormalizeKey(P));
+	}
+
+	IFileManager& FileManager = IFileManager::Get();
+
+	ISourceControlModule& SCModule = ISourceControlModule::Get();
+	const bool bSourceControl = SCModule.IsEnabled() && SCModule.GetProvider().UsesCheckout();
+
+	// Generated tables live in ArticyContent/Generated and its per-culture L10N mirror.
+	const FString GeneratedRel = TEXT("ArticyContent/Generated");
+
+	TArray<FString> DirsToScan;
+	DirsToScan.Add(FPaths::ProjectContentDir() / GeneratedRel);
+
+	const FString L10NRoot = FPaths::ProjectContentDir() / TEXT("L10N");
+	if (FileManager.DirectoryExists(*L10NRoot))
+	{
+		TArray<FString> CultureDirs;
+		FileManager.FindFiles(CultureDirs, *(L10NRoot / TEXT("*")), false, true);
+		for (const FString& Culture : CultureDirs)
+		{
+			DirsToScan.Add(L10NRoot / Culture / GeneratedRel);
+		}
+	}
+
+	for (const FString& Dir : DirsToScan)
+	{
+		if (!FileManager.DirectoryExists(*Dir))
+			continue;
+
+		TArray<FString> CsvFiles;
+		FileManager.FindFiles(CsvFiles, *(Dir / TEXT("*.csv")), true, false);
+
+		for (const FString& Leaf : CsvFiles)
+		{
+			const FString FullPath = Dir / Leaf;
+			if (Keep.Contains(NormalizeKey(FullPath)))
+				continue;
+
+			bool bDeleted = false;
+			if (bSourceControl)
+			{
+				bDeleted = USourceControlHelpers::MarkFileForDelete(FullPath);
+			}
+
+			if (!bDeleted)
+			{
+				bDeleted = FileManager.Delete(*FullPath, false, true, true);
+			}
+
+			if (bDeleted)
+			{
+				UE_LOG(LogArticyEditor, Log, TEXT("Removed stale Articy string table file %s."), *FullPath);
+			}
+			else
+			{
+				UE_LOG(LogArticyEditor, Warning, TEXT("Could not remove stale Articy string table file %s."), *FullPath);
+			}
+		}
+	}
 }
 
 bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)

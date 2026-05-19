@@ -518,6 +518,14 @@ private:
 	void ImportAudioAssets(const FString& BaseContentDir);
 	int ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language, const FString& PackageId);
 
+	/**
+	 * Deletes stale string table .csv files; the generated localizer registers every
+	 * .csv it finds, so leftovers from older imports would be baked into the code.
+	 *
+	 * @param KeepCsvFullPaths Full paths produced by this import; any other .csv is deleted.
+	 */
+	void CleanupStaleStringTableFiles(const TSet<FString>& KeepCsvFullPaths) const;
+
 	static void LoadExistingRows(
 		const FString& CsvPath,
 		TMap<FString, FArticyCsvRow>& OutRows)

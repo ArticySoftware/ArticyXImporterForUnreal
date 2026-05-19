@@ -125,6 +125,15 @@ public:
 	 */
 	static bool RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs);
 
+	/**
+	 * @brief Removes empty package subfolders left by older (mis-nested) imports.
+	 *
+	 * Only directories that recursively contain no files are removed.
+	 *
+	 * @return true if the cleanup ran (or had nothing to do), false on failure.
+	 */
+	static bool CleanupEmptyPackageFolders();
+
 private:
 	/**
 	 * @brief Compiles the generated code using the hot-reload interface.
