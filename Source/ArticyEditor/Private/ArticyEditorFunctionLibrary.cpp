@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "ArticyEditorFunctionLibrary.h"
@@ -35,7 +35,7 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	// A full reimport clears hashes and package definitions and rebuilds the
 	// project from scratch, so it can only succeed when a full articy export is
 	// available. Selective (partial) exports omit package data by design and
-	// are only valid as incremental "Import Changes" merges — proceeding with
+	// are only valid as incremental "Import Changes" merges, so proceeding with
 	// one here would leave the generated assets missing packages.
 	{
 		const FString ArticyDirectory = GetDefault<UArticyPluginSettings>()->ArticyDirectory;

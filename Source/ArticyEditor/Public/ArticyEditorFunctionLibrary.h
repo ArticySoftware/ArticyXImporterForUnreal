@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -62,6 +62,12 @@ public:
 	 */
 	static EImportDataEnsureResult EnsureImportDataAsset(UArticyImportData**);
 
+	/**
+	 * Overrides the articy directory used by the next import data generation,
+	 * bypassing the plugin-settings value. Pass an empty string to clear.
+	 *
+	 * @param InPath The virtual articy directory path (e.g. "/Game/ArticyContent") to force.
+	 */
 	static void SetForcedArticyDirectory(const FString& InPath);
 
 private:
@@ -72,10 +78,26 @@ private:
 	 * @return A pointer to the generated Articy import data asset, or nullptr if the operation failed.
 	 */
 	static UArticyImportData* GenerateImportDataAsset();
+
+	/**
+	 * Merges every .articyue export file in the given directory into an existing
+	 * import data asset. A full export is preferred as the base; remaining files
+	 * are merged on top. Used when a project contains multiple selective exports
+	 * alongside a full export.
+	 *
+	 * @param ImportData The existing import data asset to merge into.
+	 * @param AbsoluteDirectoryPath Absolute path to the directory containing the .articyue files.
+	 * @param ArticyImportFiles The filenames (relative to AbsoluteDirectoryPath) to merge.
+	 * @return True if the merge and finalization succeeded, false otherwise.
+	 */
 	static bool ImportAllArticyFilesIntoExistingImportData(
 		UArticyImportData* ImportData,
 		const FString& AbsoluteDirectoryPath,
 		const TArray<FString>& ArticyImportFiles);
 
+	/**
+	 * Overrides the articy directory used by GenerateImportDataAsset.
+	 * Empty means "use the plugin settings value".
+	 */
 	static FString ForcedArticyDirectory;
 };

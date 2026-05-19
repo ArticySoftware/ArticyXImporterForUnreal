@@ -28,6 +28,7 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
     bool bIsValid = true;
 
+    /** The index of this branch in the owning flow player's AvailableBranches array. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
     int32 Index = -1;
 

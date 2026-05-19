@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "Slate/AssetPicker/SArticyObjectAssetPicker.h"
@@ -8,8 +8,6 @@
 #include "GenericPlatform/ICursor.h"
 #include "Slate/AssetPicker/SArticyObjectTileView.h"
 #include "ArticyGlobalVariables.h"
-#include <ContentBrowserModule.h>
-#include "ArticyPluginSettings.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Types/WidgetActiveTimerDelegate.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -401,7 +399,7 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 {
 	ArticyPackageDataAssets.Reset();
 	FilteredObjects.Reset();
-	TArray<TWeakObjectPtr<UArticyObject>> NewFilteredObjects;
+	TSet<TWeakObjectPtr<UArticyObject>> NewFilteredObjects;
 
 	// Load the asset registry module
 	static const FName AssetRegistryName(TEXT("AssetRegistry"));
@@ -450,7 +448,7 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 	}
 
 	// swap only once
-	FilteredObjects = MoveTemp(NewFilteredObjects);
+	FilteredObjects = Forward<TArray<TWeakObjectPtr<UArticyObject>>>(NewFilteredObjects.Array());
 
 	// extra safety cleanup
 	FilteredObjects.RemoveAll([](const TWeakObjectPtr<UArticyObject>& Obj)
