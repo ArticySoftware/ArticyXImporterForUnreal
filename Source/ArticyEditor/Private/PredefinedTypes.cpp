@@ -36,7 +36,9 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Add(TEXT("ArticyObject"), new ArticyPredefinedTypeInfo<UArticyObject, UArticyObject*>("UArticyObject", "UArticyObject*", TEXT("nullptr"), nullptr /* NOTE: NO INITIALIZATION FROM JSON! */));
 
 	Types.Add(TEXT("id"), PREDEFINE_TYPE(FArticyId));
-	Types.Add(TEXT("string"), PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; }));
+
+	const auto& StringType = PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; });
+	Types.Add(TEXT("string"), StringType);
 
 	const auto& TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
 		{
@@ -53,13 +55,12 @@ FArticyPredefTypes::FArticyPredefTypes()
 			return FText::GetEmpty();
 		});
 
-	Types.Add(TEXT("ftext"), TextType);
 	Types.Add(TEXT("rect"), PREDEFINE_TYPE(FArticyRect));
 	Types.Add(TEXT("color"), PREDEFINE_TYPE_EXT(FLinearColor, "FLinearColor::Black", [](PROP_SETTER_PARAMS) { return ArticyHelpers::ParseColorFromJson(Json); }));
 	Types.Add(TEXT("point"), PREDEFINE_TYPE_EXT(FVector2D, "FVector2D::ZeroVector", [](PROP_SETTER_PARAMS) { return ArticyHelpers::ParseFVector2DFromJson(Json); }));
 	Types.Add(TEXT("size"), PREDEFINE_TYPE(FArticySize));
 	Types.Add(TEXT("float"), PREDEFINE_TYPE_EXT(float, "0.f", [](PROP_SETTER_PARAMS) { return Json->IsNull() ? 0.f : static_cast<float>(Json->AsNumber()); }));
-	Types.Add(TEXT("ArticyString"), PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; }));
+	Types.Add(TEXT("ArticyString"), StringType);
 	Types.Add(TEXT("ArticyMultiLanguageString"), TextType);
 
 	auto int32Info = PREDEFINE_TYPE_EXT(int32, "0", [](PROP_SETTER_PARAMS) {
