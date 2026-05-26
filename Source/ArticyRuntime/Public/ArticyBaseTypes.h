@@ -53,7 +53,7 @@ public:
 	//========================================//
 
 	/** Retrieves the 64-bit representation of the ID. */
-	uint64 Get() const { return static_cast<uint64>(High) << 32 | static_cast<uint64>(Low); }
+	uint64 Get() const { return (static_cast<uint64>(static_cast<uint32>(High)) << 32) | static_cast<uint64>(static_cast<uint32>(Low)); }
 
 	/** Implicit assignment of uint64. */
 	FArticyId& operator=(const uint64& Value)

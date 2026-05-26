@@ -70,6 +70,13 @@ public:
 	 */
 	static void SetForcedArticyDirectory(const FString& InPath);
 
+	/**
+	 * Returns the current plugin version.
+	 *
+	 * @return The plugin version, or empty if unresolved.
+	 */
+	static FString GetCurrentPluginVersion();
+
 private:
 	/**
 	 * Generates a new Articy import data asset.

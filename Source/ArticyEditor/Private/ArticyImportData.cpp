@@ -3,6 +3,7 @@
 //
 
 #include "ArticyImportData.h"
+#include "ArticyEditorFunctionLibrary.h"
 #include "EditorFramework/AssetImportData.h"
 #include "CodeGeneration/CodeGenerator.h"
 #include "ArticyPluginSettings.h"
@@ -1032,6 +1033,9 @@ bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
 			return false;
 		}
 	}
+
+	// Stamp so the next "Import Changes" can detect a plugin upgrade.
+	LastImporterPluginVersion = FArticyEditorFunctionLibrary::GetCurrentPluginVersion();
 
 	bool bNeedsCodeGeneration = GetSettings().DidObjectDefsOrGVsChange()
 		|| (GetSettings().DidScriptFragmentsChange() && GetSettings().set_UseScriptSupport);

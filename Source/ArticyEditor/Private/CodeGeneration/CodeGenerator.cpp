@@ -832,7 +832,11 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 	PackagesToSave.Add(Data->GetOutermost());
 	for (const FAssetData& AssetData : GeneratedAssets)
 	{
-		PackagesToSave.Add(AssetData.GetAsset()->GetOutermost());
+		// GetPackage() resolves the UPackage by name without force-loading the inner asset.
+		if (UPackage* Package = AssetData.GetPackage())
+		{
+			PackagesToSave.Add(Package);
+		}
 	}
 
 	// Check out all the assets we want to save (if source control is enabled)
@@ -1045,11 +1049,12 @@ bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
 		if (!AD.IsValid())
 			continue;
 
-		UObject* Asset = AD.GetAsset();
-		if (!Asset)
+		// Filter via the registry.
+		const UClass* AssetClass = AD.GetClass();
+		if (!AssetClass || !AssetClass->IsChildOf(UArticyObject::StaticClass()))
 			continue;
 
-		UArticyObject* Obj = Cast<UArticyObject>(Asset);
+		UArticyObject* Obj = Cast<UArticyObject>(AD.GetAsset());
 		if (!Obj)
 			continue;
 

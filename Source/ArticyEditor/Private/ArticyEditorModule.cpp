@@ -26,6 +26,7 @@
 #include "Customizations/ArticyPinFactory.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
+#include "Customizations/AssetActions/AssetTypeActions_ArticyImportData.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
@@ -270,6 +271,7 @@ void FArticyEditorModule::RegisterAssetTypeActions()
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGV()));
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyAlterativeGV()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyImportData()));
 }
 
 /**

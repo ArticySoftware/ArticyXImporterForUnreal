@@ -531,6 +531,10 @@ protected:
 	UPROPERTY()
 	bool bHasCachedVersion = false;
 
+	// Plugin version of the last successful import; a mismatch forces a full reimport.
+	UPROPERTY()
+	FString LastImporterPluginVersion = "";
+
 private:
 
 	friend class FArticyEditorFunctionLibrary;

@@ -13,6 +13,7 @@
 #include "HAL/FileManager.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/Paths.h"
+#include "Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "ArticyEditorFunctionLibrary"
 
@@ -21,6 +22,20 @@ FString FArticyEditorFunctionLibrary::ForcedArticyDirectory;
 void FArticyEditorFunctionLibrary::SetForcedArticyDirectory(const FString& InPath)
 {
 	ForcedArticyDirectory = InPath;
+}
+
+/**
+ * Returns the current plugin version.
+ *
+ * @return The plugin version, or empty if unresolved.
+ */
+FString FArticyEditorFunctionLibrary::GetCurrentPluginVersion()
+{
+	if (const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("ArticyXImporter")))
+	{
+		return Plugin->GetDescriptor().VersionName;
+	}
+	return FString();
 }
 
 /**
@@ -90,6 +105,10 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	ImportData->Settings.ObjectDefinitionsTextHash.Reset();
 	ImportData->Settings.ScriptFragmentsHash.Reset();
 	ImportData->PackageDefs.ResetPackages();
+
+	// Stamp upfront so the nested ReimportChanges does not re-detect an upgrade.
+	ImportData->LastImporterPluginVersion = GetCurrentPluginVersion();
+
 	const int32 Changes = ReimportChanges(ImportData);
 	return CodeGenerator::GenerateAssets(ImportData), Changes;
 }
@@ -111,6 +130,17 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 	if (Result == EImportDataEnsureResult::Failure)
 	{
 		return -1;
+	}
+
+	// Plugin upgrade: escalate to a full reimport.
+	const FString CurrentPluginVersion = GetCurrentPluginVersion();
+	const bool bHadPriorImport = !ImportData->GetProject().Guid.IsEmpty();
+	if (bHadPriorImport && !ImportData->LastImporterPluginVersion.Equals(CurrentPluginVersion))
+	{
+		UE_LOG(LogArticyEditor, Log,
+			TEXT("Articy importer plugin upgraded (was '%s', now '%s'); forcing full reimport."),
+			*ImportData->LastImporterPluginVersion, *CurrentPluginVersion);
+		return ForceCompleteReimport(ImportData);
 	}
 
 	TArray<FString> ArticyImportFiles;
