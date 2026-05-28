@@ -1,3 +1,24 @@
+## Unreal Importer 1.6.0 Changelog :
+
+- New Features:
+    - Selective package import
+    - Multi-file merge for layered selective import
+    - Per-package default-load flag driven from the manifest
+- Changes:
+    - Package assets keyed by ID for rename resilience
+    - Audio import rewrite for improved handling
+    - More resilient localization loading
+    - Object deduplication across packages
+    - Sort flow branches by target position
+    - Per-asset package eviction
+- Fixes:
+    - Fix occasional CTD in object asset picker
+    - Fix stale import data on reimport
+    - Defensive UI rendering for unresolved references
+    - Fix default package handling
+    - Fix include order and missing includes
+    - Handle CSV import dialog
+    
 ## Unreal Importer 1.5.0 Changelog :
 
 - New Features:
