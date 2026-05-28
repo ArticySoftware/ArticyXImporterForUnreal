@@ -14,6 +14,13 @@ While full support is not guaranteed for this product, we're constantly working 
 * [Setup](#setup)
   * [Export from articy:draft X](#export-project-from-articydraft-x)
   * [Import into Unreal](#import-into-unreal)
+* [Selective Import](#selective-import)
+  * [Setting up packages in articy:draft X](#setting-up-packages-in-articydraft-x)
+  * [Doing a selective export](#doing-a-selective-export)
+  * [Importing the selective export](#importing-the-selective-export)
+  * [Merging multiple export files](#merging-multiple-export-files)
+  * [Limitations](#limitations)
+  * [When the import is aborted](#when-the-import-is-aborted)
 * [Using the API](#using-the-api)
   * [Getting an object](#getting-the-object)
   * [Using the Flow Player](#articy-flow-player)
@@ -35,6 +42,7 @@ This importer provides a working foundation for integrating articy:draft X conte
  * Articy Asset Picker for easy lookup and selection of your articy data
  * Database with your project data. *Excluding Journeys, Settings, Template constraints* 
  * Use of Unreal Engine's localization
+ * Selective package import for fast incremental updates from articy:draft X
 
 # Setup
 
@@ -138,6 +146,79 @@ For greater control over your imports, use the Articy X Importer Menu. It can be
 - **Full Reimport**: This option will always regenerate code and compile it, and afterward generate the articy assets
 - **Import Changes**: This option will only regenerate code and compile it if necessary, but will always regenerate assets. This is generally faster than a full reimport and is the same as clicking on 'Import' on the prompt Unreal shows you when you've exported.
 - **Regenerate Assets**: This option will only regenerate the articy assets based on the current import data asset and compiled code.
+
+# Selective Import
+
+For larger projects, exporting the entire articy:draft X project every time a single line of dialogue changes is slow. The importer supports selective import, where articy:draft X ships only the packages you changed in the `.articyue` file. The Unreal plugin then updates just those packages and leaves the rest of your imported data untouched.
+
+This is the same workflow as a full export - you still use the **Import Changes** button, but the export contains only a subset of the project's packages.
+
+## Setting up packages in articy:draft X
+
+Selective import is built on top of articy:draft X's [export rulesets](https://www.articy.com/help/Exports_Rulesets.html). A ruleset splits your project into named packages (e.g. *Events*, *Missions*, *All Others*) and decides what goes into each one.
+
+When you set up a ruleset, every flow fragment, entity, location, etc. is assigned to exactly one package based on the ruleset's filters. The package layout you define here is what the importer will use on the Unreal side.
+
+> NOTE: The full project does not need to be split across multiple packages for selective import to work, but it's the splitting that lets you ship a small `.articyue` file instead of the whole project.
+
+## Doing a selective export
+
+In articy:draft X, open the export window and select the Unreal Engine export. Choose your ruleset, then **uncheck every package except the ones you want to export**.
+
+<p align="center">
+  <img src="https://www.articy.com/articy-importer/unreal/adx/export_options.png">
+</p>
+
+Set the export target to your Unreal project's **Content** folder, the same as for a full export, and confirm. The resulting `.articyue` file contains the data for the included packages plus a manifest entry for the excluded ones (so the importer knows they exist and intentionally have no data).
+
+## Importing the selective export
+
+Back in Unreal, open the Articy X Importer Menu and click **Import Changes**.
+
+The importer will:
+
+1. Regenerate the package assets for every **included** package using the data in the `.articyue` file.
+2. Leave the package assets for every **excluded** package exactly as they were on disk - no clearing, no rewriting.
+3. Keep links between included and excluded packages intact, because excluded packages are matched by their internal Articy ID, not by name.
+
+After the import finishes, browse to `Content/ArticyContent/Generated/Packages/` and you'll see all your packages still present, with only the ones you exported showing fresh data.
+
+> **Full Reimport** still expects a full export. If you have only selective `.articyue` files in your articy directory and you click *Full Reimport*, the importer will refuse and ask you to export the full project. Use *Import Changes* for selective exports.
+
+## Merging multiple export files
+
+You can leave multiple `.articyue` files side-by-side in your articy directory - for example, one full export from the start of the sprint and several selective exports layered on top. When the importer sees more than one file, it:
+
+1. Picks the **full** export (if any) as the base.
+2. Merges every selective export on top, package by package.
+
+With multiple files present, the importer runs in multi-file merge mode and disables package removal: layering a selective export on top of a full export will never delete packages from the base, even if the selective file's manifest omits some of them.
+
+With a single `.articyue` file, the manifest is treated as the authoritative package list. A package that's absent from the manifest entirely - which is how articy:draft X signals that a package has been removed from the ruleset - is cleaned up in Unreal too. A normal selective export still lists every package in the manifest (excluded ones with no data attached), so this only fires for actual deletions, not for unticking a package on export.
+
+If no full export is present in the directory, the importer will pick the first selective file as the base and log a warning. This works for *Import Changes* on a project that's already been initialized, but the [first-time-import requirement](#limitations) still applies.
+
+> **Heads up:** the importer does not sort the `.articyue` files it discovers - they are processed in the order the filesystem returns them, which is not guaranteed to be stable across machines or across runs. When two or more files contain data for the **same package**, the result depends on that order (the last one merged wins). When two or more full exports are present, the one picked as the base is similarly arbitrary. To keep imports reproducible, keep at most one full export and at most one selective export per package in the directory at any time.
+
+## Limitations
+
+Selective import is a fast incremental path. A few things still require a full export:
+
+- **The first import of a project must be a full export.** Selective exports describe which packages exist but only carry data for the ones marked as included. On a fresh project there's nothing on disk to fall back to for the excluded packages, so the importer will abort and ask for a full export.
+- **Template, feature, or global-variable changes require a full export.** When object definitions or global variables change in articy:draft X, the generated C++ types are regenerated and every package asset has to be re-serialized against the new types. Excluded packages would still hold data serialized against the old types - properties would silently shift, return wrong values, or refuse to load. The importer detects this and aborts the import before any damage is done.
+- **One ruleset at a time.** A selective export is only meaningful against the project state it was exported *from*. Mixing selective exports produced by different rulesets in articy:draft X will mismatch package IDs and lead to assets being treated as missing or duplicated. Decide on a ruleset per Unreal project and stick to it.
+- **Restructuring an existing package is a structural change.** Moving an object from one package to another in articy:draft X only takes effect if both packages are included in the export. If you change which folders feed which packages in the ruleset, do a full export so every affected package gets refreshed in one pass.
+- **Adding a brand-new package** requires that package to be included in the export. The first time a package appears it must carry its data; from then on it can be excluded like any other.
+- **Full Reimport** always needs a full export available in the articy directory. Use it whenever you've done one of the changes above, or whenever you simply want to start fresh.
+
+## When the import is aborted
+
+The importer aborts cleanly - no assets are modified - in two cases. Both pop up a dialog so you know exactly what went wrong:
+
+- *"The Articy export omits the following package(s), but no previously imported asset exists for them."* The selective export references packages the project has never seen. Re-export from articy:draft X with these packages included at least once.
+- *"The Articy export changes object/global-variable definitions but omits the following package(s)."* The export changes templates, features, or global variables, but not every package is included. Re-export with all packages included so the regenerated types apply uniformly.
+
+In both cases the existing imported data is left untouched, so you can re-export and try again without having to roll anything back.
 
 # Using the API
 
