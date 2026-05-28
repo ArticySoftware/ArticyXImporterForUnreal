@@ -14,3 +14,5 @@ Packages
 *.xcodeproj
 *.xcworkspace
 .DS_Store
+
+docsBuild/
