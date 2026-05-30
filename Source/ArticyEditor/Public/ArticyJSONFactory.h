@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -84,7 +84,6 @@ public:
     virtual EReimportResult::Type Reimport(UObject* Obj) override;
     //~FReimportHandler
 
-private:
     /**
      * Performs the actual import task, converting the JSON data into UArticyImportData.
      *
@@ -94,6 +93,16 @@ private:
      */
     bool ImportFromFile(const FString& FileName, UArticyImportData* Asset) const;
 
+    /**
+     * Checks whether the given articy export archive is a full export (every package IsIncluded == true)
+     * as opposed to a selective/partial export.
+     *
+     * @param FullArchivePath Absolute path to the .articyue archive to inspect.
+     * @return true if the archive is a full export, false if it is selective or cannot be read.
+     */
+    static bool IsFullArticyExport(const FString& FullArchivePath);
+
+private:
     /**
      * Handles the case where an import or reimport is performed during play.
      *

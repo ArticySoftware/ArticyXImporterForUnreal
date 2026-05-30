@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -84,9 +84,9 @@ public:
 	bool bConvertUnityToUnrealRichText;
 
 	/**
-	 * Internal cached data for data consistency between imports (setting restoration etc.).
+	 * Explicit per-user overrides of bIsDefaultPackage. Absence means "follow manifest".
 	 */
-	UPROPERTY()
+	UPROPERTY(config)
 	TMap<FString, bool> PackageLoadSettings;
 
 	/**

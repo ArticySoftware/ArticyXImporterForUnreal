@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "Slate/SPackageSettings.h"
@@ -82,6 +82,7 @@ void SPackageSettings::OnCheckStateChanged(ECheckBoxState NewState) const
 
 	UArticyPluginSettings* settings = GetMutableDefault<UArticyPluginSettings>();
 	settings->PackageLoadSettings.Add(PackageToDisplay.ToString(), bChecked);
+	settings->SaveConfig();
 }
 
 /**

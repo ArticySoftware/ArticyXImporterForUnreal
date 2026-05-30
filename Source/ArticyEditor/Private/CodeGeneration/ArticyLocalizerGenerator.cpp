@@ -1,5 +1,5 @@
 ﻿//
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.
 //
 
 #include "ArticyLocalizerGenerator.h"
@@ -152,7 +152,7 @@ void ArticyLocalizerGenerator::IterateStringTables(CodeFileGenerator* Header, co
         {
             FString StringTable = FPaths::GetBaseFilename(*FilePath, true);
             Header->Line(FString::Printf(TEXT("FStringTableRegistry::Get().UnregisterStringTable(FName(\"%s\"));"), *StringTable), true, Indent, IndentOffset);
-            Header->Line(FString::Printf(TEXT("LOCTABLE_FROMFILE_GAME(\"%s\", \"%s\", \"%s/%s.csv\");"), *StringTable, *StringTable, *RelPath, *StringTable), true, Indent, IndentOffset);
+            Header->Line(FString::Printf(TEXT("LOCTABLE_FROMFILE_GAME(\"%s\", \"ARTICY\", \"%s/%s.csv\");"), *StringTable, *RelPath, *StringTable), true, Indent, IndentOffset);
         }
     }
 }

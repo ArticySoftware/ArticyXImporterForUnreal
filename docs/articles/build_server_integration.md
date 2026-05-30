@@ -36,6 +36,9 @@ Here are the main options available for the **ArticyImport** commandlet:
 > [!note]
 > **`ArticyReimport`** and **`ArticyRegenerate`** are **mutually exclusive** flags. When using `ArticyReimport`, there is no need to specify `ArticyRegenerate` because a full reimport will already handle asset regeneration.
 
+> [!note]
+> The commandlet imports whichever `.articyue` files are present in the configured **Articy** directory and follows the same selective/full rules as the editor. **`ArticyReimport`** requires at least one full export in the directory; with no flag (the default *import changes* path), selective exports are applied incrementally on top of the existing data. See \ref selectiveImport for details and limitations.
+
 #### Example Command Breakdown:
 
 ```bash

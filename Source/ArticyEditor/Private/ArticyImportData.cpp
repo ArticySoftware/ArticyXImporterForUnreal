@@ -1,8 +1,9 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "ArticyImportData.h"
+#include "ArticyEditorFunctionLibrary.h"
 #include "EditorFramework/AssetImportData.h"
 #include "CodeGeneration/CodeGenerator.h"
 #include "ArticyPluginSettings.h"
@@ -47,6 +48,7 @@ void FAdiSettings::ImportFromJson(TSharedPtr<FJsonObject> Json)
 	if (RuleSetId != OldRuleSetId)
 	{
 		// Different rule set, start over
+		UE_LOG(LogArticyEditor, Warning, TEXT("Ruleset mismatch, starting over."));
 		GlobalVariablesHash.Reset();
 		ObjectDefinitionsHash.Reset();
 		ObjectDefinitionsTextHash.Reset();
@@ -572,6 +574,33 @@ void UArticyImportData::PostInitProperties()
 #endif
 }
 
+void UArticyImportData::PostLoad()
+{
+	Super::PostLoad();
+
+#if WITH_EDITORONLY_DATA
+	// Migrate legacy ".articyue4" source paths so UE's auto-reimport can match today's
+	// ".articyue" exports back to this asset.
+	if (ImportData)
+	{
+		bool bUpdated = false;
+		for (FAssetImportInfo::FSourceFile& SourceFile : ImportData->SourceData.SourceFiles)
+		{
+			if (SourceFile.RelativeFilename.EndsWith(TEXT(".articyue4")))
+			{
+				SourceFile.RelativeFilename.RemoveFromEnd(TEXT("4"));
+				bUpdated = true;
+			}
+		}
+
+		if (bUpdated)
+		{
+			MarkPackageDirty();
+		}
+	}
+#endif
+}
+
 #if WITH_EDITORONLY_DATA
 /**
  * Retrieves asset registry tags for the import data.
@@ -612,11 +641,19 @@ void UArticyImportData::PostImport()
 bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, const TSharedPtr<FJsonObject> RootObject)
 {
 	// Abort if we will have broken packages
-	if (!PackageDefs.ValidateImport(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES)))
-		return false;
+	const TArray<TSharedPtr<FJsonValue>>* PackagesJson =
+		&RootObject->GetArrayField(JSON_SECTION_PACKAGES);
 
-	// Record old script fragments hash
-	const FString& OldScriptFragmentsHash = Settings.ScriptFragmentsHash;
+	const bool bAllowRemoval = !bMultiFileMerge;
+	/* if (!PackageDefs.ValidateImport(Archive, PackagesJson, bAllowRemoval))
+		return false; */
+
+	// record old hashes before merge
+	TMap<FArticyId, FString> OldScriptHashByPackageId;
+	for (const auto& ExistingPackage : PackageDefs.GetPackages())
+	{
+		OldScriptHashByPackageId.Add(ExistingPackage.GetId(), ExistingPackage.GetScriptFragmentHash());
+	}
 
 	// import the main sections
 	Settings.ImportFromJson(RootObject->GetObjectField(JSON_SECTION_SETTINGS));
@@ -627,7 +664,7 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	Languages.ImportFromJson(RootObject);
 
 	if (Settings.set_IncludedNodes.Contains(TEXT("Packages")))
-		PackageDefs.ImportFromJson(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES), Settings);
+		PackageDefs.ImportFromJson(Archive, &RootObject->GetArrayField(JSON_SECTION_PACKAGES), Settings, bAllowRemoval);
 
 	if (Settings.set_IncludedNodes.Contains(TEXT("Hierarchy")))
 	{
@@ -697,8 +734,27 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 		bNeedsCodeGeneration = true;
 	}
 
-	if (Settings.ScriptFragmentsHash.IsEmpty() || !Settings.ScriptFragmentsHash.Equals(OldScriptFragmentsHash))
+	const auto& Packages = PackageDefs.GetPackages();
+	if (OldScriptHashByPackageId.Num() == Packages.Num())
 	{
+		bool bScriptFragmentsChanged = false;
+		for (const auto& Package : PackageDefs.GetPackages())
+		{
+			const FString* OldHash = OldScriptHashByPackageId.Find(Package.GetId());
+			if (!OldHash || *OldHash != Package.GetScriptFragmentHash())
+			{
+				bScriptFragmentsChanged = true;
+				break;
+			}
+		}
+		if (bScriptFragmentsChanged)
+		{
+			Settings.SetScriptFragmentsNeedRebuild();
+		}
+	}
+	else
+	{
+		// Different number of packages -> definitely changed
 		Settings.SetScriptFragmentsNeedRebuild();
 	}
 
@@ -750,133 +806,281 @@ bool UArticyImportData::ImportFromJson(const UArticyArchiveReader& Archive, cons
 	}
 
 	// Create string tables
-	if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
-	{
-		const auto& ObjectDefsText = GetObjectDefs().GetTexts();
-		for (const auto& Language : Languages.Languages)
-		{
-			StringTableGenerator(TEXT("ARTICY"), Language.Key, [&](StringTableGenerator* CsvOutput)
-				{
-					return ProcessStrings(CsvOutput, ObjectDefsText, Language);
-				});
-		}
-	}
-
+	TSet<FString> GeneratedCsvPaths;
 	for (const auto& Language : Languages.Languages)
 	{
-		// Handle packages
-		for (const auto& Package : GetPackageDefs().GetPackages())
-		{
-			const FString PackageName = Package.GetName();
-			const FString StringTableFileName = PackageName.Replace(TEXT(" "), TEXT("_"));
-			if (!Package.GetName().Equals(Package.GetPreviousName()))
+		StringTableGenerator(TEXT("ARTICY"), Language.Key,
+			[&](StringTableGenerator* CsvOutput)
 			{
-				// Needs rename
-				const FString OldStringTableFileName = Package.GetPreviousName().Replace(TEXT(" "), TEXT("_"));
-				IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-				ISourceControlModule& SCModule = ISourceControlModule::Get();
+				// Track even when no rows are written, so a partial import keeps unchanged files.
+				GeneratedCsvPaths.Add(FPaths::ConvertRelativePathToFull(CsvOutput->GetPath()));
 
-				bool bCheckOutEnabled = false;
-				if (SCModule.IsEnabled())
+				// Collect everything into a map to de-dupe keys
+				TMap<FString, FArticyCsvRow> Combined;
+
+				// Load existing rows first
+				LoadExistingRows(CsvOutput->GetPath(), Combined);
+
+				TSet<FString> UpdatedPackages;
+
+				for (const auto& Package : Packages)
 				{
-					bCheckOutEnabled = ISourceControlModule::Get().GetProvider().UsesCheckout();
-				}
-
-				// Work out the old and new file paths
-				FString OldPath, NewPath;
-				const FString OldFilePath = TEXT("ArticyContent/Generated") / OldStringTableFileName;
-				const FString NewFilePath = TEXT("ArticyContent/Generated") / StringTableFileName;
-				if (Language.Key.IsEmpty())
-				{
-					OldPath = FPaths::ProjectContentDir() / OldFilePath;
-					NewPath = FPaths::ProjectContentDir() / NewFilePath;
-				}
-				else {
-					OldPath = FPaths::ProjectContentDir() / TEXT("L10N") / Language.Key / OldFilePath;
-					NewPath = FPaths::ProjectContentDir() / TEXT("L10N") / Language.Key / NewFilePath;
-				}
-				OldPath += TEXT(".csv");
-				NewPath += TEXT(".csv");
-
-				// Check out and rename
-				if (PlatformFile.FileExists(*OldPath))
-				{
-					if (bCheckOutEnabled)
-						USourceControlHelpers::CheckOutFile(*OldPath);
-
-					// Rename the file
-					PlatformFile.MoveFile(*NewPath, *OldPath);
-
-					if (bCheckOutEnabled)
+					if (Package.GetIsIncluded())
 					{
-						USourceControlHelpers::MarkFileForAdd(*NewPath);
-						USourceControlHelpers::MarkFileForDelete(*OldPath);
+						UpdatedPackages.Add(Package.GetId().ToAssetFriendlyString());
 					}
 				}
-			}
 
-			if (!Package.GetIsIncluded())
-				continue;
-
-			StringTableGenerator(StringTableFileName, Language.Key,
-				[&](StringTableGenerator* CsvOutput)
+				for (auto It = Combined.CreateIterator(); It; )
 				{
-					return ProcessStrings(CsvOutput, Package.GetTexts(), Language);
-				});
-		}
+					if (UpdatedPackages.Contains(It.Value().PackageId))
+					{
+						It.RemoveCurrent();
+					}
+					else
+					{
+						++It;
+					}
+				}
+
+				// 1) Object definitions text (if applicable)
+				if (!OldObjectDefintionsTextHash.Equals(Settings.ObjectDefinitionsTextHash))
+				{
+					TArray<FArticyCsvRow> ObjRows;
+					ProcessStrings(ObjRows, GetObjectDefs().GetTexts(), Language, TEXT("ObjectDefs"));
+					AddRowsUnique(Combined, ObjRows);
+				}
+
+				// 2) All included packages
+				for (const auto& Package : Packages)
+				{
+					const FString PackageName = Package.GetName();
+					if (!Package.GetIsIncluded() || PackageName.IsEmpty())
+						continue;
+
+					TArray<FArticyCsvRow> PkgRows;
+					ProcessStrings(PkgRows, Package.GetTexts(), Language, Package.GetId().ToAssetFriendlyString());
+
+					AddRowsUnique(Combined, PkgRows);
+				}
+
+				// 3) Write out combined rows
+				Combined.KeySort([](const FString& A, const FString& B) { return A < B; });
+
+				int32 LinesWritten = 0;
+				for (const auto& It : Combined)
+				{
+					CsvOutput->Line(It.Key, It.Value.SourceString, It.Value.PackageId);
+					++LinesWritten;
+				}
+
+				return LinesWritten;
+			});
 	}
+
+	// Drop stale string table .csv files from older imports.
+	CleanupStaleStringTableFiles(GeneratedCsvPaths);
 
 	// Import Unreal audio assets
 	FString AssetBaseDirectory = FPaths::ProjectContentDir() + TEXT("ArticyContent/Resources/Assets/");
 	ImportAudioAssets(AssetBaseDirectory);
 
-	// if we are generating code, generate and compile it; after it has finished, generate assets and perform post import logic
+	return true;
+}
+
+void UArticyImportData::CleanupStaleStringTableFiles(const TSet<FString>& KeepCsvFullPaths) const
+{
+	auto NormalizeKey = [](const FString& InPath) -> FString
+	{
+		FString Full = FPaths::ConvertRelativePathToFull(InPath);
+		FPaths::NormalizeFilename(Full);
+		return Full.ToLower();
+	};
+
+	TSet<FString> Keep;
+	Keep.Reserve(KeepCsvFullPaths.Num());
+	for (const FString& P : KeepCsvFullPaths)
+	{
+		Keep.Add(NormalizeKey(P));
+	}
+
+	IFileManager& FileManager = IFileManager::Get();
+
+	ISourceControlModule& SCModule = ISourceControlModule::Get();
+	const bool bSourceControl = SCModule.IsEnabled() && SCModule.GetProvider().UsesCheckout();
+
+	// Generated tables live in ArticyContent/Generated and its per-culture L10N mirror.
+	const FString GeneratedRel = TEXT("ArticyContent/Generated");
+
+	TArray<FString> DirsToScan;
+	DirsToScan.Add(FPaths::ProjectContentDir() / GeneratedRel);
+
+	const FString L10NRoot = FPaths::ProjectContentDir() / TEXT("L10N");
+	if (FileManager.DirectoryExists(*L10NRoot))
+	{
+		TArray<FString> CultureDirs;
+		FileManager.FindFiles(CultureDirs, *(L10NRoot / TEXT("*")), false, true);
+		for (const FString& Culture : CultureDirs)
+		{
+			DirsToScan.Add(L10NRoot / Culture / GeneratedRel);
+		}
+	}
+
+	for (const FString& Dir : DirsToScan)
+	{
+		if (!FileManager.DirectoryExists(*Dir))
+			continue;
+
+		TArray<FString> CsvFiles;
+		FileManager.FindFiles(CsvFiles, *(Dir / TEXT("*.csv")), true, false);
+
+		for (const FString& Leaf : CsvFiles)
+		{
+			const FString FullPath = Dir / Leaf;
+			if (Keep.Contains(NormalizeKey(FullPath)))
+				continue;
+
+			bool bDeleted = false;
+			if (bSourceControl)
+			{
+				bDeleted = USourceControlHelpers::MarkFileForDelete(FullPath);
+			}
+
+			if (!bDeleted)
+			{
+				bDeleted = FileManager.Delete(*FullPath, false, true, true);
+			}
+
+			if (bDeleted)
+			{
+				UE_LOG(LogArticyEditor, Log, TEXT("Removed stale Articy string table file %s."), *FullPath);
+			}
+			else
+			{
+				UE_LOG(LogArticyEditor, Warning, TEXT("Could not remove stale Articy string table file %s."), *FullPath);
+			}
+		}
+	}
+}
+
+bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
+{
+	// A not-included package without an on-disk asset would break codegen mid-flight.
+	{
+		TArray<FString> MissingPackageNames;
+		if (!PackageDefs.ValidateAssetsExist(MissingPackageNames))
+		{
+			const FString Joined = FString::Join(MissingPackageNames, TEXT(", "));
+			UE_LOG(LogArticyEditor, Error,
+				TEXT("Aborting Articy import: package(s) [%s] are not included in the export and have no previously imported asset. ")
+				TEXT("Re-export from articy:draft with these package(s) included at least once."), *Joined);
+
+			const FText Title = LOCTEXT("ArticyImportAbortedTitle", "Articy Import Aborted");
+			const FText Message = FText::Format(
+				LOCTEXT("ArticyImportAborted",
+					"The Articy export omits the following package(s), but no previously imported asset exists for them:\n\n{0}\n\n"
+					"Re-export from articy:draft with these package(s) included at least once before performing a partial export.\n\n"
+					"No changes have been made."),
+				FText::FromString(Joined));
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 24
+			OpenMsgDlgInt(EAppMsgType::Ok, Message, Title);
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			FMessageDialog::Open(EAppMsgType::Ok, Message, Title);
+#else
+			FMessageDialog::Open(EAppMsgType::Ok, Message, &Title);
+#endif
+			return false;
+		}
+	}
+
+	// Not-included assets serialized against the old types would deserialize as garbage
+	// against the regenerated classes.
+	if (GetSettings().DidObjectDefsOrGVsChange())
+	{
+		TArray<FString> NotIncludedPackageNames;
+		for (const FArticyPackageDef& Pack : PackageDefs.GetPackages())
+		{
+			if (!Pack.GetIsIncluded())
+			{
+				NotIncludedPackageNames.Add(Pack.GetName());
+			}
+		}
+
+		if (NotIncludedPackageNames.Num() > 0)
+		{
+			const FString Joined = FString::Join(NotIncludedPackageNames, TEXT(", "));
+			UE_LOG(LogArticyEditor, Error,
+				TEXT("Aborting Articy import: object definitions changed but the export omits package(s) [%s]. ")
+				TEXT("Their on-disk assets were serialized against the previous types and would no longer match. ")
+				TEXT("Re-export from articy:draft with all packages included."), *Joined);
+
+			const FText Title = LOCTEXT("ArticyImportAbortedDefsChangedTitle", "Articy Import Aborted");
+			const FText Message = FText::Format(
+				LOCTEXT("ArticyImportAbortedDefsChanged",
+					"The Articy export changes object/global-variable definitions but omits the following package(s):\n\n{0}\n\n"
+					"Their on-disk assets were serialized against the previous types and would deserialize incorrectly "
+					"against the regenerated types — properties may return values that were never set in articy.\n\n"
+					"Re-export from articy:draft with all packages included.\n\n"
+					"No changes have been made."),
+				FText::FromString(Joined));
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION <= 24
+			OpenMsgDlgInt(EAppMsgType::Ok, Message, Title);
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			FMessageDialog::Open(EAppMsgType::Ok, Message, Title);
+#else
+			FMessageDialog::Open(EAppMsgType::Ok, Message, &Title);
+#endif
+			return false;
+		}
+	}
+
+	// Stamp so the next "Import Changes" can detect a plugin upgrade.
+	LastImporterPluginVersion = FArticyEditorFunctionLibrary::GetCurrentPluginVersion();
+
+	bool bNeedsCodeGeneration = GetSettings().DidObjectDefsOrGVsChange()
+		|| (GetSettings().DidScriptFragmentsChange() && GetSettings().set_UseScriptSupport);
+
 	if (bNeedsCodeGeneration)
 	{
-		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this);
-
+		const bool bAnyCodeGenerated = CodeGenerator::GenerateCode(this, bAllowRemovalFinal);
 		if (bAnyCodeGenerated)
 		{
 			static FDelegateHandle PostImportHandle;
-
 			if (PostImportHandle.IsValid())
 			{
 				FArticyEditorModule::Get().OnCompilationFinished.Remove(PostImportHandle);
 				PostImportHandle.Reset();
 			}
 
-			// this will have either the current import data or the cached version
 			PostImportHandle = FArticyEditorModule::Get().OnCompilationFinished.AddLambda(
-				[this](UArticyImportData* Data)
+				[this, bAllowRemovalFinal](UArticyImportData* Data)
 				{
 					BuildCachedVersion();
-					CodeGenerator::GenerateAssets(Data);
+					CodeGenerator::GenerateAssets(Data, bAllowRemovalFinal);
 					PostImport();
 				});
 
 			CodeGenerator::Recompile(this);
+			return true;
 		}
 	}
-	// if we are importing but no code needed to be generated, generate assets immediately and perform post import
-	else
-	{
-		BuildCachedVersion();
-		CodeGenerator::GenerateAssets(this);
-		PostImport();
-	}
 
+	// no codegen needed or nothing generated
+	BuildCachedVersion();
+	CodeGenerator::GenerateAssets(this, bAllowRemovalFinal);
+	PostImport();
 	return true;
 }
 
 /**
  * Processes strings and writes them to a CSV output.
  *
- * @param CsvOutput The CSV output generator.
+ * @param OutRows The output row array.
  * @param Data The map of strings and their associated text data.
  * @param Language The language information.
  * @return The number of processed strings.
  */
-int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language)
+int UArticyImportData::ProcessStrings(TArray<FArticyCsvRow>& OutRows, const TMap<FString, FArticyTexts>& Data, const TPair<FString, FArticyLanguageDef>& Language, const FString& PackageId)
 {
 	int Counter = 0;
 
@@ -886,13 +1090,20 @@ int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMa
 		// Send localized data or key, depending on whether data is available
 		if (Text.Value.Content.Num() > 0)
 		{
+			auto AddLine = [&](const FString& InKey, const FString& InValue)
+			{
+					OutRows.Add(FArticyCsvRow{ InKey, InValue, PackageId });
+			};
+
 			if (Text.Value.Content.Contains(Language.Key))
 			{
 				// Specific language data
-				CsvOutput->Line(Text.Key, Text.Value.Content[Language.Key].Text);
-				if (!Text.Value.Content[Language.Key].VoAsset.IsEmpty())
+				const auto& Localized = Text.Value.Content[Language.Key];
+				AddLine(Text.Key, Localized.Text);
+
+				if (!Localized.VoAsset.IsEmpty())
 				{
-					CsvOutput->Line(Text.Key + ".VOAsset", Text.Value.Content[Language.Key].VoAsset);
+					AddLine(Text.Key + TEXT(".VOAsset"), Localized.VoAsset);
 				}
 			}
 			else
@@ -900,17 +1111,18 @@ int UArticyImportData::ProcessStrings(StringTableGenerator* CsvOutput, const TMa
 				// Infer default from iterator
 				const auto& Iterator = Text.Value.Content.CreateConstIterator();
 				const auto& Elem = *Iterator;
-				CsvOutput->Line(Text.Key, Elem.Value.Text);
+				AddLine(Text.Key, Elem.Value.Text);
+
 				if (!Elem.Value.VoAsset.IsEmpty())
 				{
-					CsvOutput->Line(Text.Key + ".VOAsset", Elem.Value.VoAsset);
+					AddLine(Text.Key + TEXT(".VOAsset"), Elem.Value.VoAsset);
 				}
 			}
 			Counter++;
 		}
 	}
 
-	return Counter > 0;
+	return Counter;
 }
 
 /**

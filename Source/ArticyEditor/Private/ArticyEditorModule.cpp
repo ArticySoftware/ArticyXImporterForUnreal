@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "ArticyEditorModule.h"
@@ -26,6 +26,7 @@
 #include "Customizations/ArticyPinFactory.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
+#include "Customizations/AssetActions/AssetTypeActions_ArticyImportData.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
@@ -207,7 +208,7 @@ void FArticyEditorModule::RegisterArticyToolbar()
 #if ENGINE_MAJOR_VERSION >= 5
 	// Grab the appropriate toolbar menu so we can extend it
 #if ENGINE_MINOR_VERSION >= 6
-	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.User");
+	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Tools");
 
 	{
 		// Create a new section for Articy utilities
@@ -270,6 +271,7 @@ void FArticyEditorModule::RegisterAssetTypeActions()
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyGV()));
 	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyAlterativeGV()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_ArticyImportData()));
 }
 
 /**

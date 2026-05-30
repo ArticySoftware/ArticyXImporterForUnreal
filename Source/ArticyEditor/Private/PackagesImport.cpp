@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "PackagesImport.h"
@@ -93,7 +93,27 @@ UArticyObject* FArticyModelDef::GenerateSubAsset(const UArticyImportData* Data, 
 	auto uclass = ConstructorHelpersInternal::FindOrLoadClass(fullClassName, UArticyObject::StaticClass());
 	if (uclass)
 	{
-		auto obj = ArticyImporterHelpers::GenerateSubAsset<UArticyObject>(*className, FApp::GetProjectName(), GetNameAndId(), Outer);
+		// Try to reuse existing asset
+		if (UArticyObject* Existing = UArticyObject::FindAsset(GetId()))
+		{
+			// Reattach if outer changed
+			if (Existing->GetOuter() != Outer)
+			{
+				Existing->Rename(nullptr, Outer);
+			}
+
+			// Reinitialize with new data
+			Existing->Initialize();
+			Data->GetObjectDefs().InitializeModel(Existing, *this, Data, Outer->GetName());
+
+			Existing->MarkPackageDirty();
+			return Existing;
+		}
+
+		// Otherwise create new
+		auto obj = ArticyImporterHelpers::GenerateSubAsset<UArticyObject>(
+			*className, FApp::GetProjectName(), GetNameAndId(), Outer);
+
 		FAssetRegistryModule::AssetCreated(Cast<UObject>(obj));
 		if (ensure(obj))
 		{
@@ -179,14 +199,13 @@ void FArticyPackageDef::ImportFromJson(const UArticyArchiveReader& Archive, cons
 
 	JSON_TRY_HEX_ID(JsonPackage, Id);
 	JSON_TRY_BOOL(JsonPackage, IsIncluded);
-
-	if (!IsIncluded)
-		return;
-
 	JSON_TRY_STRING(JsonPackage, Name);
 	JSON_TRY_STRING(JsonPackage, Description);
 	JSON_TRY_BOOL(JsonPackage, IsDefaultPackage);
 	JSON_TRY_STRING(JsonPackage, ScriptFragmentHash);
+
+	if (!IsIncluded)
+		return;
 
 	TSharedPtr<FJsonObject> Files;
 	JSON_TRY_OBJECT(JsonPackage, Files, {
@@ -222,7 +241,6 @@ void FArticyPackageDef::ImportFromJson(const UArticyArchiveReader& Archive, cons
 			return;
 		}
 
-		Texts.Reset();
 		GatherText(TextData);
 		});
 }
@@ -246,8 +264,8 @@ void FArticyPackageDef::GatherScripts(UArticyImportData* Data) const
  */
 UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data) const
 {
-	const FString PackageName = GetFolder();
-	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageName;
+	const FString PackageFolder = GetFolder();
+	const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / PackageFolder;
 
 	// @TODO Engine Versioning
 #if ENGINE_MAJOR_VERSION >= 5 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26)
@@ -258,18 +276,45 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 
 	AssetPackage->FullyLoad();
 
-	const FString AssetName = FPaths::GetBaseFilename(PackageName);
+	// Filename is Id-derived; articy:draft renames don't relocate the asset.
+	const FString AssetName = GetAssetFileName();
+
+	// Partial export: skip data regen but still refresh manifest flags on the existing asset.
+	if (!IsIncluded)
+	{
+		const FString ObjectPath = PackagePath + TEXT(".") + AssetName;
+		UArticyPackage* ExistingPackage = LoadObject<UArticyPackage>(nullptr, *ObjectPath);
+		if (ExistingPackage && ExistingPackage->bIsDefaultPackage != IsDefaultPackage)
+		{
+			ExistingPackage->bIsDefaultPackage = IsDefaultPackage;
+			ExistingPackage->MarkPackageDirty();
+		}
+		return ExistingPackage;
+	}
 
 	UArticyPackage* ArticyPackage = ArticyImporterHelpers::GenerateAsset<UArticyPackage>(*UArticyPackage::StaticClass()->GetName(), TEXT("ArticyRuntime"), *AssetName, "Packages");
 
 	ArticyPackage->Clear();
+	ArticyPackage->PackageId = Id;
 	ArticyPackage->Name = Name;
 	ArticyPackage->Description = Description;
 	ArticyPackage->bIsDefaultPackage = IsDefaultPackage;
 
+	const TMap<FArticyId, FArticyId>& LatestOwnerByObjectId = Data->GetLatestOwnerByObjectId();
+
 	// Create all contained subassets and register them in the package
 	for (const auto& model : Models)
 	{
+		const FArticyId ObjId = model.GetId();
+
+		if (const FArticyId* Owner = LatestOwnerByObjectId.Find(ObjId))
+		{
+			if (*Owner != this->Id)
+			{
+				continue;
+			}
+		}
+
 		UArticyObject* asset = model.GenerateSubAsset(Data, ArticyPackage); //MM_CHANGE
 
 		if (asset)
@@ -288,13 +333,23 @@ UArticyPackage* FArticyPackageDef::GeneratePackageAsset(UArticyImportData* Data)
 }
 
 /**
- * Gets the folder path for the package.
+ * Gets the folder path for the package. Keyed by FArticyId, not Name.
  *
  * @return The folder path as a string.
  */
 FString FArticyPackageDef::GetFolder() const
 {
-	return (FString(TEXT("Packages")) / Name).Replace(TEXT(" "), TEXT("_"));
+	return FString(TEXT("Packages")) / GetAssetFileName();
+}
+
+/**
+ * Gets the canonical Id-derived on-disk asset name.
+ *
+ * @return The asset file name as a string.
+ */
+FString FArticyPackageDef::GetAssetFileName() const
+{
+	return FString::Printf(TEXT("Pkg_%016llX"), Id.Get());
 }
 
 /**
@@ -324,7 +379,7 @@ FString FArticyPackageDef::GetFolderName() const
  *
  * @return The package name as a string.
  */
-const FString FArticyPackageDef::GetName() const
+const FString& FArticyPackageDef::GetName() const
 {
 	return Name;
 }
@@ -387,7 +442,8 @@ bool FArticyPackageDef::GetIsIncluded() const
 void FArticyPackageDefs::ImportFromJson(
 	const UArticyArchiveReader& Archive,
 	const TArray<TSharedPtr<FJsonValue>>* Json,
-	FAdiSettings& Settings)
+	FAdiSettings& Settings,
+	bool bAllowRemoval)
 {
 	if (!Json)
 		return;
@@ -396,8 +452,9 @@ void FArticyPackageDefs::ImportFromJson(
 	TArray<FArticyPackageDef> PackagesToRemove;
 
 	// Iterate over existing packages
-	for (auto& ExistingPackage : Packages)
+	for (int32 i = 0; i < Packages.Num(); ++i)
 	{
+		FArticyPackageDef& ExistingPackage = Packages[i];
 		OldPackageScriptHashes.Add(ExistingPackage.GetScriptFragmentHash());
 
 		bool bExistingPackageFound = false;
@@ -409,24 +466,32 @@ void FArticyPackageDefs::ImportFromJson(
 			if (!obj.IsValid())
 				continue;
 
-			FArticyPackageDef package;
-			package.ImportFromJson(Archive, obj);
+			FArticyPackageDef TempMeta;
+			TempMeta.ImportFromJson(Archive, obj);
 
 			// If package with the same Id is found
-			if (ExistingPackage.GetId() == package.GetId())
+			if (ExistingPackage.GetId() == TempMeta.GetId())
 			{
 				bExistingPackageFound = true;
 
-				const FString& OldName = ExistingPackage.GetName();
-				const FString& NewName = package.GetName();
+				// Supplemental merges OR; a base/single-file pass overwrites.
+				const bool bMergedIsIncluded = bAllowRemoval
+					? TempMeta.GetIsIncluded()
+					: (ExistingPackage.GetIsIncluded() || TempMeta.GetIsIncluded());
+				ExistingPackage.SetIsIncluded(bMergedIsIncluded);
+
+				const FString OldName = ExistingPackage.GetName();
+				const FString NewName = TempMeta.GetName();
 
 				// If IsIncluded is set on the new package, replace the existing package
-				if (package.GetIsIncluded())
+				if (TempMeta.GetIsIncluded())
 				{
-					ExistingPackage = package;
-
-					// Useful if we ever decide to rename included packages 
-					ExistingPackage.SetName(OldName);
+					ExistingPackage = TempMeta;
+				}
+				else
+				{
+					// Propagate manifest-level flags on partial reimports too.
+					ExistingPackage.SetIsDefaultPackage(TempMeta.GetIsDefaultPackage());
 				}
 
 				if (!NewName.Equals(OldName))
@@ -440,16 +505,19 @@ void FArticyPackageDefs::ImportFromJson(
 		}
 
 		// If existing package was not found in the new package list, mark it for removal
-		if (!bExistingPackageFound)
+		if (!bExistingPackageFound && bAllowRemoval)
 		{
 			PackagesToRemove.Add(ExistingPackage);
 		}
 	}
 
 	// Remove packages that don't exist in the new package list
-	for (const auto& PackageToRemove : PackagesToRemove)
+	if (bAllowRemoval)
 	{
-		Packages.RemoveSingle(PackageToRemove);
+		for (const auto& PackageToRemove : PackagesToRemove)
+		{
+			Packages.RemoveSingle(PackageToRemove);
+		}
 	}
 
 	// Iterate over new package list
@@ -459,15 +527,15 @@ void FArticyPackageDefs::ImportFromJson(
 		if (!obj.IsValid())
 			continue;
 
-		FArticyPackageDef package;
-		package.ImportFromJson(Archive, obj);
+		FArticyPackageDef NewPackage;
+		NewPackage.ImportFromJson(Archive, obj);
 
 		bool bExistingPackageFound = false;
 
 		// Check if package already exists in the Packages array
 		for (const auto& ExistingPackage : Packages)
 		{
-			if (ExistingPackage.GetId() == package.GetId())
+			if (ExistingPackage.GetId() == NewPackage.GetId())
 			{
 				bExistingPackageFound = true;
 				break;
@@ -477,7 +545,7 @@ void FArticyPackageDefs::ImportFromJson(
 		// If package doesn't exist, add it to the Packages array
 		if (!bExistingPackageFound)
 		{
-			Packages.Add(package);
+			Packages.Add(NewPackage);
 		}
 	}
 
@@ -518,6 +586,31 @@ bool FArticyPackageDefs::ValidateImport(
 {
 	if (!Json)
 		return false;
+
+	const bool bHasExistingData = Packages.Num() > 0;
+	if (!bHasExistingData)
+	{
+		for (const auto& pack : *Json)
+		{
+			const auto& obj = pack->AsObject();
+			if (!obj.IsValid())
+				continue;
+
+			FArticyPackageDef package;
+			package.ImportFromJson(Archive, obj);
+
+			if (!package.GetIsIncluded())
+			{
+				UE_LOG(LogArticyEditor, Error,
+					TEXT("Initial import contains package '%s' without data. Partial exports are not allowed on first import."),
+					*package.GetName());
+				return false;
+			}
+		}
+
+		// First import, manifest is complete: OK
+		return true;
+	}
 
 	// Iterate over existing packages
 	for (auto& ExistingPackage : Packages)
@@ -600,6 +693,32 @@ bool FArticyPackageDefs::ValidateImport(
 }
 
 /**
+ * Verifies every not-included package has an existing on-disk asset to refresh.
+ *
+ * @param OutMissingPackageNames Names of packages with no on-disk asset.
+ * @return True if all not-included packages have an asset on disk.
+ */
+bool FArticyPackageDefs::ValidateAssetsExist(TArray<FString>& OutMissingPackageNames) const
+{
+	OutMissingPackageNames.Reset();
+
+	for (const FArticyPackageDef& Pack : Packages)
+	{
+		if (Pack.GetIsIncluded())
+			continue;
+
+		const FString PackagePath = ArticyHelpers::GetArticyGeneratedFolder() / Pack.GetFolder();
+		const FString ObjectPath = PackagePath + TEXT(".") + Pack.GetAssetFileName();
+		if (!LoadObject<UArticyPackage>(nullptr, *ObjectPath))
+		{
+			OutMissingPackageNames.Add(Pack.GetName());
+		}
+	}
+
+	return OutMissingPackageNames.Num() == 0;
+}
+
+/**
  * Gathers scripts from all package definitions and adds them to the ArticyImportData.
  *
  * @param Data A pointer to the UArticyImportData object.
@@ -617,6 +736,8 @@ void FArticyPackageDefs::GatherScripts(UArticyImportData* Data) const
  */
 void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
 {
+	Texts.Reset();
+
 	for (auto JsonValue = Json->Values.CreateConstIterator(); JsonValue; ++JsonValue)
 	{
 		const FString KeyName = (*JsonValue).Key;
@@ -633,7 +754,7 @@ void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
  *
  * @return A map of text data.
  */
-TMap<FString, FArticyTexts> FArticyPackageDef::GetTexts() const
+const TMap<FString, FArticyTexts>& FArticyPackageDef::GetTexts() const
 {
 	return Texts;
 }
@@ -662,7 +783,11 @@ void FArticyPackageDefs::GenerateAssets(UArticyImportData* Data) const
 
 	for (auto pack : Packages)
 	{
-		ArticyPackages.Add(pack.GeneratePackageAsset(Data));
+		// Null when a not-included package has no existing asset to refresh.
+		if (UArticyPackage* GeneratedPackage = pack.GeneratePackageAsset(Data))
+		{
+			ArticyPackages.Add(GeneratedPackage);
+		}
 	}
 
 	// Store gathered information about who has which children in generated assets

@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -204,10 +204,17 @@ public:
 	 *
 	 * @return A map of text data.
 	 */
-	TMap<FString, FArticyTexts> GetTexts() const;
+	const TMap<FString, FArticyTexts>& GetTexts() const;
 
 	/**
-	 * Gets the folder path for the package.
+	* Gets the models from the package definition.
+	* 
+	* @return An array of models.
+	*/
+	const TArray<FArticyModelDef>& GetModels() const { return Models; }
+
+	/**
+	 * Gets the folder path for the package. Keyed by FArticyId, not Name.
 	 *
 	 * @return The folder path as a string.
 	 */
@@ -221,11 +228,18 @@ public:
 	FString GetFolderName() const;
 
 	/**
+	 * Gets the canonical Id-derived on-disk asset name.
+	 *
+	 * @return The asset file name as a string.
+	 */
+	FString GetAssetFileName() const;
+
+	/**
 	 * Gets the name of the package.
 	 *
 	 * @return The package name as a string.
 	 */
-	const FString GetName() const;
+	const FString& GetName() const;
 
 	/**
 	 * Gets the previous name of the package.
@@ -249,11 +263,35 @@ public:
 	FArticyId GetId() const;
 
 	/**
+	 * Sets whether a package should be included.
+	 * 
+	 * 
+	 */
+	void SetIsIncluded(bool bInIsIncluded) 
+	{ 
+		IsIncluded = bInIsIncluded; 
+	}
+
+	/**
 	 * Checks if the package is included.
 	 *
 	 * @return True if the package is included, false otherwise.
 	 */
 	bool GetIsIncluded() const;
+
+	/**
+	 * Gets the manifest's IsDefaultPackage flag.
+	 *
+	 * @return True if the manifest marks this package as default-loaded.
+	 */
+	bool GetIsDefaultPackage() const { return IsDefaultPackage; }
+
+	/**
+	 * Sets the manifest's IsDefaultPackage flag.
+	 *
+	 * @param bInIsDefault The new flag value.
+	 */
+	void SetIsDefaultPackage(bool bInIsDefault) { IsDefaultPackage = bInIsDefault; }
 
 	/**
 	 * Gets the script fragment hash for the package definition.
@@ -321,7 +359,7 @@ public:
 	 * @param Json A pointer to the JSON array containing the package definitions.
 	 * @param Settings A reference to the FADISettings object.
 	 */
-	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FAdiSettings& Settings);
+	void ImportFromJson(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json, FAdiSettings& Settings, bool bAllowRemoval);
 
 	/**
 	 * Validates the import of package definitions from a JSON array.
@@ -331,6 +369,14 @@ public:
 	 * @return True if the import is valid, false otherwise.
 	 */
 	bool ValidateImport(const UArticyArchiveReader& Archive, const TArray<TSharedPtr<FJsonValue>>* Json);
+
+	/**
+	 * Verifies every not-included package has an existing on-disk asset to refresh.
+	 *
+	 * @param OutMissingPackageNames Names of packages with no on-disk asset.
+	 * @return True if all not-included packages have an asset on disk.
+	 */
+	bool ValidateAssetsExist(TArray<FString>& OutMissingPackageNames) const;
 
 	/**
 	 * Gathers scripts from all package definitions and adds them to the ArticyImportData.

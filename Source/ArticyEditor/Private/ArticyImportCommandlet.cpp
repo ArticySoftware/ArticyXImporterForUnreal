@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.
+//
+
 #include "ArticyImportCommandlet.h"
 #include "ArticyEditorFunctionLibrary.h"
 #include "HAL/FileManager.h"

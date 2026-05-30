@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #pragma once
@@ -24,7 +24,7 @@ public:
 	 * @param Data The import data used for code generation.
 	 * @return true if code was generated successfully, false otherwise.
 	 */
-	static bool GenerateCode(UArticyImportData* Data);
+	static bool GenerateCode(UArticyImportData* Data, bool bAllowRemoval = false);
 
 	/**
 	 * @brief Caches the content of code files in the source folder.
@@ -43,13 +43,20 @@ public:
 	static bool RestoreCachedFiles();
 
 	/**
+	* @brief Purges duplicate objects that were generated from imports.
+	* 
+	* @ return true if any objects were removed, false otherwise.
+	*/
+	static bool PurgeDuplicateGeneratedObjects(UArticyImportData* Data);
+
+	/**
 	 * @brief Generates assets based on the provided import data.
 	 *
 	 * Handles asset generation, including handling renaming and deletion of generated assets.
 	 *
 	 * @param Data The import data used for asset generation.
 	 */
-	static void GenerateAssets(UArticyImportData* Data);
+	static void GenerateAssets(UArticyImportData* Data, bool bAllowRemoval = false);
 
 	/**
 	 * @brief Initiates the recompilation process for the generated code.
@@ -117,6 +124,15 @@ public:
 	 * @return true if all renaming operations succeeded, false otherwise.
 	 */
 	static bool RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs);
+
+	/**
+	 * @brief Removes empty package subfolders left by older (mis-nested) imports.
+	 *
+	 * Only directories that recursively contain no files are removed.
+	 *
+	 * @return true if the cleanup ran (or had nothing to do), false on failure.
+	 */
+	static bool CleanupEmptyPackageFolders();
 
 private:
 	/**

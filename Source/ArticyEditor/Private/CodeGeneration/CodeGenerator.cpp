@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "CodeGenerator.h"
@@ -21,6 +21,7 @@
 #include "ArticyLocalizerGenerator.h"
 #include "AssetToolsModule.h"
 #include "UObject/ConstructorHelpers.h"
+#include "UObject/UObjectHash.h"
 #include "Misc/FileHelper.h"
 #include "ObjectTools.h"
 #include "HAL/PlatformFileManager.h"
@@ -283,7 +284,7 @@ void CodeGenerator::CacheCodeFiles()
  * @param Data The import data used for code generation.
  * @return true if code was generated successfully, false otherwise.
  */
-bool CodeGenerator::GenerateCode(UArticyImportData* Data)
+bool CodeGenerator::GenerateCode(UArticyImportData* Data, bool bAllowRemoval)
 {
 	if (!Data)
 		return false;
@@ -316,7 +317,10 @@ bool CodeGenerator::GenerateCode(UArticyImportData* Data)
 		OutFiles.Add(OutFile);
 
 		bCodeGenerated = true;
-		DeleteExtraCode(OutFiles);
+		if (bAllowRemoval)
+		{
+			DeleteExtraCode(OutFiles);
+		}
 	}
 	// If object defs or GVs didn't change, but scripts changed, regenerate only expresso scripts
 	else if (Data->GetSettings().DidScriptFragmentsChange())
@@ -340,9 +344,9 @@ void CodeGenerator::Recompile(UArticyImportData* Data)
 }
 
 /**
- * @brief Deletes generated assets based on package definitions.
+ * @brief Deletes generated assets not retained by the package definitions.
  *
- * Removes assets not included in the import, handling invalid assets appropriately.
+ * Match key is FArticyId; falls back to Name for pre-1.6.0 assets without PackageId.
  *
  * @param PackageDefs The package definitions used to determine which assets to delete.
  * @return true if all invalid assets were successfully deleted, false otherwise.
@@ -359,8 +363,24 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 	{
 		if (Data.IsValid())
 		{
+			// Classify via the registry, not GetAsset(): loading a just-hot-reloaded
+			// generated-class asset crashes in UObjectAnnotation.
+			const UClass* AssetClass = Data.GetClass();
+
+			// No resolvable class = generated code was deleted.
+			if (!AssetClass)
+			{
+				InvalidAssets.Add(Data);
+				continue;
+			}
+
+			if (!AssetClass->IsChildOf(UArticyPackage::StaticClass()) &&
+				!AssetClass->IsChildOf(UArticyObject::StaticClass()))
+			{
+				continue;
+			}
+
 			UObject* Asset = Data.GetAsset();
-			// If the class is missing (generated code deleted for example), the asset data will be valid but return a nullptr
 			if (!Asset)
 			{
 				InvalidAssets.Add(Data);
@@ -368,14 +388,41 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 			}
 
 			bool ExcludeAsset = false;
+
+			// Match by PackageId; fall back to Name for legacy assets.
+			FArticyId TargetPackageId;
+			FString TargetPackageName = TEXT("");
+
 			if (const UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset))
+			{
+				TargetPackageId = PackageAsset->PackageId;
+				TargetPackageName = PackageAsset->Name;
+			}
+			else if (const UArticyObject* ArticyObject = Cast<UArticyObject>(Asset))
+			{
+				if (const UArticyPackage* ParentPackage = Cast<UArticyPackage>(ArticyObject->GetOuter()))
+				{
+					TargetPackageId = ParentPackage->PackageId;
+					TargetPackageName = ParentPackage->Name;
+				}
+			}
+
+			const bool bHasId = !TargetPackageId.IsNull();
+			if (bHasId || !TargetPackageName.IsEmpty())
 			{
 				for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
 				{
-					// Don't delete package assets that are not included in the import
-					if (!PackageDef.GetIsIncluded() && PackageAsset->Name.Equals(PackageDef.GetName()))
+					if (PackageDef.GetIsIncluded())
+						continue;
+
+					const bool bMatches = bHasId
+						? (PackageDef.GetId() == TargetPackageId)
+						: TargetPackageName.Equals(PackageDef.GetName());
+
+					if (bMatches)
 					{
 						ExcludeAsset = true;
+						break;
 					}
 				}
 			}
@@ -395,6 +442,42 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 
 	if (ExistingAssets.Num() > 0)
 	{
+		// Sever strong UArticyPackage::Assets references first; a stale package still
+		// pointing at a doomed sub-object triggers the "asset is in use" dialog.
+		TSet<UObject*> Doomed(ExistingAssets);
+		for (UObject* Asset : ExistingAssets)
+		{
+			if (UArticyPackage* Pack = Cast<UArticyPackage>(Asset))
+			{
+				TArray<UObject*> Inner;
+				GetObjectsWithOuter(Pack, Inner, false);
+				Doomed.Append(Inner);
+				Pack->Clear();
+			}
+		}
+
+		// A surviving package may still list a doomed sub-object; strip it.
+		for (const FAssetData& AD : OutAssets)
+		{
+			if (!AD.IsValid())
+				continue;
+
+			// Same crash guard as above.
+			const UClass* AssetClass = AD.GetClass();
+			if (!AssetClass || !AssetClass->IsChildOf(UArticyPackage::StaticClass()))
+				continue;
+
+			UArticyPackage* Pack = Cast<UArticyPackage>(AD.GetAsset());
+			if (!Pack || Doomed.Contains(Pack))
+				continue;
+
+			for (UArticyObject* Sub : Pack->GetAssets())
+			{
+				if (Sub && Doomed.Contains(Sub))
+					Pack->RemoveAsset(Sub);
+			}
+		}
+
 		return ObjectTools::ForceDeleteObjects(ExistingAssets, false) > 0 && bInvalidDeletionSuccess;
 	}
 
@@ -403,11 +486,11 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 }
 
 /**
- * @brief Renames generated assets based on package definitions.
+ * @brief Migrates package assets to the canonical Id-based path (GetAssetFileName).
  *
- * This function handles renaming of package assets when their names have changed.
+ * Match by PackageId; falls back to Name for legacy assets pre-Id naming.
  *
- * @param PackageDefs The package definitions containing the new asset names.
+ * @param PackageDefs The package definitions containing the canonical Id-based names.
  * @return true if all renaming operations succeeded, false otherwise.
  */
 bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
@@ -420,47 +503,138 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 	{
 		if (Data.IsValid())
 		{
-			UObject* Asset = Data.GetAsset();
-
-			// Skip invalid assets
-			if (!Asset)
+			// Only packages are renamed. Filter via the registry, not GetAsset():
+			// loading a just-hot-reloaded generated-class asset crashes in
+			// UObjectAnnotation.
+			const UClass* AssetClass = Data.GetClass();
+			if (!AssetClass || !AssetClass->IsChildOf(UArticyPackage::StaticClass()))
 			{
 				continue;
 			}
 
-			if (UArticyPackage* PackageAsset = Cast<UArticyPackage>(Asset))
+			UArticyPackage* PackageAsset = Cast<UArticyPackage>(Data.GetAsset());
+			if (!PackageAsset)
 			{
-				for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
+				continue;
+			}
+
+			// Match by PackageId; fall back to Name for legacy assets.
+			const FArticyPackageDef* MatchingDef = nullptr;
+			for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
+			{
+				if (!PackageAsset->PackageId.IsNull())
 				{
-					// Skip included packages - we delete them anyway
-					if (PackageDef.GetIsIncluded())
+					if (PackageDef.GetId() == PackageAsset->PackageId)
 					{
-						continue;
+						MatchingDef = &PackageDef;
+						break;
 					}
-
-					// Only check packages with name changes
-					if (PackageDef.GetName().Equals(PackageDef.GetPreviousName()))
-					{
-						continue;
-					}
-
-					// Rename the asset
-					FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-					TArray<FAssetRenameData> AssetsAndNames;
-					const FString OldName = PackageAsset->GetName();
-					const FString PackagePath = FPackageName::GetLongPackagePath(PackageAsset->GetOutermost()->GetName());
-					new(AssetsAndNames)FAssetRenameData(PackageAsset, PackagePath, PackageDef.GetName());
-					AssetToolsModule.Get().RenameAssets(AssetsAndNames);
-
-					FAssetRegistryModule::AssetRenamed(PackageAsset, PackagePath / OldName);
-					PackageAsset->MarkPackageDirty();
-					PackageAsset->GetOuter()->MarkPackageDirty();
+				}
+				else if (PackageDef.GetName().Equals(PackageAsset->Name))
+				{
+					MatchingDef = &PackageDef;
+					break;
 				}
 			}
+
+			if (!MatchingDef)
+			{
+				continue;
+			}
+
+			// RenameAssets wants the destination folder, not the package's long name.
+			// Passing the long name nested assets an extra "/Pkg_<Id>" level, leaving a
+			// stale duplicate that diverges from what GeneratePackageAsset recreates.
+			const FString CanonicalName = MatchingDef->GetAssetFileName();
+			const FString CanonicalPackageName = ArticyHelpers::GetArticyGeneratedFolder() / MatchingDef->GetFolder();
+			const FString CanonicalFolder = FPackageName::GetLongPackagePath(CanonicalPackageName);
+			const FString CurrentName = PackageAsset->GetName();
+			const FString CurrentFolder = FPackageName::GetLongPackagePath(PackageAsset->GetOutermost()->GetName());
+
+			if (CanonicalName.Equals(CurrentName) && CanonicalFolder.Equals(CurrentFolder))
+			{
+				continue;
+			}
+
+			// Canonical path already taken: this is a stale duplicate. Renaming would
+			// only make a "_1" clone, so clear it and let DeleteGeneratedAssets remove it.
+			const FString CanonicalObjectPath = CanonicalPackageName + TEXT(".") + CanonicalName;
+			if (UArticyPackage* CanonicalExisting = LoadObject<UArticyPackage>(nullptr, *CanonicalObjectPath))
+			{
+				if (CanonicalExisting != PackageAsset)
+				{
+					PackageAsset->Clear();
+					PackageAsset->MarkPackageDirty();
+					continue;
+				}
+			}
+
+			FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
+			TArray<FAssetRenameData> AssetsAndNames;
+			new(AssetsAndNames)FAssetRenameData(PackageAsset, CanonicalFolder, CanonicalName);
+			AssetToolsModule.Get().RenameAssets(AssetsAndNames);
+
+			FAssetRegistryModule::AssetRenamed(PackageAsset, CurrentFolder / CurrentName);
+			PackageAsset->MarkPackageDirty();
+			PackageAsset->GetOuter()->MarkPackageDirty();
 		}
 	}
 
 	// Returns true if there are no failures
+	return true;
+}
+
+/**
+ * @brief Removes empty package subfolders left by older (mis-nested) imports.
+ *
+ * Only directories that recursively contain no files are removed.
+ *
+ * @return true if the cleanup ran (or had nothing to do), false on failure.
+ */
+bool CodeGenerator::CleanupEmptyPackageFolders()
+{
+	const FString PackagesLong = ArticyHelpers::GetArticyGeneratedFolder() / TEXT("Packages");
+
+	FString PackagesDir;
+	if (!FPackageName::TryConvertLongPackageNameToFilename(PackagesLong, PackagesDir))
+	{
+		return false;
+	}
+
+	IFileManager& FileManager = IFileManager::Get();
+	if (!FileManager.DirectoryExists(*PackagesDir))
+	{
+		return true;
+	}
+
+	// Immediate subdirectories of .../Generated/Packages.
+	TArray<FString> SubDirs;
+	FileManager.FindFiles(SubDirs, *(PackagesDir / TEXT("*")), false, true);
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	for (const FString& SubDir : SubDirs)
+	{
+		const FString AbsSubDir = PackagesDir / SubDir;
+
+		// Skip folders that still hold any file.
+		TArray<FString> Files;
+		FileManager.FindFilesRecursive(Files, *AbsSubDir, TEXT("*"), true, false);
+		if (Files.Num() > 0)
+		{
+			continue;
+		}
+
+		if (FileManager.DeleteDirectory(*AbsSubDir, false, true))
+		{
+			AssetRegistryModule.Get().RemovePath(PackagesLong / SubDir);
+		}
+		else
+		{
+			UE_LOG(LogArticyEditor, Warning, TEXT("Could not remove empty Articy package folder %s."), *AbsSubDir);
+		}
+	}
+
 	return true;
 }
 
@@ -577,7 +751,7 @@ void CodeGenerator::Compile(UArticyImportData* Data)
  *
  * @param Data The import data used for asset generation.
  */
-void CodeGenerator::GenerateAssets(UArticyImportData* Data)
+void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 {
 	TGuardValue<bool> GuardIsInitialLoad(GIsInitialLoad, false);
 
@@ -602,12 +776,32 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 		return;
 	}
 
-	if (!ensureAlwaysMsgf(DeleteGeneratedAssets(Data->GetPackageDefs()),
+	if (bAllowRemoval && !ensureAlwaysMsgf(DeleteGeneratedAssets(Data->GetPackageDefs()),
 		TEXT("DeletedGeneratedAssets() has failed. The Articy X Importer can not proceed without\n"
 			"being able to delete the previously generated assets to replace them with new ones.\n"
 			"Please make sure the Generated folder in ArticyContent is editable.")))
 	{
 		// Failed to delete generated assets. We can't continue
+		return;
+	}
+
+	TMap<FArticyId, FArticyId> LatestOwnerByObjectId;
+	for (const FArticyPackageDef& PackDef : Data->GetPackageDefs().GetPackages())
+	{
+		if (!PackDef.GetIsIncluded())
+			continue;
+
+		const FArticyId PackId = PackDef.GetId();
+		for (const FArticyModelDef& Model : PackDef.GetModels())
+		{
+			LatestOwnerByObjectId.Add(Model.GetId(), PackId);
+		}
+	}
+	Data->SetLatestOwnerByObjectId(MoveTemp(LatestOwnerByObjectId));
+
+	if (!ensureAlwaysMsgf(PurgeDuplicateGeneratedObjects(Data),
+		TEXT("Failed to purge duplicate generated Articy objects by ID.")))
+	{
 		return;
 	}
 
@@ -638,7 +832,11 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 	PackagesToSave.Add(Data->GetOutermost());
 	for (const FAssetData& AssetData : GeneratedAssets)
 	{
-		PackagesToSave.Add(AssetData.GetAsset()->GetOutermost());
+		// GetPackage() resolves the UPackage by name without force-loading the inner asset.
+		if (UPackage* Package = AssetData.GetPackage())
+		{
+			PackagesToSave.Add(Package);
+		}
 	}
 
 	// Check out all the assets we want to save (if source control is enabled)
@@ -655,6 +853,9 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data)
 	{
 		UE_LOG(LogArticyEditor, Error, TEXT("Failed to save packages. Make sure to save before submitting in Perforce."));
 	}
+
+	// Clean up empty package subfolders from older imports.
+	CleanupEmptyPackageFolders();
 
 	FArticyEditorModule::Get().OnAssetsGenerated.Broadcast();
 
@@ -823,6 +1024,81 @@ bool CodeGenerator::RestoreCachedFiles()
 	}
 
 	return bFilesRestored;
+}
+
+bool CodeGenerator::PurgeDuplicateGeneratedObjects(UArticyImportData* Data)
+{
+	const TMap<FArticyId, FArticyId>& Latest = Data->GetLatestOwnerByObjectId();
+	if (Latest.Num() == 0)
+		return true;
+
+	FAssetRegistryModule& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	TArray<FAssetData> OutAssets;
+	AssetRegistry.Get().GetAssetsByPath(
+		FName(*ArticyHelpers::GetArticyGeneratedFolder()),
+		OutAssets,
+		true
+	);
+
+	TArray<UObject*> ToDelete;
+	TSet<UArticyPackage*> DirtyPackages;
+
+	for (const FAssetData& AD : OutAssets)
+	{
+		if (!AD.IsValid())
+			continue;
+
+		// Filter via the registry.
+		const UClass* AssetClass = AD.GetClass();
+		if (!AssetClass || !AssetClass->IsChildOf(UArticyObject::StaticClass()))
+			continue;
+
+		UArticyObject* Obj = Cast<UArticyObject>(AD.GetAsset());
+		if (!Obj)
+			continue;
+
+		const FArticyId ObjId = Obj->GetId();
+		const FArticyId* WinningPackageId = Latest.Find(ObjId);
+		if (!WinningPackageId)
+			continue;
+
+		UArticyPackage* OuterPack = Cast<UArticyPackage>(Obj->GetOuter());
+		if (!OuterPack)
+			continue;
+
+		// PackageId was introduced for selective import.
+		// Plugin versions prior to 1.6.0 did not have the PackageId UPROPERTY.
+		// Skip the purge so FArticyPackageDef::GeneratePackageAsset
+		// can populate PackageId and so FArticyModelDef::GenerateSubAsset can
+		// reuse the existing sub-assets via FindAsset. Otherwise every
+		// master-era object is force-deleted on first reimport, which either
+		// fails the ensure in GenerateAssets or silently invalidates every
+		// external FArticyRef/FArticyId the user has in blueprints and levels.
+		if (OuterPack->PackageId.IsNull())
+			continue;
+
+		// Keep the winning instance; purge only losers
+		if (OuterPack->PackageId == *WinningPackageId)
+			continue;
+
+		// Remove references from the package before deleting
+		OuterPack->RemoveAssetById(ObjId);
+		DirtyPackages.Add(OuterPack);
+
+		ToDelete.Add(Obj);
+	}
+
+	for (UArticyPackage* Pack : DirtyPackages)
+	{
+		Pack->MarkPackageDirty();
+	}
+
+	if (ToDelete.Num() == 0)
+		return true;
+
+	const int32 Deleted = ObjectTools::ForceDeleteObjects(ToDelete, false);
+	return Deleted == ToDelete.Num();
 }
 
 #undef LOCTEXT_NAMESPACE

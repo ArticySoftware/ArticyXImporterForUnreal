@@ -13,5 +13,6 @@ Find a list of articles here:
 - \subpage objectHandlingArticyRef
 - \subpage objectTemplates
 - \subpage scripting
+- \subpage selectiveImport
 - \subpage textExtensions
 - \subpage typeSystem

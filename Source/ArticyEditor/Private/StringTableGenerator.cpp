@@ -1,5 +1,5 @@
 //  
-// Copyright (c) 2023 articy Software GmbH & Co. KG. All rights reserved.  
+// Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.  
 //
 
 #include "StringTableGenerator.h"
@@ -10,9 +10,36 @@
 #include "HAL/PlatformFileManager.h"
 #include "SourceControlHelpers.h"
 
-void StringTableGenerator::Line(const FString& Key, const FString& SourceString)
+static void EscapeCsv(const FString& In, FStringBuilderBase& Out)
 {
-    FileContent += TEXT("\"") + Key.Replace(TEXT("\""), TEXT("\"\"")) + TEXT("\",\"") + SourceString.Replace(TEXT("\""), TEXT("\"\"")) + TEXT("\",\"") + TEXT("\"\n");
+    for (TCHAR C : In)
+    {
+        if (C == '"')
+        {
+            Out.Append(TEXT("\"\""));
+        }
+        else
+        {
+            Out.AppendChar(C);
+        }
+    }
+}
+
+void StringTableGenerator::Line(const FString& Key, const FString& SourceString, const FString& PackageId)
+{
+    TStringBuilder<1024> LineBuilder;
+
+    LineBuilder.AppendChar('"');
+    EscapeCsv(Key, LineBuilder);
+    LineBuilder.Append(TEXT("\",\""));
+
+    EscapeCsv(SourceString, LineBuilder);
+    LineBuilder.Append(TEXT("\",\""));
+
+    EscapeCsv(PackageId, LineBuilder);
+    LineBuilder.Append(TEXT("\"\n"));
+
+    FileContent.Append(LineBuilder.ToString());
 }
 
 void StringTableGenerator::WriteToFile() const
