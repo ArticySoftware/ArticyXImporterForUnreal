@@ -829,14 +829,18 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 
 	TArray<UPackage*> PackagesToSave;
 
-	PackagesToSave.Add(Data->GetOutermost());
+	PackagesToSave.AddUnique(Data->GetOutermost());
 	for (const FAssetData& AssetData : GeneratedAssets)
 	{
-		// GetPackage() resolves the UPackage by name without force-loading the inner asset.
-		if (UPackage* Package = AssetData.GetPackage())
-		{
-			PackagesToSave.Add(Package);
-		}
+		UObject* Asset = AssetData.GetAsset();
+		if (!IsValid(Asset))
+			continue;
+
+		UPackage* Package = Asset->GetOutermost();
+		if (!IsValid(Package) || Package == GetTransientPackage())
+			continue;
+
+		PackagesToSave.AddUnique(Package);
 	}
 
 	// Check out all the assets we want to save (if source control is enabled)
