@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ArticyObjectWith_Base.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithStageDirections.generated.h"
 
 UINTERFACE(MinimalAPI, BlueprintType, meta=(CannotImplementInterfaceInBlueprint))

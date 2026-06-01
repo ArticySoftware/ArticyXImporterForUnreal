@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "UObject/Interface.h"
 #include "ArticyInstructionProvider.generated.h"
 
 UINTERFACE(meta=(CannotImplementInterfaceInBlueprint))

@@ -11,6 +11,7 @@
 #include "ArticyAsset.h"
 #include "ArticyDatabase.h"
 #include "ArticyTextExtension.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithText.generated.h"
 
 UINTERFACE(MinimalAPI, BlueprintType, meta=(CannotImplementInterfaceInBlueprint))

@@ -7,6 +7,7 @@
 #include "ArticyObject.h"
 #include "ArticyBuiltinTypes.h"
 #include "ArticyScriptFragment.h"
+#include "Internationalization/Regex.h"
 
 #define STRINGIFY(x) #x
 

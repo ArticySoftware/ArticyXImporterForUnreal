@@ -7,6 +7,7 @@
 #include "ArticyObjectWith_Base.h"
 #include "ArticyBaseTypes.h"
 #include "ArticyObject.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithSpeaker.generated.h"
 
 struct FArticyId;

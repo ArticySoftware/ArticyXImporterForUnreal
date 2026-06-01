@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "ContentBrowserDelegates.h"
+#include "AssetRegistry/AssetData.h"
 #include "ArticyObject.h"
 #include <Widgets/SCompoundWidget.h>
 #include <Widgets/Views/STableViewBase.h>

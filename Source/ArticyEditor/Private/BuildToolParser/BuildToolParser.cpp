@@ -4,6 +4,7 @@
 
 #include "BuildToolParser.h"
 #include "ArticyEditorModule.h"
+#include "Internationalization/Regex.h"
 
 /**
  * @brief Constructs a BuildToolParser object and sets the file path.

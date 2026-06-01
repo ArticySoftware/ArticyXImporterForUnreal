@@ -11,6 +11,7 @@
 #endif
 #include "UObject/Package.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Engine/Engine.h"
 #include "Interfaces/ArticyObjectWithPosition.h"
 #include "Interfaces/ArticyNode.h"
 

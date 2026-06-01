@@ -94,8 +94,8 @@ namespace ArticyBranchSorters
         {
             if (AInputPin != nullptr && BInputPin != nullptr)
             {
-                UArticyObject* AOwner = UArticyObject::FindAsset(AInputPin->Owner);
-                UArticyObject* BOwner = UArticyObject::FindAsset(BInputPin->Owner);
+                UArticyObject* AOwner = AInputPin->Owner.GetObject<UArticyObject>(AInputPin);
+                UArticyObject* BOwner = BInputPin->Owner.GetObject<UArticyObject>(BInputPin);
                 
                 const IArticyObjectWithPosition* AOwnerPos = Cast<IArticyObjectWithPosition>(AOwner);
                 const IArticyObjectWithPosition* BOwnerPos = Cast<IArticyObjectWithPosition>(BOwner);
