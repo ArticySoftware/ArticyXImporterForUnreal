@@ -7,6 +7,7 @@
 #include "ArticyObjectWith_Base.h"
 #include "ArticyPrimitive.h"
 #include "ArticyBaseTypes.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithTarget.generated.h"
 
 UINTERFACE(MinimalAPI, BlueprintType, meta=(CannotImplementInterfaceInBlueprint))
