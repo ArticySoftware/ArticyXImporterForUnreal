@@ -19,6 +19,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "ArticyEditorModule.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "Async/Async.h"
 
 #define LOCTEXT_NAMESPACE "ArticyObjectAssetPicker"
 
