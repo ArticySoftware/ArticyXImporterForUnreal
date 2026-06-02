@@ -6,6 +6,7 @@
 
 #include "ArticyPins.h"
 #include "ArticyFlowObject.h"
+#include "UObject/Interface.h"
 #include "ArticyInputPinsProvider.generated.h"
 
 /**

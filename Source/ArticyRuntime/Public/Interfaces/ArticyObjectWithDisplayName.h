@@ -7,6 +7,7 @@
 #include "ArticyObjectWith_Base.h"
 #include "UObject/TextProperty.h"
 #include "ArticyBaseTypes.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithDisplayName.generated.h"
 
 UINTERFACE(MinimalAPI, BlueprintType, meta=(CannotImplementInterfaceInBlueprint))

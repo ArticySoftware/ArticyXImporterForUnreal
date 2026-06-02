@@ -7,6 +7,7 @@
 #include "ArticyPausableType.h"
 #include "ArticyReflectable.h"
 
+#include "UObject/Interface.h"
 #include "ArticyFlowObject.generated.h"
 
 struct FArticyBranch;

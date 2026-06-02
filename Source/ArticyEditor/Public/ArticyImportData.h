@@ -11,6 +11,8 @@
 #include "ArticyArchiveReader.h"
 #include "StringTableGenerator.h"
 #include "Serialization/Csv/CsvParser.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "ArticyImportData.generated.h"
 
 class UArticyImportData;

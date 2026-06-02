@@ -7,6 +7,7 @@
 #include "ArticyObjectWith_Base.h"
 #include "ArticyObjectWithText.h"
 #include "ArticyTextExtension.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWithMenuText.generated.h"
 
 UINTERFACE(MinimalAPI, BlueprintType, meta=(CannotImplementInterfaceInBlueprint))

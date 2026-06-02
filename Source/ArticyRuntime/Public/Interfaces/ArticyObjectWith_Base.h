@@ -6,6 +6,7 @@
 
 #include "ArticyReflectable.h"
 #include "ArticyHelpers.h"
+#include "UObject/Interface.h"
 #include "ArticyObjectWith_Base.generated.h"
 
 UINTERFACE(MinimalAPI, meta=(CannotImplementInterfaceInBlueprint))
