@@ -822,6 +822,9 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 	PackagesGenerator::GenerateAssets(Data);
 	ArticyDatabase->SetLoadedPackages(Data->GetPackagesDirect());
 
+	// Purge trashed/reinstanced objects before serializing to avoid saving a stale class.
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS, true);
+
 	// Gather all Articy assets to save them
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> GeneratedAssets;
@@ -852,10 +855,21 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 	}
 
 	// Save the packages to disk
-	for (auto Package : PackagesToSave) { Package->SetDirtyFlag(true); }
-	if (!UEditorLoadingAndSavingUtils::SavePackages(PackagesToSave, true))
+	for (UPackage* Package : PackagesToSave)
 	{
-		UE_LOG(LogArticyEditor, Error, TEXT("Failed to save packages. Make sure to save before submitting in Perforce."));
+		if (!IsValid(Package))
+			continue;
+
+		Package->SetDirtyFlag(true);
+
+		UE_LOG(LogArticyEditor, Display, TEXT("Articy: saving package %s"), *Package->GetName());
+		GLog->Flush();
+
+		TArray<UPackage*> SinglePackage{ Package };
+		if (!UEditorLoadingAndSavingUtils::SavePackages(SinglePackage, false))
+		{
+			UE_LOG(LogArticyEditor, Error, TEXT("Failed to save package %s."), *Package->GetName());
+		}
 	}
 
 	// Clean up empty package subfolders from older imports.
