@@ -109,8 +109,7 @@ int32 FArticyEditorFunctionLibrary::ForceCompleteReimport(UArticyImportData* Imp
 	// Stamp upfront so the nested ReimportChanges does not re-detect an upgrade.
 	ImportData->LastImporterPluginVersion = GetCurrentPluginVersion();
 
-	const int32 Changes = ReimportChanges(ImportData);
-	return CodeGenerator::GenerateAssets(ImportData), Changes;
+	return ReimportChanges(ImportData);
 }
 
 /**
