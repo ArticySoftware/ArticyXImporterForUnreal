@@ -832,6 +832,10 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 	PackagesToSave.AddUnique(Data->GetOutermost());
 	for (const FAssetData& AssetData : GeneratedAssets)
 	{
+		// Skip stale on-disk assets; only save what's already in memory.
+		if (!AssetData.IsAssetLoaded())
+			continue;
+
 		UObject* Asset = AssetData.GetAsset();
 		if (!IsValid(Asset))
 			continue;
