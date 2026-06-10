@@ -14,8 +14,48 @@
 #include "Misc/MessageDialog.h"
 #include "Misc/Paths.h"
 #include "Interfaces/IPluginManager.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "ArticyEditorFunctionLibrary"
+
+namespace
+{
+	/** Notifies the user to restart the editor before Play after an importer upgrade. */
+	void ShowPluginUpgradeRestartNotice()
+	{
+		// Skip headless imports (commandlets).
+		if (IsRunningCommandlet() || GIsRunningUnattendedScript || !FSlateApplication::IsInitialized())
+		{
+			return;
+		}
+
+		FNotificationInfo Info(LOCTEXT("PluginUpgradeRestart",
+			"The articy:draft X importer was updated since the last import.\n"
+			"Please restart the Unreal editor before entering Play to avoid a known hot-reload crash."));
+		Info.bFireAndForget = false;
+		Info.bUseLargeFont = false;
+		Info.bUseThrobber = false;
+		Info.FadeOutDuration = 0.5f;
+
+		// Captured so the Dismiss button can fade the item out.
+		const TSharedRef<TSharedPtr<SNotificationItem>> ItemHolder = MakeShared<TSharedPtr<SNotificationItem>>();
+		Info.ButtonDetails.Add(FNotificationButtonInfo(
+			LOCTEXT("PluginUpgradeRestartDismiss", "Dismiss"),
+			FText::GetEmpty(),
+			FSimpleDelegate::CreateLambda([ItemHolder]()
+			{
+				if (ItemHolder->IsValid())
+				{
+					(*ItemHolder)->ExpireAndFadeout();
+				}
+			}),
+			SNotificationItem::CS_None));
+
+		*ItemHolder = FSlateNotificationManager::Get().AddNotification(Info);
+	}
+}
 
 FString FArticyEditorFunctionLibrary::ForcedArticyDirectory;
 
@@ -139,6 +179,8 @@ int32 FArticyEditorFunctionLibrary::ReimportChanges(UArticyImportData* ImportDat
 		UE_LOG(LogArticyEditor, Log,
 			TEXT("Articy importer plugin upgraded (was '%s', now '%s'); forcing full reimport."),
 			*ImportData->LastImporterPluginVersion, *CurrentPluginVersion);
+		// The reimport below hot-reloads regenerated code; advise a restart before Play.
+		ShowPluginUpgradeRestartNotice();
 		return ForceCompleteReimport(ImportData);
 	}
 

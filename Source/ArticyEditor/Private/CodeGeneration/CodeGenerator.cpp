@@ -499,6 +499,9 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 	TArray<FAssetData> OutAssets;
 	AssetRegistry.Get().GetAssetsByPath(FName(*ArticyHelpers::GetArticyGeneratedFolder()), OutAssets, true, false);
 
+	// GetPackages() returns by value; bind to a local so MatchingDef doesn't dangle.
+	const TArray<FArticyPackageDef> AllPackageDefs = PackageDefs.GetPackages();
+
 	for (const FAssetData& Data : OutAssets)
 	{
 		if (Data.IsValid())
@@ -520,7 +523,7 @@ bool CodeGenerator::RenameGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 
 			// Match by PackageId; fall back to Name for legacy assets.
 			const FArticyPackageDef* MatchingDef = nullptr;
-			for (const FArticyPackageDef& PackageDef : PackageDefs.GetPackages())
+			for (const FArticyPackageDef& PackageDef : AllPackageDefs)
 			{
 				if (!PackageAsset->PackageId.IsNull())
 				{
