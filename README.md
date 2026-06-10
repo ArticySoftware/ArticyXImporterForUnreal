@@ -147,6 +147,8 @@ For greater control over your imports, use the Articy X Importer Menu. It can be
 - **Import Changes**: This option will only regenerate code and compile it if necessary, but will always regenerate assets. This is generally faster than a full reimport and is the same as clicking on 'Import' on the prompt Unreal shows you when you've exported.
 - **Regenerate Assets**: This option will only regenerate the articy assets based on the current import data asset and compiled code.
 
+> NOTE: After **upgrading the importer to a new version**, restart the Unreal editor before the first **Play** following an import. Importing recompiles and hot-reloads the project's generated code in-session, and after a version change that hot reload can crash on Play. Restarting loads the regenerated code cleanly. The importer will show a reminder when it detects an upgrade.
+
 # Selective Import
 
 For larger projects, exporting the entire articy:draft X project every time a single line of dialogue changes is slow. The importer supports selective import, where articy:draft X ships only the packages you changed in the `.articyue` file. The Unreal plugin then updates just those packages and leaves the rest of your imported data untouched.

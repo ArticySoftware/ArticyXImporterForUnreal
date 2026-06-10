@@ -11,6 +11,7 @@
     - Object deduplication across packages
     - Sort flow branches by target position
     - Per-asset package eviction
+    - Editor-restart reminder on importer upgrade
 - Fixes:
     - Fix occasional CTD in object asset picker
     - Fix stale import data on reimport
@@ -18,6 +19,8 @@
     - Fix default package handling
     - Fix include order and missing includes
     - Handle CSV import dialog
+- Known Issues:
+    - Possible crash on Play after upgrading
     
 ## Unreal Importer 1.5.0 Changelog :
 
