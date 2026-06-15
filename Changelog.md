@@ -19,6 +19,7 @@
     - Fix default package handling
     - Fix include order and missing includes
     - Handle CSV import dialog
+    - Fix crash regenerating assets after hot reload
 - Known Issues:
     - Possible crash on Play after upgrading
     

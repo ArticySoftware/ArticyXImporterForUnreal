@@ -44,7 +44,8 @@ namespace ArticyImporterHelpers
 		UPackage* AssetPackage = CreatePackage(nullptr, *PackageName);
 #endif
 
-		AssetPackage->FullyLoad();
+		// Don't FullyLoad: re-loading the stale on-disk asset after a hot reload asserts in UObjectAnnotation.
+		AssetPackage->MarkAsFullyLoaded();
 
 		return AssetPackage;
 	}
