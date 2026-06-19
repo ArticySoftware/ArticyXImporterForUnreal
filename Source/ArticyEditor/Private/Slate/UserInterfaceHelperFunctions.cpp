@@ -306,7 +306,7 @@ const FString UserInterfaceHelperFunctions::GetDisplayName(const UArticyObject* 
  */
 const FLinearColor UserInterfaceHelperFunctions::GetColor(const UArticyObject* ArticyObject)
 {
-	FLinearColor Color(0.577, 0.76, 0.799);
+	FLinearColor Color(0.577f, 0.76f, 0.799f);
 
 	if (!ArticyObject)
 	{

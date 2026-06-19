@@ -819,7 +819,7 @@ void FArticyObjectDefinitions::GatherText(const TSharedPtr<FJsonObject>& Json)
 {
     for (auto JsonValue = Json->Values.CreateConstIterator(); JsonValue; ++JsonValue)
     {
-        const FString Name = (*JsonValue).Key;
+        const FString Name = *(*JsonValue).Key;
         const TSharedPtr<FJsonValue> Value = (*JsonValue).Value;
 
         FArticyTexts Text;

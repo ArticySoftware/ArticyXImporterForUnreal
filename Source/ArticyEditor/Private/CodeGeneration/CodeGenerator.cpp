@@ -450,7 +450,11 @@ bool CodeGenerator::DeleteGeneratedAssets(const FArticyPackageDefs& PackageDefs)
 			if (UArticyPackage* Pack = Cast<UArticyPackage>(Asset))
 			{
 				TArray<UObject*> Inner;
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+				GetObjectsWithOuter(Pack, Inner, EGetObjectsFlags::None);
+#else
 				GetObjectsWithOuter(Pack, Inner, false);
+#endif
 				Doomed.Append(Inner);
 				Pack->Clear();
 			}

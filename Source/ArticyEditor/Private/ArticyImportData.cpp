@@ -607,6 +607,18 @@ void UArticyImportData::PostLoad()
  *
  * @param OutTags The array to fill with asset registry tags.
  */
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
+void UArticyImportData::GetAssetRegistryTags(FAssetRegistryTagsContext Context) const
+{
+	if (ImportData)
+	{
+		Context.AddTag(FAssetRegistryTag(SourceFileTagName(), ImportData->GetSourceData().ToJson(),
+			FAssetRegistryTag::TT_Hidden));
+	}
+
+	Super::GetAssetRegistryTags(Context);
+}
+#else
 void UArticyImportData::GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const
 {
 	if (ImportData)
@@ -615,10 +627,9 @@ void UArticyImportData::GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags)
 			FAssetRegistryTag::TT_Hidden));
 	}
 
-	PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		Super::GetAssetRegistryTags(OutTags);
-	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	Super::GetAssetRegistryTags(OutTags);
 }
+#endif
 #endif
 
 /**

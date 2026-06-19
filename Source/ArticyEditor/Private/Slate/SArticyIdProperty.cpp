@@ -3,6 +3,7 @@
 //
 
 #include "Slate/SArticyIdProperty.h"
+#include "Misc/EngineVersionComparison.h"
 #include <Templates/SharedPointer.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Kismet2/SClassPickerDialog.h>
@@ -35,7 +36,11 @@ void SFixedSizeMenuComboButton::Tick(const FGeometry& AllottedGeometry, const do
 		// Figure out where our attached pop-up window should be placed.
 		const FVector2D PopupContentDesiredSize = PopupWindow->GetContent()->GetDesiredSize();
 		//const FVector2D PopupContentDesiredSize = PopupWindow->GetContent()->GetDesiredSize();
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+		FGeometry PopupGeometry = ComputeNewWindowMenuPlacement(AllottedGeometry, PopupContentDesiredSize, GetPlacementAttribute().Get());
+#else
 		FGeometry PopupGeometry = ComputeNewWindowMenuPlacement(AllottedGeometry, PopupContentDesiredSize, Placement.Get());
+#endif
 		const FVector2D NewPosition = PopupGeometry.LocalToAbsolute(FVector2D::ZeroVector);
 
 		// We made a window for showing the popup.

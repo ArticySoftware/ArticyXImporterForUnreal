@@ -40,7 +40,7 @@ protected:
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Cannot get property %s from object %s!"),
-				   *PropName.ToString(), _getUObject() ? *_getUObject()->GetName() : TEXT("(nullptr)"));
+				   *PropName.ToString(), GetReflectedObject() ? *GetReflectedObject()->GetName() : TEXT("(nullptr)"));
 		}
 
 		static PropType Empty;

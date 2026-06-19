@@ -740,7 +740,7 @@ void FArticyPackageDef::GatherText(const TSharedPtr<FJsonObject>& Json)
 
 	for (auto JsonValue = Json->Values.CreateConstIterator(); JsonValue; ++JsonValue)
 	{
-		const FString KeyName = (*JsonValue).Key;
+		const FString KeyName = *(*JsonValue).Key;
 		const TSharedPtr<FJsonValue> Value = (*JsonValue).Value;
 
 		FArticyTexts Text;

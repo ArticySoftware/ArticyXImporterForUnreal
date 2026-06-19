@@ -26,7 +26,7 @@ public:
 	virtual UArticyPrimitive* GetTarget() const
 	{
 		auto id = GetTargetId();
-		return id.GetObject(_getUObject());
+		return id.GetObject(GetReflectedObject());
 	}
 
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithTarget")

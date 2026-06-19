@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "Runtime/CoreUObject/Public/UObject/Interface.h"
+#include "Templates/Casts.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "ArticyChangedProperty.h"
 #include "ArticyReflectable.generated.h"
@@ -49,7 +50,7 @@ public:
 		auto propPointers = GetPropertyPointers();
 		auto prop = propPointers.Find(Property);
 		if(prop)
-			return (*prop)->ContainerPtrToValuePtr<TValue>(_getUObject(), ArrayIndex);
+			return (*prop)->ContainerPtrToValuePtr<TValue>(GetReflectedObject(), ArrayIndex);
 
 		return nullptr;
 	}
@@ -72,9 +73,12 @@ public:
 		return GetPropertyPointers(Class).Find(Property) != nullptr;
 	}
 
-	virtual UClass* GetObjectClass() const { return _getUObject()->GetClass(); }
+	virtual UClass* GetObjectClass() const { return GetReflectedObject()->GetClass(); }
 
 	FReportChangedDelegate ReportChanged;
+
+protected:
+	UObject* GetReflectedObject() const { return Cast<UObject>(const_cast<IArticyReflectable*>(this)); }
 
 private:
 	/**

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Misc/EngineVersionComparison.h"
 #include "ArticyObject.h"
 #include "UObject/UObjectHash.h"
 #include "ArticyPackage.generated.h"
@@ -128,7 +129,11 @@ inline UArticyObject* UArticyPackage::GetAssetByTechnicalName(const FName& Techn
 inline TArray<UObject*> UArticyPackage::GetInnerObjects() const
 {
 	TArray<UObject*> OutObjects;
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+	GetObjectsWithOuter(this, OutObjects, EGetObjectsFlags::None);
+#else
 	GetObjectsWithOuter(this, OutObjects, false);
+#endif
 
 	return OutObjects;
 }

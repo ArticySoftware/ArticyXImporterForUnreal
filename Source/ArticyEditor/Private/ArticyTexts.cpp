@@ -43,7 +43,7 @@ void FArticyTexts::ImportFromJson(const TSharedPtr<FJsonObject>& Json)
 
     for (auto JsonValue = Json->Values.CreateConstIterator(); JsonValue; ++JsonValue)
     {
-        const FString Name = (*JsonValue).Key;
+        const FString Name = *(*JsonValue).Key;
 
         if (Name.Equals(TEXT("Context")))
         {

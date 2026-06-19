@@ -7,7 +7,15 @@
 #include "ArticyRuntimeModule.h"
 #include "Engine/Engine.h"
 #include "Misc/CoreDelegates.h"
+#include "Misc/EngineVersionComparison.h"
 #include "UObject/UObjectIterator.h"
+
+// FCoreDelegates::OnPostEngineInit was deprecated in UE 5.8 in favor of GetOnPostEngineInit().
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+	#define ARTICY_ON_POST_ENGINE_INIT() FCoreDelegates::GetOnPostEngineInit()
+#else
+	#define ARTICY_ON_POST_ENGINE_INIT() FCoreDelegates::OnPostEngineInit
+#endif
 
 UArticyLocalizationSubsystem* UArticyLocalizationSubsystem::Get()
 {
@@ -28,7 +36,7 @@ void UArticyLocalizationSubsystem::Initialize(FSubsystemCollectionBase& Collecti
         return;
     }
 
-    PostEngineInitHandle = FCoreDelegates::OnPostEngineInit.AddUObject(
+    PostEngineInitHandle = ARTICY_ON_POST_ENGINE_INIT().AddUObject(
         this, &UArticyLocalizationSubsystem::InitializeLocalizer);
 }
 
@@ -36,7 +44,7 @@ void UArticyLocalizationSubsystem::Deinitialize()
 {
     if (PostEngineInitHandle.IsValid())
     {
-        FCoreDelegates::OnPostEngineInit.Remove(PostEngineInitHandle);
+        ARTICY_ON_POST_ENGINE_INIT().Remove(PostEngineInitHandle);
         PostEngineInitHandle.Reset();
     }
 

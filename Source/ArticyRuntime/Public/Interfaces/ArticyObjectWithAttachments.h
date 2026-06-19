@@ -46,7 +46,7 @@ public:
 		auto ids = GetAttachmentIds();
 		for(const auto& id : ids)
 		{
-			auto att = id.GetObject(_getUObject());
+			auto att = id.GetObject(GetReflectedObject());
 			if(att)
 				attachments.Add(att);
 		}

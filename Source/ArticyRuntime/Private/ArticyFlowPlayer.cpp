@@ -354,7 +354,7 @@ TArray<FArticyBranch> UArticyFlowPlayer::Explore(IArticyFlowObject* Node, bool b
             auto unshadowedNode = GetUnshadowedNode(Node);
 
             TScriptInterface<IArticyFlowObject> ptr;
-            ptr.SetObject(unshadowedNode->_getUObject());
+            ptr.SetObject(Cast<UObject>(unshadowedNode));
             ptr.SetInterface(unshadowedNode);
             branch.Path.Add(ptr);
         }
@@ -417,7 +417,7 @@ TArray<FArticyBranch> UArticyFlowPlayer::Explore(IArticyFlowObject* Node, bool b
             {
                 auto unshadowedNode = GetUnshadowedNode(Node);
                 TScriptInterface<IArticyFlowObject> ptr;
-                ptr.SetObject(unshadowedNode->_getUObject());
+                ptr.SetObject(Cast<UObject>(unshadowedNode));
                 ptr.SetInterface(unshadowedNode);
 
                 branch.Path.Insert(ptr, 0); //TODO inserting at front is not ideal performance wise

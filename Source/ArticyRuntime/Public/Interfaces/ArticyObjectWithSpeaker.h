@@ -27,7 +27,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ObjectWithSpeaker")
 	virtual UArticyObject* GetSpeaker() const
 	{
-		return GetSpeakerId().GetObject<UArticyObject>(_getUObject());
+		return GetSpeakerId().GetObject<UArticyObject>(GetReflectedObject());
 	}
 
 	UFUNCTION(BlueprintCallable, Category="ObjectWithSpeaker")
