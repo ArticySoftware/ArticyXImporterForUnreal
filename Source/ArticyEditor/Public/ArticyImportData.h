@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Misc/EngineVersionComparison.h"
 #include "ObjectDefinitionsImport.h"
 #include "PackagesImport.h"
 #include "ArticyPackage.h"
@@ -478,7 +479,11 @@ public:
 	UPROPERTY(VisibleAnywhere, Instanced, Category = ImportSettings)
 	class UAssetImportData* ImportData;
 
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
+	void GetAssetRegistryTags(FAssetRegistryTagsContext Context) const override;
+#else
 	void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+#endif
 
 	void PostImport();
 
