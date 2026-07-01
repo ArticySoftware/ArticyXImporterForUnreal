@@ -12,8 +12,7 @@
 
 namespace
 {
-	// Wraps a single JSON object into a one-element JSON array (explicit TArray to
-	// avoid brace-init template deduction issues with SetArrayField).
+	// Wraps a single JSON object into a one-element JSON array
 	TArray<TSharedPtr<FJsonValue>> OneObject(const TSharedPtr<FJsonObject>& Obj)
 	{
 		TArray<TSharedPtr<FJsonValue>> Array;
@@ -38,8 +37,7 @@ namespace
 		return Json;
 	}
 
-	// A feature with a single "HP" int property and a matching constraint (a
-	// constraint is required for every property, or the parser ensures).
+	// A feature with a single "HP" int property and a matching constraint
 	TSharedPtr<FJsonObject> FeatureJson(const FString& TechnicalName, const FString& DisplayName)
 	{
 		TSharedPtr<FJsonObject> Json = MakeShared<FJsonObject>();

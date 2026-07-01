@@ -48,9 +48,7 @@ if (-not $editor) {
 	exit 2
 }
 
-# Generate the throwaway host project (a build artifact, not committed to the repo).
-# It is the smallest project that can compile the plugin from the command line: a
-# minimal primary game module plus its Game/Editor target files.
+# Generate the throwaway host project
 $hostDir = "$PSScriptRoot\HostProject"
 New-Item -ItemType Directory -Path "$hostDir\Source\HostProject" -Force | Out-Null
 

@@ -10,9 +10,7 @@
 
 #if WITH_AUTOMATION_TESTS
 
-// Verifies the Articy archive reader against a synthetic in-memory archive, so the
-// binary format parsing (header + file dictionary + content offsets) is covered
-// without committing the ~1 MB demo export.
+// Verifies the Articy archive reader against a synthetic in-memory archive
 BEGIN_DEFINE_SPEC(FArticyArchiveReaderSpec, "Articy.Editor.ArchiveReader",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 END_DEFINE_SPEC(FArticyArchiveReaderSpec)

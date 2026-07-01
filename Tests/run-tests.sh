@@ -2,7 +2,7 @@
 #
 # Runs the ArticyXImporter automation tests headlessly (Linux/Mac).
 #
-# Symlinks the plugin into the host project, launches the editor commandlet to
+# Junction the plugin into the host project, launches the editor commandlet to
 # run all "Articy" automation tests, then parses the JSON report. The editor's
 # own exit code is unreliable for test failures, so the report is the source of
 # truth: a non-zero exit code here means one or more tests failed.
@@ -26,7 +26,7 @@ report_dir="$script_dir/Report"
 # Determine the host platform as Unreal names it.
 if [[ "$(uname -s)" == "Darwin" ]]; then platform="Mac"; else platform="Linux"; fi
 
-# Locate the editor binary (UE5 uses UnrealEditor-Cmd, UE4 uses UE4Editor-Cmd).
+# Locate the editor binary
 editor=""
 for name in UnrealEditor-Cmd UE4Editor-Cmd; do
 	candidate="$UE_ROOT/Engine/Binaries/$platform/$name"
@@ -38,9 +38,7 @@ if [[ -z "$editor" ]]; then
 	exit 2
 fi
 
-# Generate the throwaway host project (a build artifact, not committed to the repo).
-# It is the smallest project that can compile the plugin from the command line: a
-# minimal primary game module plus its Game/Editor target files.
+# Generate the throwaway host project
 host_dir="$script_dir/HostProject"
 mkdir -p "$host_dir/Source/HostProject"
 

@@ -8,9 +8,7 @@
 #include "Interfaces/ArticyObjectWithPosition.h"
 #include "ArticyTestPositional.generated.h"
 
-// Minimal test implementing IArticyObjectWithPosition. Overrides GetPosition() 
-// to return a directly-settable value, bypassing the reflected "Position" 
-// property lookup, so branch-sorter logic can be tested in isolation.
+// Minimal test implementing IArticyObjectWithPosition
 UCLASS()
 class UArticyTestPositional : public UObject, public IArticyObjectWithPosition
 {

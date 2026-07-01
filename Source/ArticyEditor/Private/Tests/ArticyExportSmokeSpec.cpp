@@ -12,9 +12,8 @@
 
 #if WITH_AUTOMATION_TESTS
 
-// Smoke test over trimmed slices of a real articy:draft export (the "Maniac
-// Manfred X" demo). Guards against export-format shape drift that hand-authored
-// fixtures can't catch. Fixtures live next to this file under Fixtures/.
+// Smoke test over trimmed slices of a real articy:draft export from Maniac Manfred.
+// Fixtures live next to this file under Fixtures/.
 namespace
 {
 	bool LoadFixture(const FString& FileName, TSharedPtr<FJsonObject>& OutRoot)
