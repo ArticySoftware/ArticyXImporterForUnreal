@@ -38,6 +38,16 @@
 				"IOS",
 				"Android"
 			]
+		},
+		{
+			"Name": "ArticyTests",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Linux",
+				"Win64",
+				"Mac"
+			]
 		}
 	]
 }

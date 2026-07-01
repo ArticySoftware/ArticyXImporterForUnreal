@@ -25,6 +25,11 @@ To do that you just need to get the sources from here on GitHub, your best bet i
 - Read the documentation carefully and find out if the functionality is already covered, maybe by an individual configuration
 - Find out whether your idea fits with the scope and aims of the project. It's up to you to make a strong case to convince the project's developers of the merits of this feature. Keep in mind that we want features that will be useful to the majority of our users and not just a small subset
 - Make sure to base your contribution off the updated `main` branch
+- Run the automated tests and, where practical, add tests covering your change (see [Tests](#tests))
+
+### Tests
+
+The plugin ships with an automated test suite built on Unreal's Automation framework, under the `Tests/` directory. Please run it before submitting a contribution, and add tests where practical: unit tests for self-contained logic (parsing, type handling, formatting) and integration tests for runtime behaviour that needs imported content (database, global variables, Flow Player). See [`Tests/README.md`](Tests/README.md) for how to run them.
 
 ### Branching strategy
 
