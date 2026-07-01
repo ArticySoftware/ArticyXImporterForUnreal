@@ -1,0 +1,16 @@
+{
+  "Settings": {
+    "set_TextFormatter": "Unity",
+    "set_IncludingAssets": "True",
+    "set_IncludedNodes": "Settings, Project, GlobalVariables, ObjectDefinitions, Packages, ScriptMethods, Hierarchy, Assets, Languages",
+    "set_UseScriptSupport": "True",
+    "ExportVersion": "2.0",
+    "RuleSetName": "Export complete project"
+  },
+  "Project": {
+    "Name": "Maniac Manfred X",
+    "DetailName": "A demo project for the articy:draft engine export(s).",
+    "Guid": "c1e328f6-def5-47ae-9559-92d480c666e9",
+    "TechnicalName": "ManiacManfred"
+  }
+}

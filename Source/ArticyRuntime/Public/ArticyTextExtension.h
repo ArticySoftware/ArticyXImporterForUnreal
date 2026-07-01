@@ -61,6 +61,14 @@ protected:
 	static void SplitInstance(const FString& InString, FString& OutName, FString& OutInstanceNumber);
 
 	TMap<FString, FArticyUserMethodCallback> UserMethodMap;
+
+#if WITH_AUTOMATION_TESTS
+public:
+	// Test-only accessors for the protected helpers.
+	FString Test_FormatNumber(const FString& SourceValue, const FString& NumberFormat) const { return FormatNumber(SourceValue, NumberFormat); }
+	static void Test_SplitInstance(const FString& InString, FString& OutName, FString& OutInstanceNumber) { SplitInstance(InString, OutName, OutInstanceNumber); }
+	FString Test_ResolveBoolean(UObject* Outer, const FString& SourceName, const bool Value) const { return ResolveBoolean(Outer, SourceName, Value); }
+#endif
 };
 
 template<typename ... Types>

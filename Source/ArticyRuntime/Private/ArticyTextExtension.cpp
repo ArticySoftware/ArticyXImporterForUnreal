@@ -81,7 +81,7 @@ FString UArticyTextExtension::GetSource(UObject* Outer, const FString& SourceNam
 	{
 		const FString TypeName = SourceParts[0].Mid(6);
 		GetTypeProperty(TypeName, RemValue, Result, bSuccess);
-		
+
 		if (bSuccess)
 		{
 			return Result;
@@ -450,9 +450,9 @@ void UArticyTextExtension::SplitInstance(const FString& InString, FString& OutNa
 
 	if (StartIdx != INDEX_NONE)
 	{
-		const int32 EndIdx = InString.Find(TEXT(">"), ESearchCase::CaseSensitive, ESearchDir::FromEnd, StartIdx);
+		const int32 EndIdx = InString.Find(TEXT(">"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
 
-		if (EndIdx != INDEX_NONE)
+		if (EndIdx != INDEX_NONE && EndIdx > StartIdx)
 		{
 			OutName = InString.Left(StartIdx);
 			OutInstanceNumber = InString.Mid(StartIdx + 1, EndIdx - StartIdx - 1);
