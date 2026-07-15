@@ -18,6 +18,20 @@ namespace
 		Json->SetStringField(TEXT("Type"), TypeName);
 		return Json;
 	}
+
+	// Runs a raw Expresso fragment through the importer's parser and returns the
+	// generated C++ (ParsedFragment) so tests can assert on the transformation.
+	FString ParseExpresso(const FString& Fragment, bool bIsInstruction)
+	{
+		UArticyImportData* Data = NewObject<UArticyImportData>();
+		Data->AddScriptFragment(Fragment, bIsInstruction);
+		for (const FArticyExpressoFragment& F : Data->GetScriptFragments())
+		{
+			if (F.OriginalFragment == Fragment && F.bIsInstruction == bIsInstruction)
+				return F.ParsedFragment;
+		}
+		return FString();
+	}
 }
 
 BEGIN_DEFINE_SPEC(FArticyImportDataSpec, "Articy.Editor.ImportData",
@@ -160,6 +174,81 @@ void FArticyImportDataSpec::Define()
 			TestEqual(TEXT("string value"), Var.StringValue, FString(TEXT("Bob")));
 			TestEqual(TEXT("cpp type"), Var.GetCPPTypeString(), FString(TEXT("UArticyString")));
 			TestEqual(TEXT("cpp value"), Var.GetCPPValueString(), FString(TEXT("\"Bob\"")));
+		});
+	});
+
+	Describe("AddScriptFragment: seen/unseen/seenCounter keywords", [this]()
+	{
+		It("expands bare seen and unseen to boolean getSeenCounter() checks", [this]()
+		{
+			TestEqual(TEXT("seen"), ParseExpresso(TEXT("seen"), false),
+				FString(TEXT("(getSeenCounter() > 0)")));
+			TestEqual(TEXT("unseen"), ParseExpresso(TEXT("unseen"), false),
+				FString(TEXT("(getSeenCounter() == 0)")));
+		});
+
+		It("expands bare seenCounter to the integer getSeenCounter()", [this]()
+		{
+			TestEqual(TEXT("seenCounter"), ParseExpresso(TEXT("seenCounter"), false),
+				FString(TEXT("getSeenCounter()")));
+		});
+
+		It("carries an object argument into getSeenCounter (name/id overload)", [this]()
+		{
+			// Regression: the old two-stage replacement orphaned the argument, e.g.
+			// seen("Sally") produced getSeenCounter() > 0("Sally") which failed to compile.
+			TestEqual(TEXT("seen(arg)"), ParseExpresso(TEXT("seen(\"Sally\")"), false),
+				FString(TEXT("(getSeenCounter(FString(TEXT(\"Sally\"))) > 0)")));
+			TestEqual(TEXT("unseen(arg)"), ParseExpresso(TEXT("unseen(\"Sally\")"), false),
+				FString(TEXT("(getSeenCounter(FString(TEXT(\"Sally\"))) == 0)")));
+			TestEqual(TEXT("seenCounter(arg)"), ParseExpresso(TEXT("seenCounter(\"Sally\")"), false),
+				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\")))")));
+		});
+
+		It("keeps comparison operators against the integer seenCounter", [this]()
+		{
+			// The correct way to compare a count: seenCounter, not seen.
+			TestEqual(TEXT("seenCounter > 10"), ParseExpresso(TEXT("seenCounter > 10"), false),
+				FString(TEXT("getSeenCounter() > 10")));
+			TestEqual(TEXT("seenCounter(arg) >= 10"), ParseExpresso(TEXT("seenCounter(\"Sally\") >= 10"), false),
+				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\"))) >= 10")));
+		});
+
+		It("does not touch keywords that appear inside a string literal", [this]()
+		{
+			// Regression: the keyword replacement used to run over literals too, so a
+			// print message containing seen/unseen/seenCounter was corrupted (and could
+			// break the import). All three keywords must be left alone inside quotes.
+			TestEqual(TEXT("print with seen in text"),
+				ParseExpresso(TEXT("print(\"You have seen Sally\")"), true),
+				FString(TEXT("print(FString(TEXT(\"You have seen Sally\")));")));
+			TestEqual(TEXT("print with unseen in text"),
+				ParseExpresso(TEXT("print(\"Sally is unseen\")"), true),
+				FString(TEXT("print(FString(TEXT(\"Sally is unseen\")));")));
+			TestEqual(TEXT("print with seenCounter in text"),
+				ParseExpresso(TEXT("print(\"seenCounter debug\")"), true),
+				FString(TEXT("print(FString(TEXT(\"seenCounter debug\")));")));
+		});
+
+		It("expands a keyword sitting next to a global-variable access", [this]()
+		{
+			// Regression: the seen loop reused the leftover offset from GV replacement,
+			// corrupting positions when both appeared on the same line.
+			TestEqual(TEXT("gv && seen"), ParseExpresso(TEXT("Game.IsDead && seen"), false),
+				FString(TEXT("(*Game->IsDead) && (getSeenCounter() > 0)")));
+		});
+
+		It("handles multi-statement instructions, expanding keywords per statement", [this]()
+		{
+			// Instructions may hold several ';'-separated statements; each is emitted on
+			// its own line with a trailing ';'. Keyword expansion runs independently per
+			// statement, and the real setSeenCounter() function is left untouched.
+			TestEqual(TEXT("keyword then gv"),
+				ParseExpresso(TEXT("seenCounter(\"Sally\");Game.Score = 5"), true),
+				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\")));\n(*Game->Score) = 5;")));
+			TestEqual(TEXT("setSeenCounter preserved, bare seenCounter expanded"),
+				ParseExpresso(TEXT("Game.Score = 5;setSeenCounter(\"Sally\", seenCounter)"), true),
+				FString(TEXT("(*Game->Score) = 5;\nsetSeenCounter(FString(TEXT(\"Sally\")), getSeenCounter());")));
 		});
 	});
 }
