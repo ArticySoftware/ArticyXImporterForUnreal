@@ -1562,8 +1562,8 @@ void UArticyExpressoScripts::resetAllSeenCounters()
 
 namespace
 {
-	//the object a seen counter call without an explicit target acts on; while a pin's
-	//script runs, self is the pin, but the counter of interest is the owning node's
+	// the object a seen counter call without an explicit target acts on; while a pin's
+	// script runs, self is the pin, but the counter of interest is the owning node's
 	UArticyBaseObject* ResolveSeenTarget(UArticyPrimitive* Self)
 	{
 		if (auto* Pin = Cast<UArticyFlowPin>(Self))

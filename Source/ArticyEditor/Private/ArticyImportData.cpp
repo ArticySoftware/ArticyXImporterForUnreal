@@ -1446,14 +1446,14 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 	const FRegexPattern unseenPattern(TEXT("\\bunseen\\b"));
 	const FRegexPattern seenCounterPattern(TEXT("\\bseenCounter\\b"));
 
-	//replace a shorthand keyword with a getSeenCounter() call, keeping any optional
-	//(balanced) argument so seen("Obj") hits the name/id overload; Prefix/Suffix wrap it
+	// replace a shorthand keyword with a getSeenCounter() call, keeping any optional
+	// (balanced) argument so seen("Obj") hits the name/id overload; Prefix/Suffix wrap it
 	auto replaceSeenKeyword = [&literalStringPattern](FString& Line, const FRegexPattern& Pattern,
 		const FString& Prefix, const FString& Suffix)
 	{
 		for (int32 searchStart = 0; searchStart <= Line.Len(); )
 		{
-			//re-scan from scratch after each edit, since replacements shift the string
+			// re-scan from scratch after each edit, since replacements shift the string
 			FRegexMatcher matcher(Pattern, Line);
 			int32 kwStart = INDEX_NONE, kwEnd = INDEX_NONE;
 			while (matcher.FindNext())
@@ -1468,7 +1468,7 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 			if (kwStart == INDEX_NONE)
 				break;
 
-			//don't touch the keyword if it appears inside a literal string (e.g. print text)
+			// don't touch the keyword if it appears inside a literal string (e.g. print text)
 			bool inLiteral = false;
 			FRegexMatcher literals(literalStringPattern, Line);
 			while (literals.FindNext())
@@ -1485,8 +1485,8 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 				continue;
 			}
 
-			//capture an optional balanced (...) argument list following the keyword,
-			//ignoring parens that live inside a string literal
+			// capture an optional balanced (...) argument list following the keyword,
+			// ignoring parens that live inside a string literal
 			int32 cursor = kwEnd;
 			while (cursor < Line.Len() && FChar::IsWhitespace(Line[cursor]))
 				++cursor;
@@ -1504,7 +1504,7 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 					if (inString)
 					{
 						if (c == TEXT('\\'))
-							++i; //skip escaped char
+							++i; // skip escaped char
 						else if (c == TEXT('"'))
 							inString = false;
 					}
@@ -1514,11 +1514,11 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 						++depth;
 					else if (c == TEXT(')') && --depth == 0)
 					{
-						++i; //move past the matching ')'
+						++i; // move past the matching ')'
 						break;
 					}
 				}
-				args = Line.Mid(cursor + 1, (i - 1) - (cursor + 1)); //contents inside the parens
+				args = Line.Mid(cursor + 1, (i - 1) - (cursor + 1)); // contents inside the parens
 				replaceEnd = i;
 			}
 
@@ -1640,8 +1640,8 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 				} // !inLiteral
 			} // GV matching
 
-			//replace "seen"/"unseen"/"seenCounter" with getSeenCounter() calls
-			//(order is safe: none of the patterns match inside the others' output)
+			// replace "seen"/"unseen"/"seenCounter" with getSeenCounter() calls
+			// (order is safe: none of the patterns match inside the others' output)
 			replaceSeenKeyword(line, seenPattern, TEXT("("), TEXT(" > 0)"));
 			replaceSeenKeyword(line, unseenPattern, TEXT("("), TEXT(" == 0)"));
 			replaceSeenKeyword(line, seenCounterPattern, TEXT(""), TEXT(""));
