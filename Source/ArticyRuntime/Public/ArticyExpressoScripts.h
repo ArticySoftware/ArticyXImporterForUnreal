@@ -954,12 +954,16 @@ protected:
 
     //========================================//
 
+public:
+
     /**
      * @brief The current object for script evaluation.
      *
      * The current object where the script is evaluated on. Do not change the name, as it's called like this in script fragments!
      */
     UArticyPrimitive* self = nullptr;
+
+protected:
 
     /**
      * @brief The speaker for dialog fragments.
@@ -1227,6 +1231,8 @@ protected:
      */
     void resetAllSeenCounters();
 
+public:
+
     /**
      * @brief Retrieves the seen counter for an Articy object.
      *
@@ -1246,6 +1252,8 @@ protected:
      * @return The seen counter value.
      */
     int getSeenCounter(const FString& NameOrId);
+
+protected:
 
     /**
      * @brief Sets the seen counter for the current object.

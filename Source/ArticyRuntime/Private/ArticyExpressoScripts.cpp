@@ -1560,6 +1560,18 @@ void UArticyExpressoScripts::resetAllSeenCounters()
 	}
 }
 
+namespace
+{
+	//the object a seen counter call without an explicit target acts on; while a pin's
+	//script runs, self is the pin, but the counter of interest is the owning node's
+	UArticyBaseObject* ResolveSeenTarget(UArticyPrimitive* Self)
+	{
+		if (auto* Pin = Cast<UArticyFlowPin>(Self))
+			return Pin->GetOwner();
+		return Self;
+	}
+}
+
 /**
  * @brief Retrieves the seen counter for an Articy object.
  *
@@ -1572,7 +1584,7 @@ int UArticyExpressoScripts::getSeenCounter(UArticyBaseObject* Object)
 {
 	if (Object == nullptr)
 	{
-		Object = self;
+		Object = ResolveSeenTarget(self);
 	}
 
 	UArticyGlobalVariables* GVs = GetGV();
@@ -1594,7 +1606,7 @@ int UArticyExpressoScripts::getSeenCounter(UArticyBaseObject* Object)
  */
 int UArticyExpressoScripts::setSeenCounter(const int Value)
 {
-	return setSeenCounter(self, Value);
+	return setSeenCounter(ResolveSeenTarget(self), Value);
 }
 
 /**
@@ -1610,7 +1622,7 @@ int UArticyExpressoScripts::setSeenCounter(UArticyBaseObject* Object, const int 
 {
 	if (Object == nullptr)
 	{
-		Object = self;
+		Object = ResolveSeenTarget(self);
 	}
 
 	UArticyGlobalVariables* GVs = GetGV();
