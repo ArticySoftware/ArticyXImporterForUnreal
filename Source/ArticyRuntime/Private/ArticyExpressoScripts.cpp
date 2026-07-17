@@ -1136,6 +1136,13 @@ bool UArticyExpressoScripts::Execute(const int& InstructionFragmentHash, UArticy
  */
 UArticyObject* UArticyExpressoScripts::getObj(const FString& NameOrId, const uint32& CloneId) const
 {
+	// an object held in a variable is the compound "<id>_<cloneId>" from ExpressoType;
+	// technical names contain underscores too, so only split when both halves are ids
+	FString IdPart, ClonePart;
+	if (NameOrId.Split(TEXT("_"), &IdPart, &ClonePart) && ClonePart.IsNumeric()
+		&& (IdPart.IsNumeric() || IdPart.StartsWith(TEXT("0x"))))
+		return getObj(IdPart, FCString::Atoi(*ClonePart));
+
 	if (NameOrId.StartsWith(TEXT("0x")))
 		return OwningDatabase->GetObject<UArticyObject>(FArticyId{ ArticyHelpers::HexToUint64(NameOrId) }, CloneId);
 	if (NameOrId.IsNumeric())
@@ -1644,7 +1651,15 @@ int UArticyExpressoScripts::setSeenCounter(UArticyBaseObject* Object, const int 
  */
 int UArticyExpressoScripts::getSeenCounter(const FString& NameOrId)
 {
-	return getSeenCounter(getObj(NameOrId, 0));
+	// a failed lookup must not reach the overload below, where nullptr means "use self"
+	auto* Object = getObj(NameOrId, 0);
+	if (!Object)
+	{
+		UE_LOG(LogArticyRuntime, Warning, TEXT("getSeenCounter: could not resolve object %s!"), *NameOrId);
+		return 0;
+	}
+
+	return getSeenCounter(Object);
 }
 
 /**
@@ -1658,7 +1673,15 @@ int UArticyExpressoScripts::getSeenCounter(const FString& NameOrId)
  */
 int UArticyExpressoScripts::setSeenCounter(const FString& NameOrId, const int Value)
 {
-	return setSeenCounter(getObj(NameOrId, 0), Value);
+	// see getSeenCounter(NameOrId): a failed lookup must not fall back to self
+	auto* Object = getObj(NameOrId, 0);
+	if (!Object)
+	{
+		UE_LOG(LogArticyRuntime, Warning, TEXT("setSeenCounter: could not resolve object %s!"), *NameOrId);
+		return 0;
+	}
+
+	return setSeenCounter(Object, Value);
 }
 
 /**
