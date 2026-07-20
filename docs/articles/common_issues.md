@@ -11,15 +11,19 @@ By addressing these common issues, you should be able to avoid many of the pitfa
 **Solution**:
 - Make sure the **ArticyContent** folder is listed under **Additional Asset Directories to Cook** in your project’s **Packaging settings**.
 
+![Add ArticyContent as additional directory to cook](CookSettings.png)
+
 To verify that the **Articy** assets are making it into the packaged build, use the **UnrealPak** utility to extract the packaged content and check for the bundled assets:
 
 ```
 UnrealPak.exe "C:\Path\To\Your\ShippingBuild\WindowsNoEditor\ProjectName\Content\Paks\ProjectName.pak" -Extract "C:\Path\To\Extract\To"
 ```
 
-Replace the paths with the location of your build and an extraction directory. Check if the **Articy Generated** assets are present in the **ArticyContent/Generated** folder.
+Replacing the paths to match the location of your exported build and a temporary directory to extract to. Make sure to use absolute paths, as we've found UnrealPak behaves best with them.
 
-The **UnrealPak** utility is located in the `\Engine\Binaries` folder of your Unreal installation.
+Then, check the contents of that directory and ensure that the Articy Generated assets are in the `ArticyContent/Generated` folder.
+
+The `UnrealPak` executable is located in the `\Engine\Binaries` folder in your Unreal installation. On Windows, it's at `\Engine\Binaries\Win64\UnrealPak.exe`.
 
 ---
 
@@ -29,7 +33,7 @@ The **UnrealPak** utility is located in the `\Engine\Binaries` folder of your Un
 
 **Solution**:
 - Ensure you are using version **1.3.0** or higher of the plugin, which resolves this issue.
-- If the problem persists, please contact **support\@articy.com** or create an issue on GitHub.
+- If the problem persists, please contact **support\@articy.com** or [create an issue on GitHub](https://github.com/ArticySoftware/ArticyXImporterForUnreal/issues/new/choose).
 
 ---
 
@@ -63,6 +67,7 @@ Error C2451: a conditional expression of type 'const TWeakObjectPtr<UObject,FWea
 
 **Solution**:
 - Manually edit the generated C++ file to resolve the issue. Locate the `GetUserMethodsProviderObject` method in `{ProjectName}ExpressoScripts.h` (in the **ArticyGenerated** folder) and delete it.
+- Once the project succesfully compiles and opens, run a full reimport.
 
 ---
 

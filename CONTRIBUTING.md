@@ -26,6 +26,17 @@ To do that you just need to get the sources from here on GitHub, your best bet i
 - Find out whether your idea fits with the scope and aims of the project. It's up to you to make a strong case to convince the project's developers of the merits of this feature. Keep in mind that we want features that will be useful to the majority of our users and not just a small subset
 - Make sure to base your contribution off the updated `main` branch
 
+### Setup development environment
+
+We usually use the Maniac Manfred demo project to develop and test changes directly. To start developing for **ArticyXImporter** make sure to have Unreal Engine installed. This is how a quick setup of the projects could look like:
+
+```shell
+git clone git@github.com:ArticySoftware/ArticyXDemoProjectForUnreal-ManiacManfred.git ManiacManfredDemo
+cd ManiacManfredDemo
+mkdir Plugins && cd Plugins
+git clone git@github.com:ArticySoftware/ArticyXImporterForUnreal.git ArticyXImporter
+```
+
 ### Branching strategy
 
 Changes for the upcoming version are integrated in the `main` branch. `main` always reflects the current state of development, so it might be unstable at times. To get a stable version of the plugin, refer to the latest release. Features or bugfixes that cannot be finished for an upcoming released are developed in separate branches. Support for older versions, if necessary, is done in separate release branches:
