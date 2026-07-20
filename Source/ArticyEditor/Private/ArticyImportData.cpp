@@ -1446,10 +1446,10 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 	const FRegexPattern unseenPattern(TEXT("\\bunseen\\b"));
 	const FRegexPattern seenCounterPattern(TEXT("\\bseenCounter\\b"));
 
-	// replace a shorthand keyword with a getSeenCounter() call, keeping any optional
-	// (balanced) argument so seen("Obj") hits the name/id overload; Prefix/Suffix wrap it
+	// replace a whole-word shorthand keyword with its getSeenCounter() expansion, but not
+	// inside a string literal (e.g. print text)
 	auto replaceSeenKeyword = [&literalStringPattern](FString& Line, const FRegexPattern& Pattern,
-		const FString& Prefix, const FString& Suffix)
+		const FString& Replacement)
 	{
 		for (int32 searchStart = 0; searchStart <= Line.Len(); )
 		{
@@ -1485,46 +1485,8 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 				continue;
 			}
 
-			// capture an optional balanced (...) argument list following the keyword,
-			// ignoring parens that live inside a string literal
-			int32 cursor = kwEnd;
-			while (cursor < Line.Len() && FChar::IsWhitespace(Line[cursor]))
-				++cursor;
-
-			FString args;
-			int32 replaceEnd = kwEnd;
-			if (cursor < Line.Len() && Line[cursor] == TEXT('('))
-			{
-				int32 depth = 0;
-				bool inString = false;
-				int32 i = cursor;
-				for (; i < Line.Len(); ++i)
-				{
-					const TCHAR c = Line[i];
-					if (inString)
-					{
-						if (c == TEXT('\\'))
-							++i; // skip escaped char
-						else if (c == TEXT('"'))
-							inString = false;
-					}
-					else if (c == TEXT('"'))
-						inString = true;
-					else if (c == TEXT('('))
-						++depth;
-					else if (c == TEXT(')') && --depth == 0)
-					{
-						++i; // move past the matching ')'
-						break;
-					}
-				}
-				args = Line.Mid(cursor + 1, (i - 1) - (cursor + 1)); // contents inside the parens
-				replaceEnd = i;
-			}
-
-			const FString replacement = Prefix + TEXT("getSeenCounter(") + args + TEXT(")") + Suffix;
-			Line = Line.Left(kwStart) + replacement + Line.Mid(replaceEnd);
-			searchStart = kwStart + replacement.Len();
+			Line = Line.Left(kwStart) + Replacement + Line.Mid(kwEnd);
+			searchStart = kwStart + Replacement.Len();
 		}
 	};
 
@@ -1642,9 +1604,9 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 
 			// replace "seen"/"unseen"/"seenCounter" with getSeenCounter() calls
 			// (order is safe: none of the patterns match inside the others' output)
-			replaceSeenKeyword(line, seenPattern, TEXT("("), TEXT(" > 0)"));
-			replaceSeenKeyword(line, unseenPattern, TEXT("("), TEXT(" == 0)"));
-			replaceSeenKeyword(line, seenCounterPattern, TEXT(""), TEXT(""));
+			replaceSeenKeyword(line, seenPattern, TEXT("(getSeenCounter() > 0)"));
+			replaceSeenKeyword(line, unseenPattern, TEXT("(getSeenCounter() == 0)"));
+			replaceSeenKeyword(line, seenCounterPattern, TEXT("getSeenCounter()"));
 
 			//re-compose the string
 			string += line;
