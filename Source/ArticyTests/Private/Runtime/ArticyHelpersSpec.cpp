@@ -113,6 +113,50 @@ void FArticyHelpersSpec::Define()
 			TestEqual(TEXT("m01"), static_cast<double>(M.M[0][1]), 0.0);
 		});
 	});
+
+	// The content folders are derived from the configured articy directory. Generated assets
+	// and the importer both build paths from these, so the two have to agree exactly - a
+	// mismatch shows up as assets that are generated but never found again.
+	Describe("content folders", [this]()
+	{
+		It("nests Resources and Generated under ArticyContent", [this]()
+		{
+			const FString Root = ArticyHelpers::GetArticyFolder();
+			TestFalse(TEXT("articy folder configured"), Root.IsEmpty());
+			TestEqual(TEXT("resources"), ArticyHelpers::GetArticyResourcesFolder(),
+				Root / TEXT("ArticyContent") / TEXT("Resources"));
+			TestEqual(TEXT("generated"), ArticyHelpers::GetArticyGeneratedFolder(),
+				Root / TEXT("ArticyContent") / TEXT("Generated"));
+		});
+	});
+
+	// Without imported content there is no generated localizer system, which is the state
+	// every uninitialised project starts in. Both helpers have to degrade to the caller's
+	// fallback rather than to an empty string.
+	Describe("localization without a localizer", [this]()
+	{
+		It("returns the key when no backup text is given", [this]()
+		{
+			const FText Key = FText::FromString(TEXT("Some.Loca.Key"));
+			TestEqual(TEXT("key"), ArticyHelpers::LocalizeString(nullptr, Key).ToString(),
+				FString(TEXT("Some.Loca.Key")));
+		});
+
+		It("prefers the backup text over the key", [this]()
+		{
+			const FText Key = FText::FromString(TEXT("Some.Loca.Key"));
+			const FText Backup = FText::FromString(TEXT("fallback"));
+			TestEqual(TEXT("backup"), ArticyHelpers::LocalizeString(nullptr, Key, true, &Backup).ToString(),
+				FString(TEXT("fallback")));
+		});
+
+		It("returns the source text unchanged from ResolveText", [this]()
+		{
+			const FText Source = FText::FromString(TEXT("plain text"));
+			TestEqual(TEXT("unchanged"), ArticyHelpers::ResolveText(nullptr, &Source).ToString(),
+				FString(TEXT("plain text")));
+		});
+	});
 }
 
 #endif // WITH_AUTOMATION_TESTS

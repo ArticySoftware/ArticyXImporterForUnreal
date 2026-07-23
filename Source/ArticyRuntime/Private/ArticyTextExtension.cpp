@@ -147,7 +147,18 @@ FString UArticyTextExtension::FormatNumber(const FString& SourceValue, const FSt
 			while (FormatIndex + ZeroCount < NumberFormat.Len() && NumberFormat[FormatIndex + ZeroCount] == '0')
 				ZeroCount++;
 
-			FormattedValue += FString::Printf(TEXT("%0*lld"), ZeroCount, FMath::RoundToInt(Value));
+			// Zero-pad by hand rather than with "%0*lld": the runtime-width form pairs the
+			// '*' with the wrong argument on some engine versions (it reads the value as the
+			// width), so a "000" format produced a run of zeros instead of a padded number.
+			const int64 Rounded = static_cast<int64>(FMath::RoundToDouble(Value));
+			const bool bNegative = Rounded < 0;
+			FString Digits = FString::Printf(TEXT("%lld"), bNegative ? -Rounded : Rounded);
+			if (Digits.Len() < ZeroCount)
+				Digits = FString::ChrN(ZeroCount - Digits.Len(), TEXT('0')) + Digits;
+			if (bNegative)
+				Digits = TEXT("-") + Digits;
+
+			FormattedValue += Digits;
 			FormatIndex += ZeroCount;
 		}
 		else if (CurrentChar == '#')
@@ -342,12 +353,13 @@ FString UArticyTextExtension::ExecuteMethod(UObject* Outer, const FText& Method,
 		{
 			const FText& ResolveString = FText::FromString(Args[0]);
 			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
-            
+
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
 				return Args[2];
 			}
-			return Args[3];
+			// the else branch is optional: a three-argument if has nothing to fall back to
+			return Args.IsValidIndex(3) ? Args[3] : TEXT("");
 		}
 	}
 	else if (Method.ToString() == TEXT("not"))
@@ -356,10 +368,11 @@ FString UArticyTextExtension::ExecuteMethod(UObject* Outer, const FText& Method,
 		{
 			const FText& ResolveString = FText::FromString(Args[0]);
 			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
-            
+
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
-				return Args[3];
+				// see if above: the branch taken on a match is optional here
+				return Args.IsValidIndex(3) ? Args[3] : TEXT("");
 			}
 			return Args[2];
 		}
