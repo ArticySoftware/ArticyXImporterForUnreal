@@ -77,6 +77,26 @@ FArticyRef PlayerCharacter;
 
 This restricts the objects shown in the **Articy Asset Picker** to those of type `UManiacManfredCharacter`, helping to ensure that only valid objects are selected.
 
+There are currently three articy UPROPERTY meta specifiers.
+- **ArticyClassRestriction** (for FArticyId and FArticyRef): Restricts the articy asset picker to the given class and, on its own, its descendants. The class is assigned without the C++ Prefix (i.e. UArticyEntity becomes ArticyEntity)
+- **ArticyExactClass** (for FArticyId and FArticyRef): Restricts the Exact Class checkbox in the articy asset picker to the specified value. Useful to exclude child classes of a given class in combination with ArticyClassRestriction
+- **ArticyNoWidget** (for FArticyId). This is a performance optimization for large projects and can be used to disable the custom widgets for FArticyIds, as they are more computationally expensive.
+
+Below is example code:
+```cpp
+class AMyActor : public AActor
+{
+public:
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, meta = (ArticyClassRestriction=ArticyNode, ArticyExactClass = true)
+	FArticyRef NodeReference;
+	
+	UPROPERTY(EditAnywhere, meta = (ArticyClassRestriction=ArticyEntity, ArticyNoWidget = true)
+	FArticyId EntityId	
+}
+```
+
 ### Lists and Arrays of ArticyRefs
 
 You can also use lists or arrays of **ArticyRef** to manage multiple references.

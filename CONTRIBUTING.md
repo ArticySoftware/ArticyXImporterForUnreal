@@ -31,6 +31,17 @@ To do that you just need to get the sources from here on GitHub, your best bet i
 
 The plugin ships with an automated test suite built on Unreal's Automation framework, under the `Tests/` directory. Please run it before submitting a contribution, and add tests where practical: unit tests for self-contained logic (parsing, type handling, formatting) and integration tests for runtime behaviour that needs imported content (database, global variables, Flow Player). See [`Tests/README.md`](Tests/README.md) for how to run them.
 
+### Setup development environment
+
+We usually use the Maniac Manfred demo project to develop and test changes directly. To start developing for **ArticyXImporter** make sure to have Unreal Engine installed. This is how a quick setup of the projects could look like:
+
+```shell
+git clone git@github.com:ArticySoftware/ArticyXDemoProjectForUnreal-ManiacManfred.git ManiacManfredDemo
+cd ManiacManfredDemo
+mkdir Plugins && cd Plugins
+git clone git@github.com:ArticySoftware/ArticyXImporterForUnreal.git ArticyXImporter
+```
+
 ### Branching strategy
 
 Changes for the upcoming version are integrated in the `main` branch. `main` always reflects the current state of development, so it might be unstable at times. To get a stable version of the plugin, refer to the latest release. Features or bugfixes that cannot be finished for an upcoming released are developed in separate branches. Support for older versions, if necessary, is done in separate release branches:

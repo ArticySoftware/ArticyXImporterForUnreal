@@ -17,7 +17,7 @@ The purpose of this plugin is to easily import and integrate **articy:draft X** 
    Ensure your Unreal project supports C++. If your project is Blueprint-only, convert it by adding a simple C++ class, like `MyActor`. After creating the class, your project will now support both C++ and Blueprints.
 
 2. **Install the plugin:**
-   - You can either install the plugin via GitHub or the Unreal Engine Marketplace. 
+   - You can either install the plugin via GitHub or Fab. 
    - Once installed, enable it by going to `Edit -> Plugins` in Unreal and enabling `ArticyXImporter`. Restart the editor when prompted.
 
 3. **Export your articy:draft X data:**

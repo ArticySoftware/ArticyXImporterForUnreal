@@ -55,15 +55,10 @@ public:
 		const FText MissingEntry = FText::FromString("<MISSING STRING TABLE ENTRY>");
 		FArticyId AssetId;
 
-		// Look up entry in specified string table
-		TOptional<FString> TableName = FTextInspector::GetNamespace(Key);
-		if (!TableName.IsSet())
-		{
-			TableName = TEXT("ARTICY");
-		}
+		const FName TableName = TEXT("ARTICY");
 
 		// Find the table
-		FStringTableConstPtr TablePtr = FStringTableRegistry::Get().FindStringTable(FName(TableName.GetValue()));
+		FStringTableConstPtr TablePtr = FStringTableRegistry::Get().FindStringTable(TableName);
 		if (!TablePtr.IsValid())
 		{
 			return nullptr;

@@ -154,4 +154,4 @@ For more advanced handling, you can retrieve all objects of a specific type usin
 
 Whether using **C++** or **Blueprint**, **ArticyXImporter** provides flexible ways to access Articy objects in Unreal. You can query objects by **Technical Name**, **ArticyId**, or **Type** and modify their properties directly in Unreal Engine.
 
-For more advanced techniques and best practices, explore the [Object Handling with ArticyRef](Object-Handling-with-ArticyRef) section.
+For more advanced techniques and best practices, explore the [Object Handling with ArticyRef](@ref objectHandlingArticyRef) section.

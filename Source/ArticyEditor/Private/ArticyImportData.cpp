@@ -1446,6 +1446,50 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 	const FRegexPattern unseenPattern(TEXT("\\bunseen\\b"));
 	const FRegexPattern seenCounterPattern(TEXT("\\bseenCounter\\b"));
 
+	// replace a whole-word shorthand keyword with its getSeenCounter() expansion, but not
+	// inside a string literal (e.g. print text)
+	auto replaceSeenKeyword = [&literalStringPattern](FString& Line, const FRegexPattern& Pattern,
+		const FString& Replacement)
+	{
+		for (int32 searchStart = 0; searchStart <= Line.Len(); )
+		{
+			// re-scan from scratch after each edit, since replacements shift the string
+			FRegexMatcher matcher(Pattern, Line);
+			int32 kwStart = INDEX_NONE, kwEnd = INDEX_NONE;
+			while (matcher.FindNext())
+			{
+				if (matcher.GetMatchBeginning() >= searchStart)
+				{
+					kwStart = matcher.GetMatchBeginning();
+					kwEnd = matcher.GetMatchEnding();
+					break;
+				}
+			}
+			if (kwStart == INDEX_NONE)
+				break;
+
+			// don't touch the keyword if it appears inside a literal string (e.g. print text)
+			bool inLiteral = false;
+			FRegexMatcher literals(literalStringPattern, Line);
+			while (literals.FindNext())
+			{
+				if (kwStart >= literals.GetMatchBeginning() && kwEnd <= literals.GetMatchEnding())
+				{
+					inLiteral = true;
+					break;
+				}
+			}
+			if (inLiteral)
+			{
+				searchStart = kwEnd;
+				continue;
+			}
+
+			Line = Line.Left(kwStart) + Replacement + Line.Mid(kwEnd);
+			searchStart = kwStart + Replacement.Len();
+		}
+	};
+
 	bool bCreateBlueprintableUserMethods = UArticyPluginSettings::Get()->bCreateBlueprintTypeForScriptMethods;
 
 	FString string = Fragment; //Fragment.Replace(TEXT("\n"), TEXT(""));
@@ -1558,39 +1602,11 @@ void UArticyImportData::AddScriptFragment(const FString& Fragment, const bool bI
 				} // !inLiteral
 			} // GV matching
 
-			// replace "seen" and "unseen" with corresponding expressions
-			FRegexMatcher seenMatcher(seenPattern, line);
-			FRegexMatcher unseenMatcher(unseenPattern, line);
-
-			while (seenMatcher.FindNext())
-			{
-				auto start = seenMatcher.GetMatchBeginning() + offset;
-				auto end = seenMatcher.GetMatchEnding() + offset;
-				line = line.Left(start) + TEXT("seenCounter > 0") + line.Mid(end);
-				offset += strlen("seenCounter > 0") - (end - start);
-			}
-
-			offset = 0; // reset offset for unseen replacement
-
-			while (unseenMatcher.FindNext())
-			{
-				auto start = unseenMatcher.GetMatchBeginning() + offset;
-				auto end = unseenMatcher.GetMatchEnding() + offset;
-				line = line.Left(start) + TEXT("seenCounter == 0") + line.Mid(end);
-				offset += strlen("seenCounter == 0") - (end - start);
-			}
-
-			FRegexMatcher seenCounterMatcher(seenCounterPattern, line);
-
-			offset = 0; // reset offset for seen counter replacement
-
-			while (seenCounterMatcher.FindNext())
-			{
-				auto start = seenCounterMatcher.GetMatchBeginning() + offset;
-				auto end = seenCounterMatcher.GetMatchEnding() + offset;
-				line = line.Left(start) + TEXT("getSeenCounter()") + line.Mid(end);
-				offset += strlen("getSeenCounter()") - (end - start);
-			}
+			// replace "seen"/"unseen"/"seenCounter" with getSeenCounter() calls
+			// (order is safe: none of the patterns match inside the others' output)
+			replaceSeenKeyword(line, seenPattern, TEXT("(getSeenCounter() > 0)"));
+			replaceSeenKeyword(line, unseenPattern, TEXT("(getSeenCounter() == 0)"));
+			replaceSeenKeyword(line, seenCounterPattern, TEXT("getSeenCounter()"));
 
 			//re-compose the string
 			string += line;
