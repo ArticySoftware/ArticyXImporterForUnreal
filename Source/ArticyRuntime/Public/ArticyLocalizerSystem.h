@@ -76,19 +76,16 @@ public:
 			return FText(SourceString);
 		}
 
-		// By default, return via the key
+		// The key has no usable table entry, so fall back to the backup text if the caller
+		// gave one. Resolving the key instead would hide it behind the raw key string.
+		const FText& Fallback = BackupText ? *BackupText : Key;
+
 		if (ResolveTextExtension && !Key.ToString().EndsWith(".PreviewText"))
 		{
-			return ResolveText(Outer, &Key);
+			return ResolveText(Outer, &Fallback);
 		}
 
-		// Return backup text, if relevant
-		if (BackupText)
-		{
-			return *BackupText;
-		}
-
-		return Key;
+		return Fallback;
 	}
 
 protected:

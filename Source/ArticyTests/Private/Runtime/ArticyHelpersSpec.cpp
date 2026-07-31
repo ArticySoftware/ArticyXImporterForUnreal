@@ -130,10 +130,10 @@ void FArticyHelpersSpec::Define()
 		});
 	});
 
-	// Without imported content there is no generated localizer system, which is the state
-	// every uninitialised project starts in. Both helpers have to degrade to the caller's
-	// fallback rather than to an empty string.
-	Describe("localization without a localizer", [this]()
+	// A project without imported content has no generated localizer system at all, and one
+	// with imported content still misses on an unknown key. Both helpers have to degrade to
+	// the caller's fallback either way, so these hold in an empty and a real project alike.
+	Describe("localization fallbacks", [this]()
 	{
 		It("returns the key when no backup text is given", [this]()
 		{

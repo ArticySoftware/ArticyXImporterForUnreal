@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.
+#
 # Runs the ArticyXImporter automation tests headlessly (Linux/Mac).
 #
 # Junction the plugin into the host project, launches the editor commandlet to
@@ -7,7 +9,9 @@
 # own exit code is unreliable for test failures, so the report is the source of
 # truth: a non-zero exit code here means one or more tests failed.
 #
-# Usage: UE_ROOT=/path/to/UnrealEngine ./run-tests.sh
+# Usage:
+#   UE_ROOT=/path/to/UnrealEngine ./run-tests.sh
+#   UE_ROOT=... KEEP_STAGING=1 ./run-tests.sh   # keep the staged copy for incremental runs
 #
 set -euo pipefail
 
@@ -103,6 +107,16 @@ cat > "$host_dir/Source/HostProject/HostProject.cpp" <<'EOF'
 
 IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, HostProject, "HostProject");
 EOF
+
+# From here on the plugin exists twice on disk, so the staged copy is removed on the way
+# out - including when a step aborts. Left behind, it puts a second .uplugin (and a second
+# copy of every class) on the include path of any project that builds this tree.
+cleanup_staging() {
+	if [[ -z "${KEEP_STAGING:-}" ]]; then
+		rm -rf "$host_dir/Plugins"
+	fi
+}
+trap cleanup_staging EXIT
 
 # Stage the plugin into the host project. We mirror-copy rather than symlink
 # because the plugin repo contains this host project; linking the whole repo

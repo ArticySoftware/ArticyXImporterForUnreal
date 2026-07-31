@@ -333,10 +333,10 @@ void UArticyGlobalVariables::PrintGlobalVariable(FArticyGvName GvName)
     bLogVariableAccess = false;
 
     auto set = GetNamespace(GvName.GetNamespace());
-    if (set)
+    //an unknown namespace or variable name yields no pointer, so check before dereferencing
+    UArticyVariable** basePtr = set ? set->GetPropPtr<UArticyVariable*>(GvName.GetVariable()) : nullptr;
+    if (basePtr)
     {
-        UArticyVariable** basePtr = set->GetPropPtr<UArticyVariable*>(GvName.GetVariable());
-
         if (Cast<UArticyBool>(*basePtr))
         {
             bool boolSucceeded = false;

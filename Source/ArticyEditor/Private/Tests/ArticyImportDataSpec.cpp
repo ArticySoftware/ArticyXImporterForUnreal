@@ -193,16 +193,16 @@ void FArticyImportDataSpec::Define()
 				FString(TEXT("getSeenCounter()")));
 		});
 
-		It("carries an object argument into getSeenCounter (name/id overload)", [this]()
+		It("treats the keywords as variables, never consuming an argument list", [this]()
 		{
-			// Regression: the old two-stage replacement orphaned the argument, e.g.
-			// seen("Sally") produced getSeenCounter() > 0("Sally") which failed to compile.
-			TestEqual(TEXT("seen(arg)"), ParseExpresso(TEXT("seen(\"Sally\")"), false),
-				FString(TEXT("(getSeenCounter(FString(TEXT(\"Sally\"))) > 0)")));
-			TestEqual(TEXT("unseen(arg)"), ParseExpresso(TEXT("unseen(\"Sally\")"), false),
-				FString(TEXT("(getSeenCounter(FString(TEXT(\"Sally\"))) == 0)")));
-			TestEqual(TEXT("seenCounter(arg)"), ParseExpresso(TEXT("seenCounter(\"Sally\")"), false),
-				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\")))")));
+			// All three always refer to the current node, so a parenthesised term written
+			// after the keyword stays a term of its own instead of becoming an argument.
+			TestEqual(TEXT("seen && (...)"), ParseExpresso(TEXT("seen && (Game.Score > 0)"), false),
+				FString(TEXT("(getSeenCounter() > 0) && ((*Game->Score) > 0)")));
+			TestEqual(TEXT("unseen || (...)"), ParseExpresso(TEXT("unseen || (Game.Score > 0)"), false),
+				FString(TEXT("(getSeenCounter() == 0) || ((*Game->Score) > 0)")));
+			TestEqual(TEXT("seenCounter + 1"), ParseExpresso(TEXT("seenCounter + 1"), false),
+				FString(TEXT("getSeenCounter() + 1")));
 		});
 
 		It("keeps comparison operators against the integer seenCounter", [this]()
@@ -210,8 +210,8 @@ void FArticyImportDataSpec::Define()
 			// The correct way to compare a count: seenCounter, not seen.
 			TestEqual(TEXT("seenCounter > 10"), ParseExpresso(TEXT("seenCounter > 10"), false),
 				FString(TEXT("getSeenCounter() > 10")));
-			TestEqual(TEXT("seenCounter(arg) >= 10"), ParseExpresso(TEXT("seenCounter(\"Sally\") >= 10"), false),
-				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\"))) >= 10")));
+			TestEqual(TEXT("seenCounter >= 10"), ParseExpresso(TEXT("seenCounter >= 10"), false),
+				FString(TEXT("getSeenCounter() >= 10")));
 		});
 
 		It("does not touch keywords that appear inside a string literal", [this]()
@@ -244,8 +244,8 @@ void FArticyImportDataSpec::Define()
 			// its own line with a trailing ';'. Keyword expansion runs independently per
 			// statement, and the real setSeenCounter() function is left untouched.
 			TestEqual(TEXT("keyword then gv"),
-				ParseExpresso(TEXT("seenCounter(\"Sally\");Game.Score = 5"), true),
-				FString(TEXT("getSeenCounter(FString(TEXT(\"Sally\")));\n(*Game->Score) = 5;")));
+				ParseExpresso(TEXT("Game.Hits = seenCounter;Game.Score = 5"), true),
+				FString(TEXT("(*Game->Hits) = getSeenCounter();\n(*Game->Score) = 5;")));
 			TestEqual(TEXT("setSeenCounter preserved, bare seenCounter expanded"),
 				ParseExpresso(TEXT("Game.Score = 5;setSeenCounter(\"Sally\", seenCounter)"), true),
 				FString(TEXT("(*Game->Score) = 5;\nsetSeenCounter(FString(TEXT(\"Sally\")), getSeenCounter());")));

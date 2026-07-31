@@ -14,15 +14,30 @@
 
 #if WITH_AUTOMATION_TESTS
 
-// Integration tests: these require a host project that has already imported articy
-// content (a generated database + global variables), e.g. the ManiacManfred demo
-// project. They only touch the plugin's base-class API, so the plugin never depends
-// on the generated game module.
+// Integration tests: these need a host project that has already imported articy content
+// (a generated database + global variables). They are written against the objects and
+// variables named below, which come from the ManiacManfred demo project - a project built
+// on different articy content will not have them, so each test says what it needs and is
+// skipped with a warning when that is missing. The code only touches the plugin's
+// base-class API, so the plugin itself never depends on the generated game module.
 namespace
 {
+	// The demo content these tests are written against.
+	const TCHAR* DemoFlowFragment = TEXT("FFr_Lobby");
+	const TCHAR* DemoDialogue = TEXT("Dlg_TheTherapist");
+	const TCHAR* DemoEntity = TEXT("Chr_Hamster");
+	const TCHAR* DemoEntityProperty = TEXT("ZIndex");
+	const TCHAR* DemoVarNamespace = TEXT("GameState");
+	const TCHAR* DemoVarName = TEXT("awake");
+
 	UWorld* GetIntegrationWorld()
 	{
 		return GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+	}
+
+	FString MissingContentMessage(const FString& What)
+	{
+		return FString::Printf(TEXT("Skipped: '%s' is not in this project's imported articy content."), *What);
 	}
 }
 
@@ -46,8 +61,10 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("database"), DB))
 				return;
 
+			// The precondition for everything below: a project with nothing imported fails
+			// here rather than reporting a skip for each individual piece of demo content.
 			const TArray<UArticyObject*> Objects = DB->GetObjectsOfClass(UArticyObject::StaticClass());
-			TestTrue(TEXT("database has objects"), Objects.Num() > 0);
+			TestTrue(TEXT("database has objects - has articy content been imported?"), Objects.Num() > 0);
 		});
 
 		It("finds a known object by its technical name", [this]()
@@ -60,8 +77,14 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("database"), DB))
 				return;
 
-			UArticyObject* Lobby = DB->GetObjectByName(FName(TEXT("FFr_Lobby")));
-			TestNotNull(TEXT("FFr_Lobby found"), Lobby);
+			UArticyObject* Lobby = DB->GetObjectByName(FName(DemoFlowFragment));
+			if (!Lobby)
+			{
+				AddWarning(MissingContentMessage(DemoFlowFragment));
+				return;
+			}
+
+			TestEqual(TEXT("technical name matches"), Lobby->GetTechnicalName().ToString(), FString(DemoFlowFragment));
 		});
 	});
 
@@ -77,8 +100,16 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("global variables"), GV))
 				return;
 
+			// An unknown name resolves to bSucceeded == false rather than a value, so this
+			// reports missing content instead of asserting on whatever the default was.
 			bool bSucceeded = false;
-			GV->GetBoolVariable(FArticyGvName(FName(TEXT("GameState")), FName(TEXT("awake"))), bSucceeded);
+			GV->GetBoolVariable(FArticyGvName(FName(DemoVarNamespace), FName(DemoVarName)), bSucceeded);
+			if (!bSucceeded)
+			{
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("%s.%s"), DemoVarNamespace, DemoVarName)));
+				return;
+			}
+
 			TestTrue(TEXT("GameState.awake resolved"), bSucceeded);
 		});
 
@@ -92,9 +123,14 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("global variables"), GV))
 				return;
 
-			const FArticyGvName Awake(FName(TEXT("GameState")), FName(TEXT("awake")));
+			const FArticyGvName Awake{ FName(DemoVarNamespace), FName(DemoVarName) };
 			bool bOk = false;
 			const bool bOriginal = GV->GetBoolVariable(Awake, bOk);
+			if (!bOk)
+			{
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("%s.%s"), DemoVarNamespace, DemoVarName)));
+				return;
+			}
 
 			GV->SetBoolVariable(Awake, true);
 			TestTrue(TEXT("reads true after set"), GV->GetBoolVariable(Awake, bOk));
@@ -115,10 +151,19 @@ void FArticyIntegrationSpec::Define()
 				return;
 
 			// Ensure GVs are loaded for this world.
-			if (!TestNotNull(TEXT("global variables"), UArticyGlobalVariables::GetDefault(World)))
+			UArticyGlobalVariables* GV = UArticyGlobalVariables::GetDefault(World);
+			if (!TestNotNull(TEXT("global variables"), GV))
 				return;
 
-			const FText Format = FText::FromString(TEXT("[GameState.awake]"));
+			bool bSucceeded = false;
+			GV->GetBoolVariable(FArticyGvName(FName(DemoVarNamespace), FName(DemoVarName)), bSucceeded);
+			if (!bSucceeded)
+			{
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("%s.%s"), DemoVarNamespace, DemoVarName)));
+				return;
+			}
+
+			const FText Format = FText::FromString(FString::Printf(TEXT("[%s.%s]"), DemoVarNamespace, DemoVarName));
 			const FText Result = UArticyTextExtension::Get()->Resolve(World, &Format);
 
 			// The token must have been replaced with the variable's (localized) value.
@@ -133,15 +178,23 @@ void FArticyIntegrationSpec::Define()
 				return;
 
 			// Prime the persistent database clone (GetObjectProperty resolves through it).
-			if (!TestNotNull(TEXT("database"), UArticyDatabase::Get(World)))
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
 				return;
 
+			if (!DB->GetObjectByName(FName(DemoEntity)))
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
 			// Chr_Hamster has ZIndex 4.0 in the demo; the token resolves it via the object property path.
-			const FText Format = FText::FromString(TEXT("[Chr_Hamster.ZIndex]"));
+			const FString Token = FString::Printf(TEXT("%s.%s"), DemoEntity, DemoEntityProperty);
+			const FText Format = FText::FromString(FString::Printf(TEXT("[%s]"), *Token));
 			const FString Res = UArticyTextExtension::Get()->Resolve(World, &Format).ToString();
 
 			// On lookup failure the resolver returns the raw source name; a real value differs from it.
-			TestNotEqual(TEXT("resolved, not the raw fallback"), Res, FString(TEXT("Chr_Hamster.ZIndex")));
+			TestNotEqual(TEXT("resolved, not the raw fallback"), Res, Token);
 			TestTrue(TEXT("looks like the z-index value"), Res.Contains(TEXT("4")));
 		});
 
@@ -161,9 +214,12 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("database"), DB))
 				return;
 
-			UArticyObject* StartNode = DB->GetObjectByName(FName(TEXT("Dlg_TheTherapist")));
-			if (!TestNotNull(TEXT("start dialogue"), StartNode))
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
 				return;
+			}
 
 			// Host the flow player component on a throwaway actor in the world.
 			AActor* Actor = World->SpawnActor<AActor>();
@@ -193,9 +249,12 @@ void FArticyIntegrationSpec::Define()
 			if (!TestNotNull(TEXT("database"), DB))
 				return;
 
-			UArticyObject* StartNode = DB->GetObjectByName(FName(TEXT("Dlg_TheTherapist")));
-			if (!TestNotNull(TEXT("start dialogue"), StartNode))
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
 				return;
+			}
 
 			AActor* Actor = World->SpawnActor<AActor>();
 			if (!TestNotNull(TEXT("actor"), Actor))

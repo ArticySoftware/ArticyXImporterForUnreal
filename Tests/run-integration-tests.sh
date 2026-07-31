@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.
+#
 # Runs the ArticyXImporter *integration* tests headlessly (Linux/Mac).
 #
 # Unlike run-tests.sh (which stages the plugin into a throwaway host project for the

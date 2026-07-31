@@ -31,7 +31,7 @@ namespace
 // a property is initialised to. Each is a hard-coded table, so an entry that goes missing
 // removes an interface from every generated class that needs it - which shows up as a build
 // error in the generated module, or as a runtime cast that quietly starts failing.
-BEGIN_DEFINE_SPEC(FArticyObjectDefLookupSpec, "Articy.Editor.ObjectDefinitions",
+BEGIN_DEFINE_SPEC(FArticyObjectDefLookupSpec, "Articy.Editor.ObjectDefinitions.Lookup",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 END_DEFINE_SPEC(FArticyObjectDefLookupSpec)
 

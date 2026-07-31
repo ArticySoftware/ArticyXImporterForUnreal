@@ -154,17 +154,21 @@ void FArticyPredefinedTypesSpec::Define()
 			TestEqual(TEXT("default"), Text->CppDefaultValue, FString(TEXT("FText::GetEmpty()")));
 		});
 
-		It("routes the localizable string types through FText", [this, TypeInfo]()
+		It("routes the localizable ArticyMultiLanguageString through FText", [this, TypeInfo]()
 		{
-			// ArticyString/ArticyMultiLanguageString are still imported as FText; this has
-			// been changed and reverted before, and the generated code depends on it.
-			FArticyPredefinedTypeBase* ArticyString = TypeInfo(TEXT("ArticyString"));
-			if (!TestNotNull(TEXT("ArticyString entry"), ArticyString)) return;
-			TestEqual(TEXT("cpp type"), ArticyString->CppType, FString(TEXT("FText")));
-
 			FArticyPredefinedTypeBase* MultiLanguage = TypeInfo(TEXT("ArticyMultiLanguageString"));
 			if (!TestNotNull(TEXT("ArticyMultiLanguageString entry"), MultiLanguage)) return;
 			TestEqual(TEXT("cpp type"), MultiLanguage->CppType, FString(TEXT("FText")));
+		});
+
+		It("maps ArticyString onto FText as well", [this, TypeInfo]()
+		{
+			// ArticyString is not a localizable type, but it currently shares the FText
+			// entry. This has been changed and reverted before, and the generated code
+			// depends on it, so the mapping is pinned here rather than assumed.
+			FArticyPredefinedTypeBase* ArticyString = TypeInfo(TEXT("ArticyString"));
+			if (!TestNotNull(TEXT("ArticyString entry"), ArticyString)) return;
+			TestEqual(TEXT("cpp type"), ArticyString->CppType, FString(TEXT("FText")));
 		});
 
 		It("keeps a placeholder item type for a generic array", [this, TypeInfo]()

@@ -8,6 +8,17 @@
 #include "ArticyTypeSystem.h"
 #include "ArticyHelpers.h"
 
+namespace
+{
+	// argument layout of the "if" and "not" methods: <source>, <comparison>, <match> [, <fallback>]
+	constexpr int32 ConditionSourceArg = 0;
+	constexpr int32 ConditionComparisonArg = 1;
+	constexpr int32 ConditionMatchArg = 2;
+	constexpr int32 ConditionFallbackArg = 3;
+	// the fallback is the only optional argument
+	constexpr int32 ConditionRequiredArgs = 3;
+}
+
 UArticyTextExtension* UArticyTextExtension::Get()
 {
 	static TWeakObjectPtr<UArticyTextExtension> ArticyTextExtension;
@@ -349,32 +360,32 @@ FString UArticyTextExtension::ExecuteMethod(UObject* Outer, const FText& Method,
 {
 	if (Method.ToString() == TEXT("if"))
 	{
-		if (Args.Num() >= 3)
+		if (Args.Num() >= ConditionRequiredArgs)
 		{
-			const FText& ResolveString = FText::FromString(Args[0]);
-			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
+			const FText& ResolveString = FText::FromString(Args[ConditionSourceArg]);
+			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[ConditionComparisonArg], TEXT("0"));
 
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
-				return Args[2];
+				return Args[ConditionMatchArg];
 			}
 			// the else branch is optional: a three-argument if has nothing to fall back to
-			return Args.IsValidIndex(3) ? Args[3] : TEXT("");
+			return Args.IsValidIndex(ConditionFallbackArg) ? Args[ConditionFallbackArg] : TEXT("");
 		}
 	}
 	else if (Method.ToString() == TEXT("not"))
 	{
-		if (Args.Num() >= 3)
+		if (Args.Num() >= ConditionRequiredArgs)
 		{
-			const FText& ResolveString = FText::FromString(Args[0]);
-			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
+			const FText& ResolveString = FText::FromString(Args[ConditionSourceArg]);
+			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[ConditionComparisonArg], TEXT("0"));
 
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
 				// see if above: the branch taken on a match is optional here
-				return Args.IsValidIndex(3) ? Args[3] : TEXT("");
+				return Args.IsValidIndex(ConditionFallbackArg) ? Args[ConditionFallbackArg] : TEXT("");
 			}
-			return Args[2];
+			return Args[ConditionMatchArg];
 		}
 	}
 	else

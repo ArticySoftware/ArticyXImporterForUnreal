@@ -6,49 +6,16 @@
 #include "ObjectDefinitionsImport.h"
 #include "ArticyImportData.h"
 #include "Dom/JsonObject.h"
-#include "Dom/JsonValue.h"
 
 #if WITH_AUTOMATION_TESTS
 
-BEGIN_DEFINE_SPEC(FArticyObjectDefinitionsImportSpec, "Articy.Editor.ObjectDefinitions",
+BEGIN_DEFINE_SPEC(FArticyPropertyDefSpec, "Articy.Editor.ObjectDefinitions.PropertyDef",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-END_DEFINE_SPEC(FArticyObjectDefinitionsImportSpec)
+END_DEFINE_SPEC(FArticyPropertyDefSpec)
 
-void FArticyObjectDefinitionsImportSpec::Define()
+void FArticyPropertyDefSpec::Define()
 {
-	Describe("FArticyTemplateConstraint::ImportFromJson", [this]()
-	{
-		It("parses the property, type and localization flag", [this]()
-		{
-			TSharedPtr<FJsonObject> Json = MakeShared<FJsonObject>();
-			Json->SetStringField(TEXT("Property"), TEXT("MyText"));
-			Json->SetStringField(TEXT("Type"), TEXT("string"));
-			Json->SetBoolField(TEXT("IsLocalized"), true);
-
-			FArticyTemplateConstraint Constraint;
-			Constraint.ImportFromJson(Json);
-
-			TestEqual(TEXT("property"), Constraint.Property, FString(TEXT("MyText")));
-			TestEqual(TEXT("type"), Constraint.Type, FString(TEXT("string")));
-			TestTrue(TEXT("localized"), Constraint.IsLocalized);
-		});
-	});
-
-	Describe("FArticyEnumValue::ImportFromJson", [this]()
-	{
-		It("takes the name from the key and the value from the number", [this]()
-		{
-			const TPair<FString, TSharedPtr<FJsonValue>> Entry(TEXT("Green"), MakeShared<FJsonValueNumber>(2));
-
-			FArticyEnumValue EnumValue;
-			EnumValue.ImportFromJson(Entry);
-
-			TestEqual(TEXT("name"), EnumValue.Name, FString(TEXT("Green")));
-			TestEqual(TEXT("value"), static_cast<int32>(EnumValue.Value), 2);
-		});
-	});
-
-	Describe("FArticyPropertyDef::ImportFromJson", [this]()
+	Describe("ImportFromJson", [this]()
 	{
 		It("parses a non-localized property and keeps its type", [this]()
 		{

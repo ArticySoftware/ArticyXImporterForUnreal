@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2026 articy Software GmbH & Co. KG. All rights reserved.
+#
+
 <#
 .SYNOPSIS
 	Runs the ArticyXImporter *integration* tests against a host game project that has
@@ -9,25 +13,40 @@
 	the demo has been imported. It builds the project's editor target, runs the
 	"AXImporter.Integration" automation tests, and parses the report for pass/fail.
 
+.PARAMETER UeRoot
+	Path to the Unreal Engine root (the folder containing the Engine directory).
+	Defaults to the UE_ROOT environment variable. Takes precedence over -UeVersion.
+
+.PARAMETER UeVersion
+	Engine version ("5.8") or the identifier of a registered source build, looked up in
+	the registry. Used when -UeRoot is not given; if neither is, the version is read
+	from the project's EngineAssociation.
+
 .PARAMETER Project
 	Path to the .uproject. Defaults to the single .uproject found two directories above
 	the plugin root (e.g. the ManiacManfred project that contains this plugin).
 
+.PARAMETER NoUBA
+	Disable the Unreal Build Accelerator (UE 5.5+). UBA's local executor throttles
+	compilation hard on memory-tight machines ("Delaying N processes due to memory
+	pressure"). This falls back to the standard parallel executor.
+
 .EXAMPLE
 	./run-integration-tests.ps1 -UeRoot "C:\Program Files\Epic Games\UE_5.8" -NoUBA
+
+.EXAMPLE
+	./run-integration-tests.ps1 -UeVersion 5.8
 #>
 param(
 	[string]$UeRoot = $env:UE_ROOT,
+	[string]$UeVersion,
 	[string]$Project,
 	[switch]$NoUBA
 )
 
 $ErrorActionPreference = "Stop"
 
-if ([string]::IsNullOrWhiteSpace($UeRoot)) {
-	Write-Error "Set -UeRoot or the UE_ROOT environment variable to your Unreal Engine root."
-	exit 2
-}
+. "$PSScriptRoot\Resolve-UeRoot.ps1"
 
 # Auto-detect the host game project (three levels up from Tests/: plugin -> Plugins -> project).
 if ([string]::IsNullOrWhiteSpace($Project)) {
@@ -36,6 +55,12 @@ if ([string]::IsNullOrWhiteSpace($Project)) {
 }
 if ([string]::IsNullOrWhiteSpace($Project) -or -not (Test-Path $Project)) {
 	Write-Error "Provide -Project <path-to-.uproject> for a project that has imported articy content."
+	exit 2
+}
+
+$UeRoot = Resolve-UeRoot -UeRoot $UeRoot -UeVersion $UeVersion -Project $Project
+if ([string]::IsNullOrWhiteSpace($UeRoot)) {
+	Write-Error "Set -UeRoot, -UeVersion or the UE_ROOT environment variable to your Unreal Engine root."
 	exit 2
 }
 

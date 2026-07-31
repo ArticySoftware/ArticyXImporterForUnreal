@@ -12,8 +12,13 @@ project, stages the plugin into it, runs the tests headless, and reports pass/fa
 
 ```powershell
 ./run-tests.ps1 -UeRoot "C:\Program Files\Epic Games\UE_5.8"
-# or set UE_ROOT once and just run ./run-tests.ps1
+./run-tests.ps1 -UeVersion 5.8   # looked up in the registry instead
+./run-tests.ps1                  # UE_ROOT, or the engine the surrounding game project uses
 ```
+
+The engine is taken from the first of these that resolves: `-UeRoot` (or `UE_ROOT`),
+`-UeVersion` (a launcher version or a registered source build), and finally the
+`EngineAssociation` of a game project containing this plugin, when there is one.
 
 On UE 5.5+ on a memory-tight machine, the Unreal Build Accelerator can throttle the
 build almost to a standstill ("Delaying N processes due to memory pressure"). Add
@@ -31,6 +36,11 @@ UE_ROOT=/path/to/UnrealEngine ./run-tests.sh
 
 The script exits non-zero if any test fails. A full report is written to `Report/`.
 
+The staged plugin copy under `HostProject/Plugins` is removed when the run ends, including
+when it aborts partway - otherwise it stays on the include path as a second copy of the
+plugin and breaks any project built from this tree. Pass `-KeepStaging` (`KEEP_STAGING=1`
+on Linux / Mac) to keep it and make repeated runs incremental.
+
 ## Integration tests
 
 The `AXImporter.Integration.*` tests need a host **game project that has already imported
@@ -40,6 +50,8 @@ via a separate runner:
 
 ```powershell
 ./run-integration-tests.ps1 -UeRoot "C:\Program Files\Epic Games\UE_5.8" -NoUBA
+./run-integration-tests.ps1 -UeVersion 5.8
+./run-integration-tests.ps1   # engine taken from the project's EngineAssociation
 # auto-detects the .uproject two directories above the plugin; override with -Project
 ```
 
