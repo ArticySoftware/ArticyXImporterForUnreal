@@ -129,7 +129,7 @@ namespace ArticyHelpers
 	inline FVector2D ParseFVector2DFromJson(const TSharedPtr<FJsonValue> Json)
 	{
 		if(!Json.IsValid() || !ensure(Json->Type == EJson::Object))
-			return FVector2D{};
+			return FVector2D::ZeroVector;
 
 		double X = 0, Y = 0;
 

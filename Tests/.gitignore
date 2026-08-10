@@ -1,0 +1,6 @@
+# Throwaway host project - generated on demand by the runner scripts.
+HostProject/
+
+# Test report output produced by the runner scripts.
+Report/
+ReportIntegration/

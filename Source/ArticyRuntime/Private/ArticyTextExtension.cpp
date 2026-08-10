@@ -8,6 +8,17 @@
 #include "ArticyTypeSystem.h"
 #include "ArticyHelpers.h"
 
+namespace
+{
+	// argument layout of the "if" and "not" methods: <source>, <comparison>, <match> [, <fallback>]
+	constexpr int32 ConditionSourceArg = 0;
+	constexpr int32 ConditionComparisonArg = 1;
+	constexpr int32 ConditionMatchArg = 2;
+	constexpr int32 ConditionFallbackArg = 3;
+	// the fallback is the only optional argument
+	constexpr int32 ConditionRequiredArgs = 3;
+}
+
 UArticyTextExtension* UArticyTextExtension::Get()
 {
 	static TWeakObjectPtr<UArticyTextExtension> ArticyTextExtension;
@@ -81,7 +92,7 @@ FString UArticyTextExtension::GetSource(UObject* Outer, const FString& SourceNam
 	{
 		const FString TypeName = SourceParts[0].Mid(6);
 		GetTypeProperty(TypeName, RemValue, Result, bSuccess);
-		
+
 		if (bSuccess)
 		{
 			return Result;
@@ -147,7 +158,18 @@ FString UArticyTextExtension::FormatNumber(const FString& SourceValue, const FSt
 			while (FormatIndex + ZeroCount < NumberFormat.Len() && NumberFormat[FormatIndex + ZeroCount] == '0')
 				ZeroCount++;
 
-			FormattedValue += FString::Printf(TEXT("%0*lld"), ZeroCount, FMath::RoundToInt(Value));
+			// Zero-pad by hand rather than with "%0*lld": the runtime-width form pairs the
+			// '*' with the wrong argument on some engine versions (it reads the value as the
+			// width), so a "000" format produced a run of zeros instead of a padded number.
+			const int64 Rounded = static_cast<int64>(FMath::RoundToDouble(Value));
+			const bool bNegative = Rounded < 0;
+			FString Digits = FString::Printf(TEXT("%lld"), bNegative ? -Rounded : Rounded);
+			if (Digits.Len() < ZeroCount)
+				Digits = FString::ChrN(ZeroCount - Digits.Len(), TEXT('0')) + Digits;
+			if (bNegative)
+				Digits = TEXT("-") + Digits;
+
+			FormattedValue += Digits;
 			FormatIndex += ZeroCount;
 		}
 		else if (CurrentChar == '#')
@@ -338,30 +360,32 @@ FString UArticyTextExtension::ExecuteMethod(UObject* Outer, const FText& Method,
 {
 	if (Method.ToString() == TEXT("if"))
 	{
-		if (Args.Num() >= 3)
+		if (Args.Num() >= ConditionRequiredArgs)
 		{
-			const FText& ResolveString = FText::FromString(Args[0]);
-			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
-            
+			const FText& ResolveString = FText::FromString(Args[ConditionSourceArg]);
+			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[ConditionComparisonArg], TEXT("0"));
+
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
-				return Args[2];
+				return Args[ConditionMatchArg];
 			}
-			return Args[3];
+			// the else branch is optional: a three-argument if has nothing to fall back to
+			return Args.IsValidIndex(ConditionFallbackArg) ? Args[ConditionFallbackArg] : TEXT("");
 		}
 	}
 	else if (Method.ToString() == TEXT("not"))
 	{
-		if (Args.Num() >= 3)
+		if (Args.Num() >= ConditionRequiredArgs)
 		{
-			const FText& ResolveString = FText::FromString(Args[0]);
-			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[1], TEXT("0"));
-            
+			const FText& ResolveString = FText::FromString(Args[ConditionSourceArg]);
+			const FText& ResolveResult = Resolve(Outer, &ResolveString, *Args[ConditionComparisonArg], TEXT("0"));
+
 			if (ResolveResult.ToString() == TEXT("1"))
 			{
-				return Args[3];
+				// see if above: the branch taken on a match is optional here
+				return Args.IsValidIndex(ConditionFallbackArg) ? Args[ConditionFallbackArg] : TEXT("");
 			}
-			return Args[2];
+			return Args[ConditionMatchArg];
 		}
 	}
 	else
@@ -450,9 +474,9 @@ void UArticyTextExtension::SplitInstance(const FString& InString, FString& OutNa
 
 	if (StartIdx != INDEX_NONE)
 	{
-		const int32 EndIdx = InString.Find(TEXT(">"), ESearchCase::CaseSensitive, ESearchDir::FromEnd, StartIdx);
+		const int32 EndIdx = InString.Find(TEXT(">"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
 
-		if (EndIdx != INDEX_NONE)
+		if (EndIdx != INDEX_NONE && EndIdx > StartIdx)
 		{
 			OutName = InString.Left(StartIdx);
 			OutInstanceNumber = InString.Mid(StartIdx + 1, EndIdx - StartIdx - 1);

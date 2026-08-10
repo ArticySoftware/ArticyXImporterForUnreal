@@ -645,9 +645,10 @@ const VariablePayloadType& UArticyGlobalVariables::GetVariableValue(const FName 
 	auto set = GetNamespace(Namespace);
 	if (set)
 	{
+		//an unknown variable name yields no pointer, so check before dereferencing
 		UArticyVariable** basePtr = set->GetPropPtr<UArticyVariable*>(Variable);
 
-		ArticyVariableType* typedPtr = dynamic_cast<ArticyVariableType*>(*basePtr);
+		ArticyVariableType* typedPtr = basePtr ? dynamic_cast<ArticyVariableType*>(*basePtr) : nullptr;
 
 		if (typedPtr)
 		{

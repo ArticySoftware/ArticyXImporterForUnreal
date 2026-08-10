@@ -521,6 +521,11 @@ public:
 	void SetLatestOwnerByObjectId(TMap<FArticyId, FArticyId>&& InMap) { LatestOwnerByObjectId = MoveTemp(InMap); }
 	const TMap<FArticyId, FArticyId>& GetLatestOwnerByObjectId() const { return LatestOwnerByObjectId; }
 
+#if WITH_AUTOMATION_TESTS
+	/** Test-only write access to the project definition, which is otherwise only filled by an import. */
+	FArticyProjectDef& Test_GetProject() { return Project; }
+#endif
+
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
 	FArticyLanguages Languages;
 

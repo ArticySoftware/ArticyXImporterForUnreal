@@ -1,0 +1,22 @@
+{
+  "GlobalVariables": [
+    {
+      "Namespace": "GameState",
+      "Description": "",
+      "Variables": [
+        {
+          "Variable": "awake",
+          "Type": "Boolean",
+          "Value": "False",
+          "Description": "False until the first dialogue with the therapist."
+        },
+        {
+          "Variable": "looney_bin",
+          "Type": "Boolean",
+          "Value": "False",
+          "Description": "True after talking about that topic with the therapist."
+        }
+      ]
+    }
+  ]
+}
