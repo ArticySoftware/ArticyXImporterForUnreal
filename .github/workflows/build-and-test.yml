@@ -1,0 +1,51 @@
+name: Build & Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request_review:
+    types:
+      - submitted
+  workflow_dispatch: 
+
+jobs:
+  test:
+    name: Test on Unreal Engine ${{ matrix.ue_version }}
+    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
+    runs-on: [self-hosted, Windows, Unreal]
+    strategy:
+      matrix:
+        ue_version: [5.6, 5.7, 5.8]
+      fail-fast: true
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Tests for UE ${{ matrix.ue_version }}
+        working-directory: Tests
+        run: |
+          & .\run-tests.ps1 -UeVersion ${{ matrix.ue_version }} -NoUBA
+        shell: pwsh
+
+      - name: Test Passed
+        if: success()
+        run: |
+          Write-Host "✓ Tests passed for UE ${{ matrix.ue_version }}" -ForegroundColor Green
+        shell: pwsh
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-ue-${{ matrix.ue_version }}-${{ github.run_id }}
+          path: Tests/Report/
+          retention-days: 90
+
+      - name: Test Failed
+        if: failure()
+        run: |
+          Write-Host "✗ Tests failed for UE ${{ matrix.ue_version }}" -ForegroundColor Red
+          exit 1
+        shell: pwsh
