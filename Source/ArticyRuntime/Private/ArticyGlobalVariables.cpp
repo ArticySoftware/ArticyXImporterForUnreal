@@ -182,6 +182,18 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetDefault(const UObject* WorldC
             Clone = DuplicateObject<UArticyGlobalVariables>(assetPtr, Cast<UObject>(world), *FString::Printf(TEXT("%s GV"), *world->GetName()));
         }
 
+#if WITH_EDITOR
+        // DuplicateObject copies the source asset's RF_Standalone flag onto the runtime clone,
+        // making the clone a GC root on its own. In the editor that rooted clone can survive
+        // Stop-PIE and pin the now-garbage PIE GameInstance/world it is outered to, tripping
+        // UE's strict PIE leak check (PlayLevel.cpp). Strip the flag so GC can reclaim the clone
+        // together with the world. Packaged builds still AddToRoot above and are unaffected.
+        if (Clone.IsValid())
+        {
+            Clone->ClearFlags(RF_Standalone);
+        }
+#endif
+
         ensureMsgf(Clone.IsValid(), TEXT("Cloning GV asset failed!"));
     }
 
@@ -282,6 +294,15 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
         // Otherwise, add it to the active world
         NewClone = DuplicateObject(assetPtr, Cast<UObject>(world), *FString::Printf(TEXT("%s %s GV"), *world->GetName(), *Name));
     }
+
+#if WITH_EDITOR
+    // See GetDefault: strip the RF_Standalone flag inherited from the asset so the runtime clone
+    // isn't a self-rooting object that survives Stop-PIE and trips UE's PIE leak check.
+    if (NewClone)
+    {
+        NewClone->ClearFlags(RF_Standalone);
+    }
+#endif
 
     // Store and return
     OtherClones.FindOrAdd(Key) = NewClone;
