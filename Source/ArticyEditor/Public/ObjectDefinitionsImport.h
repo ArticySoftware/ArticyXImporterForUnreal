@@ -114,6 +114,13 @@ public:
     const FName& GetOriginalItemType() const { return ItemType; }
 
     /**
+     * Returns the type system metadata describing this property.
+     *
+     * @return The property info for this property.
+     */
+    const FArticyPropertyInfo& GetPropertyInfo() const { return PropertyInfo; }
+
+    /**
      * Returns the C++ type of the property definition.
      *
      * @param Data A pointer to the UArticyImportData object.
@@ -136,6 +143,9 @@ private:
 
     UPROPERTY(VisibleAnywhere, Category = "ObjectProperty")
     FArticyType ArticyType;
+
+    UPROPERTY(VisibleAnywhere, Category = "ObjectProperty")
+    FArticyPropertyInfo PropertyInfo;
 
     friend class UArticyImportData;
 };
@@ -249,6 +259,13 @@ public:
      * @return The display name as a string.
      */
     FString GetDisplayName() const { return DisplayName; }
+
+    /**
+     * Returns the type system metadata describing this feature.
+     *
+     * @return The Articy type of this feature.
+     */
+    const FArticyType& GetArticyType() const { return ArticyType; }
 
 private:
     UPROPERTY(VisibleAnywhere, Category = "TemplateFeature")

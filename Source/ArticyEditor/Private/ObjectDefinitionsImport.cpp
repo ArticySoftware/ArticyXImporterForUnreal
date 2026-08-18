@@ -36,7 +36,16 @@ void FArticyTemplateDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObject
             FArticyTemplateFeatureDef def;
             def.ImportFromJson(item->AsObject(), Data);
             Features.Add(def);
-            ArticyType.Features.Add(def.GetDisplayName());
+            // features are addressed by their technical name, both in tokens and in generated code
+            ArticyType.Features.Add(def.GetTechnicalName());
+
+            // a feature's properties belong to the templated type under their qualified name
+            for (const FArticyPropertyInfo& FeatureProperty : def.GetArticyType().Properties)
+            {
+                FArticyPropertyInfo info = FeatureProperty;
+                info.TechnicalName = def.GetTechnicalName() + TEXT(".") + FeatureProperty.TechnicalName;
+                ArticyType.Properties.Add(info);
+            }
         });
 
     ArticyType.HasTemplate = true;
@@ -129,10 +138,7 @@ void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, 
             prop.ImportFromJson(item->AsObject(), Data);
             Properties.Add(prop);
 
-            FArticyPropertyInfo info;
-            FString name = prop.GetPropetyName().ToString();
-            info.LocaKey_DisplayName = name;
-            ArticyType.Properties.Add(info);
+            ArticyType.Properties.Add(prop.GetPropertyInfo());
         });
 
     JSON_TRY_OBJECT(JsonObjDef, Values,
@@ -146,6 +152,8 @@ void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, 
                 Values.Add(val);
 
                 FArticyEnumValueInfo info;
+                info.TechnicalName = val.Name;
+                info.DisplayName = val.Name;
                 info.LocaKey_DisplayName = val.Name;
                 info.Value = val.Value;
                 ArticyType.EnumValues.Add(info);
@@ -157,9 +165,12 @@ void FArticyObjectDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonObjDef, 
             DefType = EObjectDefType::Template;
             Template.ImportFromJson(*obj, Data);
             ArticyType.HasTemplate = true;
+            // fold the feature properties in first, so MergeParent does not copy them again
+            ArticyType.Properties.Append(Template.ArticyType.Properties);
             ArticyType.MergeParent(Template.ArticyType);
         });
 
+    ArticyType.TechnicalName = Type.ToString();
     ArticyType.CPPType = GetCppType(Data, false);
 }
 
@@ -319,6 +330,8 @@ void FArticyObjectDef::InitializeModel(
         ensure(Template.GetDisplayName().IsEmpty());
 
     Model->ArticyType.MergeChild(ArticyType);
+    // the most derived definition runs last, so this ends up naming the model's own type
+    Model->ArticyTypeName = ArticyType.TechnicalName;
 }
 
 /**
@@ -411,6 +424,11 @@ void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProper
     JSON_TRY_FNAME(JsonProperty, Property);
 
     JSON_TRY_FNAME(JsonProperty, Type);
+
+    // record the declared articy type before localized strings are rewritten to FText below
+    PropertyInfo.TechnicalName = Property.ToString();
+    PropertyInfo.PropertyType = Type.ToString();
+
     //check if this needs to be localized
     //if(Data->GetSettings().set_Localization) //the setting is ignored in the UE plugin
     {
@@ -459,6 +477,8 @@ void FArticyPropertyDef::ImportFromJson(const TSharedPtr<FJsonObject> JsonProper
         DisplayName = Property.ToString();
 
     JSON_TRY_STRING(JsonProperty, Tooltip);
+
+    PropertyInfo.LocaKey_DisplayName = DisplayName;
 
     ArticyType.LocaKey_DisplayName = DisplayName;
     ArticyType.CPPType = GetCppType(Data);
@@ -660,9 +680,8 @@ void FArticyTemplateFeatureDef::ImportFromJson(const TSharedPtr<FJsonObject> Jso
             prop.ImportFromJson(item->AsObject(), Data, &Constraints);
             Properties.Add(prop);
 
-            FArticyPropertyInfo info;
-            FString name = prop.GetPropetyName().ToString();
-            info.LocaKey_DisplayName = name;
+            FArticyPropertyInfo info = prop.GetPropertyInfo();
+            info.IsTemplateProperty = true;
             ArticyType.Properties.Add(info);
         });
 

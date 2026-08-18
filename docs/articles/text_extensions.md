@@ -66,6 +66,33 @@ When working with multiple instances of the same object, you can specify an **in
 ```
 This targets the 15th instance of the **Guard** object and retrieves the **HP** property.
 
+#### Property Types
+Instead of a value, a token can ask for the *type* of a property. `$Type` takes an articy type
+name and a property, and resolves to the type articy declared that property as (`string`,
+`int`, `bool`, an enum or template name, and so on).
+
+**Examples:**
+```text
+[$Type.Character.DisplayName]
+```
+Resolves to `string`, the type of the **DisplayName** property on the **Character** type.
+
+```text
+[$Type.Character.Basic.Backstory]
+```
+Properties that live in a feature are addressed the same way they are on an object: by their
+`<Feature>.<Property>` name.
+
+You can also ask an object what type one of its properties has, by appending `.$Type`:
+
+```text
+[Chr_Manfred.Character.Motivation.$Type]
+```
+
+Both forms need the type metadata that the importer generates, so they resolve only after the
+project has been imported. A token that names an unknown type or property is left as its own
+source text, the same fallback the other token sources use.
+
 ---
 
 ### Token Formatting

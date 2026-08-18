@@ -30,12 +30,26 @@ void UArticyBaseObject::AddSubobject(UArticyPrimitive* Obj)
 }
 
 /**
- * Gets the Articy type of this object.
+ * Gets the Articy type of this object, resolved through the type system.
  *
  * @return The FArticyType associated with this object.
  */
 FArticyType UArticyBaseObject::GetArticyType() const
 {
+	if (!ArticyTypeName.IsEmpty())
+	{
+		if (const UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get())
+		{
+			const FArticyType Type = TypeSystem->GetArticyType(ArticyTypeName);
+			if (!Type.TechnicalName.IsEmpty())
+			{
+				return Type;
+			}
+		}
+	}
+
+	// Falls back to the locally assembled type, which is all the importer has to work with
+	// while it is still generating the type system asset.
 	return ArticyType;
 }
 

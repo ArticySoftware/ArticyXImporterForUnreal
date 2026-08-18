@@ -7,6 +7,7 @@
 #include "ArticyGlobalVariables.h"
 #include "ArticyObject.h"
 #include "ArticyTextExtension.h"
+#include "ArticyTypeSystem.h"
 #include "ArticyFlowPlayer.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
@@ -198,8 +199,79 @@ void FArticyIntegrationSpec::Define()
 			TestTrue(TEXT("looks like the z-index value"), Res.Contains(TEXT("4")));
 		});
 
-		// NOTE: a [$Type.Type.Property] token test is intentionally absent; that feature is
-		// non-functional because UArticyTypeSystem::Types is never populated at runtime.
+		It("resolves a [$Type.Type.Property] token to the property's type", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			// Ask the object what type it is, then ask the type system about that type:
+			// both halves of the metadata layer have to be populated for this to resolve.
+			const FArticyType Type = Entity->GetArticyType();
+			if (Type.TechnicalName.IsEmpty())
+			{
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("type metadata for '%s' (reimport needed?)"), DemoEntity)));
+				return;
+			}
+
+			const FString Token = FString::Printf(TEXT("$Type.%s.%s"), *Type.TechnicalName, DemoEntityProperty);
+			const FText Format = FText::FromString(FString::Printf(TEXT("[%s]"), *Token));
+			const FString Res = UArticyTextExtension::Get()->Resolve(World, &Format).ToString();
+
+			// On lookup failure the resolver returns the raw source name.
+			TestNotEqual(TEXT("resolved, not the raw fallback"), Res, Token);
+			TestFalse(TEXT("result not empty"), Res.IsEmpty());
+		});
+	});
+
+	Describe("Type system", [this]()
+	{
+		It("populates the type map from the imported project", [this]()
+		{
+			UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get();
+			if (!TestNotNull(TEXT("type system"), TypeSystem))
+				return;
+
+			TestTrue(TEXT("types imported - has the project been reimported since upgrading?"),
+				TypeSystem->Types.Num() > 0);
+		});
+
+		It("gives an imported object a non-empty type", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			const FArticyType Type = Entity->GetArticyType();
+			TestFalse(TEXT("has a technical name"), Type.TechnicalName.IsEmpty());
+			TestTrue(TEXT("has properties"), Type.GetProperties().Num() > 0);
+
+			// The property the object-property test reads must be described by the type.
+			TestEqual(TEXT("property is described"), Type.GetProperty(DemoEntityProperty).TechnicalName,
+				FString(DemoEntityProperty));
+		});
 	});
 
 	Describe("Flow player", [this]()
