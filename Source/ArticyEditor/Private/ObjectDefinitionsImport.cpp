@@ -827,6 +827,62 @@ void FArticyObjectDefinitions::ImportFromJson(const TArray<TSharedPtr<FJsonValue
                 FeatureDefs.Add(key, feature);
         }
     }
+
+    FlattenInheritedProperties();
+}
+
+/**
+ * Folds each type's inherited properties into its own property list.
+ *
+ * articy declares only the properties a definition introduces, but an object carries its base
+ * classes' properties too, and tokens address them the same way. Runs as a second pass because
+ * a base class may be defined after the types deriving from it.
+ */
+void FArticyObjectDefinitions::FlattenInheritedProperties()
+{
+    // Build every flattened list from the unflattened sources first, so the result does not
+    // depend on the order types happen to be visited in.
+    TMap<FName, TArray<FArticyPropertyInfo>> Flattened;
+
+    for (const auto& Pair : Types)
+    {
+        TArray<FArticyPropertyInfo> Properties = Pair.Value.ArticyType.Properties;
+
+        TSet<FName> Visited;
+        Visited.Add(Pair.Key);
+
+        FName BaseType = Pair.Value.GetBaseClass();
+        while (!BaseType.IsNone() && !Visited.Contains(BaseType))
+        {
+            Visited.Add(BaseType);
+
+            const FArticyObjectDef* BaseDef = Types.Find(BaseType);
+            if (!BaseDef)
+                break;
+
+            // A derived type may redeclare a property; its own definition wins.
+            for (const FArticyPropertyInfo& Inherited : BaseDef->ArticyType.Properties)
+            {
+                const bool bAlreadyDeclared = Properties.ContainsByPredicate(
+                    [&Inherited](const FArticyPropertyInfo& Existing)
+                    {
+                        return Existing.TechnicalName.Equals(Inherited.TechnicalName);
+                    });
+
+                if (!bAlreadyDeclared)
+                    Properties.Add(Inherited);
+            }
+
+            BaseType = BaseDef->GetBaseClass();
+        }
+
+        Flattened.Add(Pair.Key, MoveTemp(Properties));
+    }
+
+    for (auto& Pair : Types)
+    {
+        Pair.Value.ArticyType.Properties = MoveTemp(Flattened[Pair.Key]);
+    }
 }
 
 /**

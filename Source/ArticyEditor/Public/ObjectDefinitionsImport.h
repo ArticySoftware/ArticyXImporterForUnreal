@@ -462,6 +462,13 @@ public:
     const FName& GetOriginalType() const { return Type; }
 
     /**
+     * Returns the base class this definition derives its inherited properties from.
+     *
+     * @return The base class as an FName.
+     */
+    const FName& GetBaseClass() const { return Class; }
+
+    /**
      * Returns the features of the object definition.
      *
      * @return A constant reference to the array of features.
@@ -510,6 +517,14 @@ public:
      * @param Data A pointer to the UArticyImportData object.
      */
     void ImportFromJson(const TArray<TSharedPtr<FJsonValue>>* Json, const UArticyImportData* Data);
+
+    /**
+     * Folds each type's inherited properties into its own property list.
+     *
+     * Runs after all definitions are parsed, since a base class may be declared after the
+     * types that derive from it.
+     */
+    void FlattenInheritedProperties();
 
     /**
      * Gather scripts from model definition and adds them to the UArticyImportData.
