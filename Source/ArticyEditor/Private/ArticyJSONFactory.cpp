@@ -102,13 +102,13 @@ UObject* UArticyJSONFactory::FactoryCreateFile(UClass* InClass, UObject* InParen
 
     if (!bImportQueued)
     {
-        if (!ImportFromFile(Filename, ArticyImportData) && ArticyImportData)
+        // Parsing alone leaves no generated code or assets behind, so finalize like Reimport does.
+        if (!ImportFromFile(Filename, ArticyImportData) || !ArticyImportData->FinalizeImport(true))
         {
             bOutOperationCanceled = true;
             // The asset will be garbage collected because there are no references to it, no need to delete it
             ArticyImportData = nullptr;
         }
-        // Else import should be ok 
     }
 
 

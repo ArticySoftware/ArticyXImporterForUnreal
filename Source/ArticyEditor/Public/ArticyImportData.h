@@ -524,6 +524,9 @@ public:
 #if WITH_AUTOMATION_TESTS
 	/** Test-only write access to the project definition, which is otherwise only filled by an import. */
 	FArticyProjectDef& Test_GetProject() { return Project; }
+
+	/** Test-only hook: when bound, FinalizeImport calls it instead of generating code and assets. */
+	static TFunction<bool(UArticyImportData*, bool)> Test_FinalizeImportOverride;
 #endif
 
 	UPROPERTY(VisibleAnywhere, Category = "ImportData")
