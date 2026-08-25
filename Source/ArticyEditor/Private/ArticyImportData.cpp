@@ -29,6 +29,10 @@
 
 #define LOCTEXT_NAMESPACE "ArticyImportData"
 
+#if WITH_AUTOMATION_TESTS
+TFunction<bool(UArticyImportData*, bool)> UArticyImportData::Test_FinalizeImportOverride;
+#endif
+
 /**
  * Imports settings from a JSON object.
  *
@@ -1047,6 +1051,14 @@ bool UArticyImportData::FinalizeImport(bool bAllowRemovalFinal)
 
 	// Stamp so the next "Import Changes" can detect a plugin upgrade.
 	LastImporterPluginVersion = FArticyEditorFunctionLibrary::GetCurrentPluginVersion();
+
+#if WITH_AUTOMATION_TESTS
+	// Lets the specs drive the import entry points without compiling or writing assets.
+	if (Test_FinalizeImportOverride)
+	{
+		return Test_FinalizeImportOverride(this, bAllowRemovalFinal);
+	}
+#endif
 
 	bool bNeedsCodeGeneration = GetSettings().DidObjectDefsOrGVsChange()
 		|| (GetSettings().DidScriptFragmentsChange() && GetSettings().set_UseScriptSupport);
