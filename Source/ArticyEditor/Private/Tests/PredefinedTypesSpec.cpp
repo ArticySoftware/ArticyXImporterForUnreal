@@ -4,6 +4,10 @@
 
 #include "Misc/AutomationTest.h"
 #include "PredefinedTypes.h"
+#include "ObjectDefinitionsImport.h"
+#include "ArticyPluginSettings.h"
+#include "ArticyTestTextModel.h"
+#include "Dom/JsonValue.h"
 
 #if WITH_AUTOMATION_TESTS
 
@@ -159,16 +163,16 @@ void FArticyPredefinedTypesSpec::Define()
 			FArticyPredefinedTypeBase* MultiLanguage = TypeInfo(TEXT("ArticyMultiLanguageString"));
 			if (!TestNotNull(TEXT("ArticyMultiLanguageString entry"), MultiLanguage)) return;
 			TestEqual(TEXT("cpp type"), MultiLanguage->CppType, FString(TEXT("FText")));
+			TestEqual(TEXT("default"), MultiLanguage->CppDefaultValue, FString(TEXT("FText::GetEmpty()")));
 		});
 
-		It("maps ArticyString onto FText as well", [this, TypeInfo]()
+		It("maps the non-localizable ArticyString onto FString", [this, TypeInfo]()
 		{
-			// ArticyString is not a localizable type, but it currently shares the FText
-			// entry. This has been changed and reverted before, and the generated code
-			// depends on it, so the mapping is pinned here rather than assumed.
+			// Pinned because the mapping has been flipped to FText and back before.
 			FArticyPredefinedTypeBase* ArticyString = TypeInfo(TEXT("ArticyString"));
 			if (!TestNotNull(TEXT("ArticyString entry"), ArticyString)) return;
-			TestEqual(TEXT("cpp type"), ArticyString->CppType, FString(TEXT("FText")));
+			TestEqual(TEXT("cpp type"), ArticyString->CppType, FString(TEXT("FString")));
+			TestEqual(TEXT("default"), ArticyString->CppDefaultValue, FString(TEXT("TEXT(\"\")")));
 		});
 
 		It("keeps a placeholder item type for a generic array", [this, TypeInfo]()
@@ -187,6 +191,64 @@ void FArticyPredefinedTypesSpec::Define()
 			// The named enum entries reuse that same descriptor.
 			TestTrue(TEXT("LocationAnchorSize shares it"),
 				TypeInfo(TEXT("LocationAnchorSize")) == static_cast<FArticyPredefinedTypeBase*>(EnumInfo));
+		});
+	});
+
+	// Both kinds carry Unity markup to convert; only the localizable one is keyed for the string table.
+	Describe("articy text deserializers", [this]()
+	{
+		const auto SetString = [](UArticyTestTextModel* Model, const TCHAR* ArticyType, const TCHAR* Property, const TCHAR* Value)
+		{
+			FArticyObjectDefinitions::SetProp(FName(ArticyType), FName(Property), Model, FString(TEXT("Obj.")) + Property,
+				MakeShared<FJsonValueString>(Value), TEXT("Pkg"));
+		};
+
+		It("stores an ArticyString as the plain text", [this, SetString]()
+		{
+			UArticyTestTextModel* Model = NewObject<UArticyTestTextModel>();
+			SetString(Model, TEXT("ArticyString"), TEXT("Plain"), TEXT("Hello"));
+			TestEqual(TEXT("plain"), Model->Plain, FString(TEXT("Hello")));
+		});
+
+		It("stores an ArticyMultiLanguageString as an FText keyed by its path", [this, SetString]()
+		{
+			UArticyTestTextModel* Model = NewObject<UArticyTestTextModel>();
+			SetString(Model, TEXT("ArticyMultiLanguageString"), TEXT("Localized"), TEXT("Obj.Localized"));
+
+			// The export value is the string table key, which LocalizeString looks up at runtime.
+			TestEqual(TEXT("value is the key"), Model->Localized.ToString(), FString(TEXT("Obj.Localized")));
+			TestEqual(TEXT("namespace"), FTextInspector::GetNamespace(Model->Localized).Get(FString()), FString(TEXT("Pkg")));
+			TestEqual(TEXT("key"), FTextInspector::GetKey(Model->Localized).Get(FString()), FString(TEXT("Obj.Localized")));
+		});
+
+		It("converts Unity markup in both kinds when the setting is on", [this, SetString]()
+		{
+			UArticyPluginSettings* Settings = GetMutableDefault<UArticyPluginSettings>();
+			const bool bPrevious = Settings->bConvertUnityToUnrealRichText;
+			Settings->bConvertUnityToUnrealRichText = true;
+
+			UArticyTestTextModel* Model = NewObject<UArticyTestTextModel>();
+			SetString(Model, TEXT("ArticyString"), TEXT("Plain"), TEXT("<b>Hi</b>"));
+			SetString(Model, TEXT("ArticyMultiLanguageString"), TEXT("Localized"), TEXT("<i>Hi</i>"));
+
+			Settings->bConvertUnityToUnrealRichText = bPrevious;
+
+			TestEqual(TEXT("plain"), Model->Plain, FString(TEXT("<b>Hi</>")));
+			TestEqual(TEXT("localized"), Model->Localized.ToString(), FString(TEXT("<i>Hi</>")));
+		});
+
+		It("keeps the markup when the setting is off", [this, SetString]()
+		{
+			UArticyPluginSettings* Settings = GetMutableDefault<UArticyPluginSettings>();
+			const bool bPrevious = Settings->bConvertUnityToUnrealRichText;
+			Settings->bConvertUnityToUnrealRichText = false;
+
+			UArticyTestTextModel* Model = NewObject<UArticyTestTextModel>();
+			SetString(Model, TEXT("ArticyString"), TEXT("Plain"), TEXT("<b>Hi</b>"));
+
+			Settings->bConvertUnityToUnrealRichText = bPrevious;
+
+			TestEqual(TEXT("plain"), Model->Plain, FString(TEXT("<b>Hi</b>")));
 		});
 	});
 }
