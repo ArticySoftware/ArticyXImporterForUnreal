@@ -495,6 +495,10 @@ void FArticyPropertyDef::GenerateCode(CodeFileGenerator& header, const UArticyIm
     //generate a variable for each Property
     header.Variable(GetCppType(Data), Property.ToString(), FArticyObjectDefinitions::GetCppDefaultValue(Type), "", true,
         FString::Printf(TEXT("EditAnywhere, BlueprintReadWrite, meta=(DisplayName=\"%s\")"), *DisplayName));
+
+    //articy texts also get a getter that localizes or resolves them
+    if (IsLocalizedText() || IsPlainText())
+        header.TextPropertyAccessor(Property.ToString(), IsLocalizedText());
 }
 
 /**
@@ -598,6 +602,30 @@ FString FArticyPropertyDef::GetCppType(const UArticyImportData* Data) const
         type = type.Replace(TEXT("?"), *Data->GetObjectDefs().GetCppType(ItemType, Data, true));
 
     return type;
+}
+
+/**
+ * Whether this is a localizable articy text (ArticyMultiLanguageString), imported as FText.
+ *
+ * @return True for a localizable text.
+ */
+bool FArticyPropertyDef::IsLocalizedText() const
+{
+    static const FName MultiLanguageString = TEXT("ArticyMultiLanguageString");
+    //legacy exports have their localized strings promoted to FText on import
+    static const FName LegacyText = TEXT("FText");
+    return Type == MultiLanguageString || Type == LegacyText;
+}
+
+/**
+ * Whether this is a non-localizable articy text (ArticyString), imported as FString.
+ *
+ * @return True for a plain text.
+ */
+bool FArticyPropertyDef::IsPlainText() const
+{
+    static const FName ArticyString = TEXT("ArticyString");
+    return Type == ArticyString;
 }
 
 //---------------------------------------------------------------------------//

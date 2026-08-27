@@ -7,6 +7,10 @@ The **ArticyImporter** plugin for Unreal Engine processes localization data from
 @tabs{
 @tab{ C++ | cpp | 
 
+#### Localizable and Non-Localizable Strings
+
+**articy:draft X** exports a text property either as `ArticyMultiLanguageString` (localizable) or as `ArticyString` (localization turned off for that property). The importer maps the first onto an `FText` holding the string table key and the second onto a plain `FString`. Accessors such as `GetDisplayName()`, `GetText()`, `GetMenuText()` and `GetStageDirections()` check the property type at runtime and work for both kinds: an `FText` is looked up in the string table, an `FString` is returned as is. Text extension tokens are resolved for both. The articy type of a property is also recorded in the type system (`FArticyPropertyInfo::PropertyType`).
+
 #### Accessing Localized Properties
 
 In Unreal, when accessing a property that supports localization, the **ArticyImporter** plugin automatically loads the appropriate localized text based on the current language setting.
@@ -27,19 +31,20 @@ If you have custom properties that need localization, the plugin provides a func
 **Example: Using `GetPropertyText`**
 
 ```cpp
-FText LocalizedVoiceActor = Manfred->GetPropertyText(Manfred->VoiceActor);
-UE_LOG(LogTemp, Warning, TEXT("Localized Voice Actor: %s"), *LocalizedVoiceActor.ToString());
+FText LocalizedStory = Manfred->GetPropertyText(Manfred->BackgroundStory);
+UE_LOG(LogTemp, Warning, TEXT("Localized Background Story: %s"), *LocalizedStory.ToString());
 ```
 
-This function retrieves the localized text for a specific property, such as the **VoiceActor** property in the example above.
+This function retrieves the localized text for a specific property, such as the **BackgroundStory** property in the example above. Its counterpart for a non-localizable `FString` property is `ResolvePropertyString`, which only resolves text extension tokens.
 
-Additionally, helper functions for localized properties are generated in the `<Project>ArticyTypes.h` file. For instance:
+Additionally, helper functions for both kinds of text properties are generated in the `<Project>ArticyTypes.h` file. For instance:
 
 ```cpp
-FText GetVoiceActor() { return GetPropertyText(VoiceActor); }
+FText GetBackgroundStory() { return GetPropertyText(BackgroundStory); }
+FText GetVoiceActor() { return ResolvePropertyString(VoiceActor); }
 ```
 
-This allows you to easily access localized properties using predefined functions.
+This allows you to easily access text properties using predefined functions.
 
 #### Changing the Active Language
 

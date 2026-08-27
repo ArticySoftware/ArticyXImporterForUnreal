@@ -157,6 +157,17 @@ public:
 		const bool bUProperty = false, const FString& UPropertySpecifiers = "VisibleAnywhere, BlueprintReadOnly");
 
 	/**
+	 * @brief Adds the Get<Name>() accessor of a generated articy text property.
+	 *
+	 * Localized for an FText, resolved through the text extension for an FString; properties
+	 * served by an IArticyObjectWith* interface are skipped.
+	 *
+	 * @param Name The name of the property.
+	 * @param bLocalized Whether the property is a localizable text.
+	 */
+	void TextPropertyAccessor(const FString& Name, const bool bLocalized);
+
+	/**
 	 * @brief Adds a method definition, optionally as UFUNCTION.
 	 *
 	 * @tparam Lambda The type of the method definition function.
