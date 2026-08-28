@@ -6,6 +6,8 @@
 
 #include "CoreMinimal.h"
 #include "ArticyObject.h"
+#include "Interfaces/ArticyObjectWithDisplayName.h"
+#include "Interfaces/ArticyObjectWithText.h"
 #include "ArticyTestTextModel.generated.h"
 
 /**
@@ -28,4 +30,21 @@ public:
 	/** Receives an ArticyMultiLanguageString. */
 	UPROPERTY()
 	FText Localized;
+};
+
+/**
+ * @brief Stand-in for a generated Hub, whose DisplayName and Text are plain ArticyStrings.
+ */
+UCLASS()
+class UArticyTestPlainNamedObject : public UArticyObject, public IArticyObjectWithDisplayName, public IArticyObjectWithText
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY()
+	FString DisplayName;
+
+	UPROPERTY()
+	FString Text;
 };
