@@ -87,11 +87,26 @@ FString UArticyTextExtension::GetSource(UObject* Outer, const FString& SourceNam
 		}
 	}
 
-	// Process types
-	if (SourceParts[0].StartsWith(TEXT("$Type.")))
+	// Process types: [$Type.<TypeName>.<Property>], where the property may be qualified with
+	// the feature it lives in. SourceName is already split on dots, so the marker is its own part.
+	if (SourceParts[0].Equals(TEXT("$Type")))
 	{
-		const FString TypeName = SourceParts[0].Mid(6);
-		GetTypeProperty(TypeName, RemValue, Result, bSuccess);
+		if (SourceParts.Num() < 3)
+		{
+			return SourceName;
+		}
+
+		FString PropertyName;
+		for (int32 Index = 2; Index < SourceParts.Num(); ++Index)
+		{
+			if (!PropertyName.IsEmpty())
+			{
+				PropertyName += TEXT(".");
+			}
+			PropertyName += SourceParts[Index];
+		}
+
+		GetTypeProperty(SourceParts[1], PropertyName, Result, bSuccess);
 
 		if (bSuccess)
 		{
@@ -289,7 +304,14 @@ void UArticyTextExtension::GetObjectProperty(UObject* Outer, const FString& Sour
 
 	if (bRequestType)
 	{
-		OutString = Object->ArticyType.GetProperty(PropertyName).PropertyType;
+		const FArticyPropertyInfo PropertyInfo = Object->GetArticyType().GetProperty(PropertyName);
+		if (PropertyInfo.TechnicalName.IsEmpty())
+		{
+			OutSuccess = false;
+			return;
+		}
+
+		OutString = PropertyInfo.PropertyType;
 		OutSuccess = true;
 		return;
 	}
@@ -331,22 +353,15 @@ void UArticyTextExtension::GetObjectProperty(UObject* Outer, const FString& Sour
 void UArticyTextExtension::GetTypeProperty(const FString& TypeName, const FString& PropertyName, FString& OutString,
 	bool& OutSuccess)
 {
-	UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get();
-	FArticyType TypeData = TypeSystem->GetArticyType(TypeName);
-	FArticyPropertyInfo PropertyInfo{};
-	bool bFoundProperty = false;
-	
-	for (const auto& Property : TypeData.Properties)
+	const UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get();
+	if (!TypeSystem)
 	{
-		if (Property.TechnicalName.Equals(PropertyName))
-		{
-			PropertyInfo = Property;
-			bFoundProperty = true;
-			break;
-		}
+		OutSuccess = false;
+		return;
 	}
 
-	if (!bFoundProperty)
+	const FArticyPropertyInfo PropertyInfo = TypeSystem->GetArticyType(TypeName).GetProperty(PropertyName);
+	if (PropertyInfo.TechnicalName.IsEmpty())
 	{
 		OutSuccess = false;
 		return;
