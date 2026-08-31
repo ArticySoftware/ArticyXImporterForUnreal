@@ -397,6 +397,45 @@ public:
 	TArray<UArticyObject*> GetAllObjects() const;
 
 	/**
+	 * Get all objects matching a filter: a hexadecimal object id, or a part of the technical name,
+	 * the display name or the text. An empty filter returns all objects.
+	 * @param Filter The object id or text to look for.
+	 * @return An array of pointers to the matching Articy objects.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	TArray<UArticyObject*> FilterObjects(const FString& Filter) const;
+
+	/**
+	 * Get the objects in Objects matching a filter: a hexadecimal object id, or a part of the
+	 * technical name, the display name or the text. An empty filter returns all objects.
+	 * @param Objects The objects to filter.
+	 * @param Filter The object id or text to look for.
+	 * @return An array of pointers to the matching Articy objects.
+	 */
+	template<typename T>
+	static TArray<T*> FilterObjectsBasedOn(const TArray<T*>& Objects, const FString& Filter);
+
+	/**
+	 * Get the objects in Objects matching a filter: a hexadecimal object id, or a part of the
+	 * technical name, the display name or the text. An empty filter returns all objects.
+	 * @param Objects The objects to filter.
+	 * @param Filter The object id or text to look for.
+	 * @return An array of pointers to the matching Articy objects.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	static TArray<UArticyObject*> FilterObjectsBasedOn(const TArray<UArticyObject*>& Objects, const FString& Filter);
+
+	/**
+	 * Check whether an object matches a filter: a hexadecimal object id, or a part of the
+	 * technical name, the display name or the text. An empty filter matches every object.
+	 * @param Object The object to check.
+	 * @param Filter The object id or text to look for.
+	 * @return True if the object matches the filter.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy")
+	static bool MatchesFilter(const UArticyObject* Object, const FString& Filter);
+
+	/**
 	 * Get all objects with a given TechnicalName.
 	 * If a CloneId other than 0 is provided, copies of the objects with this index must exist,
 	 * otherwise null-pointers are returned instead.
@@ -590,4 +629,16 @@ void UArticyDatabase::GetObjects(TArray<T*>& Array, FName TechnicalName, int32 C
 				Array.Add(clone);
 		}
 	}
+}
+
+template<typename T>
+TArray<T*> UArticyDatabase::FilterObjectsBasedOn(const TArray<T*>& Objects, const FString& Filter)
+{
+	TArray<T*> arr;
+	for (T* Object : Objects)
+	{
+		if (MatchesFilter(Object, Filter))
+			arr.Add(Object);
+	}
+	return arr;
 }
