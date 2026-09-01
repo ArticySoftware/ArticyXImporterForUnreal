@@ -26,7 +26,7 @@ public:
 	virtual FText GetDisplayName()
 	{
 		static const auto& PropName = FName("DisplayName");
-		return GetStringText(Cast<UObject>(this), PropName);
+		return GetStringText(PropName);
 	}
 
 	virtual const FText GetDisplayName() const
@@ -37,9 +37,9 @@ public:
 	//---------------------------------------------------------------------------//
 
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithDisplayName")
-	virtual FText& SetDisplayName(UPARAM(ref) const FText& DisplayName)
+	virtual FText SetDisplayName(UPARAM(ref) const FText& DisplayName)
 	{
 		static const auto& PropName = FName("DisplayName");
-		return GetProperty<FText>(PropName) = DisplayName;
+		return SetStringText(PropName, DisplayName);
 	}
 };

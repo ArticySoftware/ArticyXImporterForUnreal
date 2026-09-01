@@ -30,6 +30,18 @@ void FArticyTemplateFeatureDefSpec::Define()
 			TestEqual(TEXT("display name"), Feature.GetDisplayName(), FString(TEXT("Stats Feature")));
 			TestEqual(TEXT("cpp type"), Feature.GetCppType(Data, false), FString(TEXT("UStatsFeature")));
 		});
+
+		It("records its properties as template properties in the type system", [this]()
+		{
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyTemplateFeatureDef Feature;
+			Feature.ImportFromJson(TestJson::FeatureJson(TEXT("Stats"), TEXT("Stats Feature")), Data);
+
+			const FArticyPropertyInfo HP = Feature.GetArticyType().GetProperty(TEXT("HP"));
+			TestEqual(TEXT("type"), HP.PropertyType, FString(TEXT("int")));
+			TestEqual(TEXT("technical name"), HP.TechnicalName, FString(TEXT("HP")));
+			TestTrue(TEXT("template property"), HP.IsTemplateProperty);
+		});
 	});
 }
 

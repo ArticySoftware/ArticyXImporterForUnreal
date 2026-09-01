@@ -83,6 +83,15 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "Articy")
 	FText GetPropertyText(const FText Property);
 
+	/**
+	 * Resolves the text extension in a non-localizable string property of this Articy object.
+	 *
+	 * @param Property The plain string property value.
+	 * @return The resolved FText.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy")
+	FText ResolvePropertyString(const FString& Property);
+
 private:
 	/** Initialized with false, changed to true by InitFromJson (and later by deserialization). */
 	UPROPERTY(VisibleAnywhere, Category = "Articy")
