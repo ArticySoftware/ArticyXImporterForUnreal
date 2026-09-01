@@ -17,6 +17,8 @@
 #include "ArticyTextExtension.h"
 #include "ArticyRuntimeModule.h"
 #include "ArticyLocalizerSystem.h"
+#include "UObject/UnrealType.h"
+#include "UObject/TextProperty.h"
 
 namespace ArticyHelpers
 {
@@ -235,6 +237,110 @@ namespace ArticyHelpers
 			return Key;
 		}
 		return ArticyLocalizerSystem->LocalizeString(Outer, Key, ResolveTextExtension, BackupText);
+	}
+
+	/**
+	 * Storage kind of a generated articy string property: an ArticyString is imported as FString,
+	 * an ArticyMultiLanguageString as FText holding its string table key.
+	 */
+	enum class EArticyTextPropertyKind : uint8
+	{
+		None,
+		PlainString,
+		LocalizedText
+	};
+
+	/**
+	 * Classifies a property as one of the generated string kinds.
+	 *
+	 * @param Property The reflected property, may be null.
+	 * @return The kind, or None for anything that is not an FString or FText property.
+	 */
+	inline EArticyTextPropertyKind GetTextPropertyKind(const FProperty* Property)
+	{
+		if (!Property)
+		{
+			return EArticyTextPropertyKind::None;
+		}
+		if (Property->IsA<FTextProperty>())
+		{
+			return EArticyTextPropertyKind::LocalizedText;
+		}
+		if (Property->IsA<FStrProperty>())
+		{
+			return EArticyTextPropertyKind::PlainString;
+		}
+		return EArticyTextPropertyKind::None;
+	}
+
+	/**
+	 * Reads the raw value of a string property: the string table key of a localized text,
+	 * or the plain string itself.
+	 *
+	 * @param Object The object owning the property.
+	 * @param Property The reflected property.
+	 * @return The raw value, or an empty string if this is not a string property.
+	 */
+	inline FString GetTextPropertyKey(const UObject* Object, const FProperty* Property)
+	{
+		switch (Object ? GetTextPropertyKind(Property) : EArticyTextPropertyKind::None)
+		{
+		case EArticyTextPropertyKind::LocalizedText:
+			return Property->ContainerPtrToValuePtr<FText>(Object)->ToString();
+		case EArticyTextPropertyKind::PlainString:
+			return *Property->ContainerPtrToValuePtr<FString>(Object);
+		default:
+			return FString();
+		}
+	}
+
+	/**
+	 * Resolves a string property to display text: a localized text goes through the string
+	 * table, a plain string only through the text extension.
+	 *
+	 * @param Object The object owning the property, also the context for variable lookup.
+	 * @param Property The reflected property.
+	 * @param ResolveTextExtension Whether to resolve variable interpolation on the result.
+	 * @param BackupText Optional fallback used when the property is empty or cannot be resolved.
+	 * @return The display text.
+	 */
+	inline FText GetTextPropertyValue(UObject* Object, const FProperty* Property, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
+	{
+		const EArticyTextPropertyKind Kind = Object ? GetTextPropertyKind(Property) : EArticyTextPropertyKind::None;
+		if (Kind == EArticyTextPropertyKind::LocalizedText)
+		{
+			return LocalizeString(Object, *Property->ContainerPtrToValuePtr<FText>(Object), ResolveTextExtension, BackupText);
+		}
+
+		FText Plain = Kind == EArticyTextPropertyKind::PlainString ? FText::FromString(*Property->ContainerPtrToValuePtr<FString>(Object)) : FText::GetEmpty();
+		if (Plain.IsEmpty() && BackupText)
+		{
+			Plain = *BackupText;
+		}
+		return ResolveTextExtension ? ResolveText(Object, &Plain) : Plain;
+	}
+
+	/**
+	 * Writes display text into a string property of either kind.
+	 *
+	 * @param Object The object owning the property.
+	 * @param Property The reflected property.
+	 * @param Value The text to store; a plain string property receives its string.
+	 * @return True if the property is a string property and has been written.
+	 */
+	inline bool SetTextPropertyValue(UObject* Object, const FProperty* Property, const FText& Value)
+	{
+		switch (Object ? GetTextPropertyKind(Property) : EArticyTextPropertyKind::None)
+		{
+		case EArticyTextPropertyKind::LocalizedText:
+			*Property->ContainerPtrToValuePtr<FText>(Object) = Value;
+			return true;
+		case EArticyTextPropertyKind::PlainString:
+			*Property->ContainerPtrToValuePtr<FString>(Object) = Value.ToString();
+			return true;
+		default:
+			return false;
+		}
 	}
 
 }
