@@ -1,0 +1,75 @@
+name: Package plugin
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+jobs:
+  tag_next_version:
+    name: Tag next version number
+    runs-on: [ubuntu-latest]
+    permissions:
+      contents: write
+
+    outputs:
+      next_version: ${{ env.NEXT_VERSION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          export VERSION=`git describe --tags --abbrev=0`
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest version is $VERSION" >> $GITHUB_STEP_SUMMARY
+
+      # Last tag is a full release version, determine upcoming first RC
+      - name: Determine version
+        id: version_info
+        if: ${{ !contains('-rc', steps.latest_tag.outputs.tag) }}
+        uses: ietf-tools/semver-action@v1
+        with:
+          token: ${{ github.token }}
+          branch: main
+
+      - name: Save next version
+        if: ${{ !contains('-rc', steps.latest_tag.outputs.tag) }}
+        run: |
+          echo "NEXT_VERSION=${{ steps.version_info.outputs.next }}-rc1" >> "$GITHUB_ENV"
+
+      # Last tag is a release candidate, count up RC number
+      - name: Determine next RC version
+        if: ${{ contains('-rc', steps.latest_tag.outputs.tag )}}
+        uses: '$/.github/actions/release-candidate-increase'
+        with:
+          token: ${{ github.token }}
+
+      - name: Save next RC version
+        id: rc_version_info
+        if: ${{ contains('-rc', steps.latest_tag.outputs.tag )}}
+        run: |
+          echo "NEXT_VERSION=${{ steps.rc_version_info.outputs.next }}" >> "$GITHUB_ENV"
+
+      # Create the actual tag, to be read by Jenkins
+      - name: Create RC tag
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: ${{ env.NEXT_VERSION }}
+
+  trigger_jenkins:
+    name: Trigger packaging job on Jenkins
+    needs: [tag_next_version]
+    runs-on: [self-hosted, Windows]
+
+    steps:
+      - name: Trigger Jenkins job via local network
+        shell: cmd
+        env:
+          NEXT_VERSION: ${{ needs.tag_next_version.outputs.next_version }}
+        run: |
+          curl -u "$JENKINS_USER_ID" -X POST "$JENKINS_START_BUILD_URL&TAG_OR_BRANCH=${{ env.NEXT_VERSION }}"
