@@ -68,8 +68,8 @@ jobs:
 
     steps:
       - name: Trigger Jenkins job via local network
-        shell: cmd
+        shell: pwsh
         env:
           NEXT_VERSION: ${{ needs.tag_next_version.outputs.next_version }}
         run: |
-          curl -u "$JENKINS_USER_ID" -X POST "$JENKINS_START_BUILD_URL&TAG_OR_BRANCH=${{ env.NEXT_VERSION }}"
+          curl -u "$env:JENKINS_USER_ID" -X POST "$env:JENKINS_START_BUILD_URL&TAG_OR_BRANCH=${{ env.NEXT_VERSION }}"
