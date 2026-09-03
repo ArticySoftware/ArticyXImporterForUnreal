@@ -1,3 +1,10 @@
+## Unreal Importer 1.6.1 Changelog :
+
+- Fixes:
+  - Fix initial import doesn't trigger code generation
+  - Fix editor crashes on stop PIE due to standalone-rooted runtime GV clone
+  - Fix cook failure due to outdated Blueprint references
+
 ## Unreal Importer 1.6.0 Changelog :
 
 - New Features:
