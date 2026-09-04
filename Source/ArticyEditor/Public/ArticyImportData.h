@@ -14,6 +14,7 @@
 #include "Serialization/Csv/CsvParser.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/AutomationTest.h"
 #include "ArticyImportData.generated.h"
 
 class UArticyImportData;

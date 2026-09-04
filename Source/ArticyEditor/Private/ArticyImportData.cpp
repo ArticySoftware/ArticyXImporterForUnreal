@@ -26,6 +26,7 @@
 #include "Factories/SoundFactory.h"
 #include "UObject/SavePackage.h"
 #include "UObject/MetaData.h"
+#include "Misc/AutomationTest.h"
 
 #define LOCTEXT_NAMESPACE "ArticyImportData"
 
