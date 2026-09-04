@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "Dom/JsonValue.h"
+#include "Misc/AutomationTest.h"
 #include "ArticyTextExtension.generated.h"
 
 using FArticyUserMethodCallback = TFunction<FString(const TArray<FString>&)>;

@@ -6,6 +6,7 @@
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
+#include "Misc/AutomationTest.h"
 
 #if WITH_AUTOMATION_TESTS
 
