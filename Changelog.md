@@ -1,4 +1,4 @@
-## Unreal Importer 1.6.1 Changelog :
+## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
   - Fix initial import doesn't trigger code generation
