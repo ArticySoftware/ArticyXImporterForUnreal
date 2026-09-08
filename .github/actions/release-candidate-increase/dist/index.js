@@ -28406,6 +28406,13 @@ function setFailed(message) {
 function error(message, properties = {}) {
     issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
+/**
+ * Writes info to log with console.log.
+ * @param message info message
+ */
+function info(message) {
+    process.stdout.write(message + os.EOL);
+}
 
 class Context {
     /**
@@ -33674,7 +33681,7 @@ async function main() {
     const owner = context.repo.owner;
     const name = context.repo.repo;
 
-    const rcTagRegex = /^v?(\d+\.d+\.\d+)\-rc(\d+)$/g;
+    const rcTagRegex = /^v?(\d+\.\d+\.\d+)\-rc(\d+)$/g;
 
     let lastTag = null;
 
@@ -33719,18 +33726,19 @@ async function main() {
     }
 
     lastTag = tagQuery.repository.refs.nodes[0].name;
+    info(`Using last tag ${lastTag} as reference`);
     const matches = [...lastTag.matchAll(rcTagRegex)];
     if (matches.length < 1) {
-        return setFailed(`Failed to determine latest RC number from version $lastTag. Is it not an RC version?`);
+        return setFailed(`Failed to determine latest RC number from version ${lastTag}. Is it not an RC version?`);
     }
 
-    const nextRc = matches[2] + 1;
-    const nextRcVersion = `${matches[1]}-rc${nextRc}`;
+    const nextRc = parseInt(matches[0][2]) + 1;
+    const nextRcVersion = `v${matches[0][1]}-rc${nextRc}`;
 
     setOutput('current', lastTag);
     setOutput('next', nextRcVersion);
-    setOutput('nextVersion', matches[1]);
-    setOutput('nextVersionStrict', matches[1].startsWith('v') ? matches[1].substring(1) : matches[1]);
+    setOutput('nextVersion', matches[0][1]);
+    setOutput('nextVersionStrict', matches[0][1].startsWith('v') ? matches[0][1].substring(1) : matches[0][1]);
     setOutput('nextReleaseCandidate', nextRc);
 }
 

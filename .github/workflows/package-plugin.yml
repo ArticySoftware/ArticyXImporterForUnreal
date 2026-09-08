@@ -31,29 +31,31 @@ jobs:
       # Last tag is a full release version, determine upcoming first RC
       - name: Determine version
         id: version_info
-        if: ${{ !contains('-rc', steps.latest_tag.outputs.tag) }}
+        if: ${{ !contains(steps.latest_tag.outputs.tag, '-rc') }}
         uses: ietf-tools/semver-action@v1
         with:
           token: ${{ github.token }}
           branch: main
 
       - name: Save next version
-        if: ${{ !contains('-rc', steps.latest_tag.outputs.tag) }}
+        if: ${{ !contains(steps.latest_tag.outputs.tag, '-rc') }}
         run: |
           echo "NEXT_VERSION=${{ steps.version_info.outputs.next }}-rc1" >> "$GITHUB_ENV"
+          echo "Next version is ${{ env.NEXT_VERSION }}" >> $GITHUB_STEP_SUMMARY
 
       # Last tag is a release candidate, count up RC number
       - name: Determine next RC version
-        if: ${{ contains('-rc', steps.latest_tag.outputs.tag )}}
+        id: rc_version_info
+        if: ${{ contains(steps.latest_tag.outputs.tag, '-rc') }}
         uses: '$/.github/actions/release-candidate-increase'
         with:
           token: ${{ github.token }}
 
       - name: Save next RC version
-        id: rc_version_info
-        if: ${{ contains('-rc', steps.latest_tag.outputs.tag )}}
+        if: ${{ contains(steps.latest_tag.outputs.tag, '-rc') }}
         run: |
           echo "NEXT_VERSION=${{ steps.rc_version_info.outputs.next }}" >> "$GITHUB_ENV"
+          echo "Next version is ${{ env.NEXT_VERSION }}" >> $GITHUB_STEP_SUMMARY
 
       # Create the actual tag, to be read by Jenkins
       - name: Create RC tag
