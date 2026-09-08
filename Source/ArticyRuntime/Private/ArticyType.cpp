@@ -21,7 +21,7 @@ FArticyEnumValueInfo FArticyType::GetEnumValue(const FString& ValueName) const
 {
 	for (const auto& EnumInfo : EnumValues)
 	{
-		if (EnumInfo.LocaKey_DisplayName.Equals(ValueName))
+		if (EnumInfo.TechnicalName.Equals(ValueName))
 		{
 			return EnumInfo;
 		}
@@ -46,15 +46,25 @@ TArray<FArticyPropertyInfo> FArticyType::GetProperties() const
 
 TArray<FArticyPropertyInfo> FArticyType::GetPropertiesInFeature(const FString& FeatureName) const
 {
-	// TODO: Implement this functionality
-	return {};
+	// Feature properties are stored under their qualified "<Feature>.<Property>" name.
+	const FString Prefix = FeatureName + TEXT(".");
+
+	TArray<FArticyPropertyInfo> Result;
+	for (const auto& PropertyInfo : Properties)
+	{
+		if (PropertyInfo.IsTemplateProperty && PropertyInfo.TechnicalName.StartsWith(Prefix))
+		{
+			Result.Add(PropertyInfo);
+		}
+	}
+	return Result;
 }
 
 FArticyPropertyInfo FArticyType::GetProperty(const FString& PropertyName) const
 {
 	for (const auto& PropertyInfo : Properties)
 	{
-		if (PropertyInfo.LocaKey_DisplayName.Equals(PropertyName))
+		if (PropertyInfo.TechnicalName.Equals(PropertyName))
 		{
 			return PropertyInfo;
 		}

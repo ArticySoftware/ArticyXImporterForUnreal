@@ -4,11 +4,17 @@
 
 #include "Misc/AutomationTest.h"
 #include "ArticyTextExtension.h"
+#include "ArticyTypeSystem.h"
+#include "UObject/StrongObjectPtr.h"
 
 #if WITH_AUTOMATION_TESTS
 
 BEGIN_DEFINE_SPEC(FArticyTextExtensionSpec, "Articy.Runtime.TextExtension",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+	// Held across a $Type test so the singleton the resolver looks up cannot be collected
+	// between registering a type and resolving against it.
+	TStrongObjectPtr<UArticyTypeSystem> TypeSystem;
+	TMap<FString, FArticyType> SavedTypes;
 END_DEFINE_SPEC(FArticyTextExtensionSpec)
 
 void FArticyTextExtensionSpec::Define()
@@ -104,12 +110,8 @@ void FArticyTextExtensionSpec::Define()
 				FString(TEXT("GameState.Flag")));
 		});
 
-		It("returns the source name for a $Type lookup", [this]()
+		It("returns the source name for an unknown $Type lookup", [this]()
 		{
-			// Note: the $Type branch inside GetSource tests SourceParts[0] against the
-			// prefix "$Type.", but SourceName has already been split on dots by then, so
-			// SourceParts[0] is only ever "$Type" and the branch cannot be taken. A $Type
-			// token therefore falls all the way through to the source-name fallback.
 			TestEqual(TEXT("type"), UArticyTextExtension::Get()->Test_GetSource(nullptr, TEXT("$Type.Nope.DisplayName")),
 				FString(TEXT("$Type.Nope.DisplayName")));
 		});
@@ -117,6 +119,84 @@ void FArticyTextExtensionSpec::Define()
 		It("returns an empty string for an empty source name", [this]()
 		{
 			TestEqual(TEXT("empty"), UArticyTextExtension::Get()->Test_GetSource(nullptr, FString()), FString());
+		});
+	});
+
+	// [$Type.<TypeName>.<Property>] resolves to the property's declared type through the
+	// type system. Unit tests run in a host project with no imported articy content, so the
+	// type system singleton is the empty placeholder and the spec can register types on it.
+	Describe("$Type tokens", [this]()
+	{
+		// Regression: GetSource tested the already-split first part against the prefix
+		// "$Type.", which can never match, so every $Type token fell through unresolved.
+		BeforeEach([this]()
+		{
+			TypeSystem.Reset(UArticyTypeSystem::Get());
+			if (TypeSystem.IsValid())
+			{
+				SavedTypes = TypeSystem->Types;
+
+				FArticyPropertyInfo DisplayName;
+				DisplayName.TechnicalName = TEXT("DisplayName");
+				DisplayName.PropertyType = TEXT("string");
+
+				FArticyPropertyInfo Motivation;
+				Motivation.TechnicalName = TEXT("Character.Motivation");
+				Motivation.PropertyType = TEXT("int");
+				Motivation.IsTemplateProperty = true;
+
+				FArticyType Character;
+				Character.TechnicalName = TEXT("Character");
+				Character.Properties = { DisplayName, Motivation };
+
+				TypeSystem->Types.Add(TEXT("Character"), Character);
+			}
+		});
+
+		AfterEach([this]()
+		{
+			if (TypeSystem.IsValid())
+			{
+				TypeSystem->Types = SavedTypes;
+			}
+			TypeSystem.Reset();
+			SavedTypes.Reset();
+		});
+
+		It("resolves a type property to its declared type", [this]()
+		{
+			const FText Format = FText::FromString(TEXT("[$Type.Character.DisplayName]"));
+			TestEqual(TEXT("resolved"), UArticyTextExtension::Get()->Resolve(nullptr, &Format).ToString(),
+				FString(TEXT("string")));
+		});
+
+		It("resolves a feature property by its qualified name", [this]()
+		{
+			const FText Format = FText::FromString(TEXT("[$Type.Character.Character.Motivation]"));
+			TestEqual(TEXT("resolved"), UArticyTextExtension::Get()->Resolve(nullptr, &Format).ToString(),
+				FString(TEXT("int")));
+		});
+
+		It("resolves a $Type token without a world context", [this]()
+		{
+			// Type metadata is world-independent, unlike variables and objects.
+			TestEqual(TEXT("no world"), UArticyTextExtension::Get()->Test_GetSource(nullptr, TEXT("$Type.Character.DisplayName")),
+				FString(TEXT("string")));
+		});
+
+		It("falls back to the source name for an unknown property", [this]()
+		{
+			TestEqual(TEXT("unknown property"),
+				UArticyTextExtension::Get()->Test_GetSource(nullptr, TEXT("$Type.Character.Nope")),
+				FString(TEXT("$Type.Character.Nope")));
+		});
+
+		It("falls back to the source name when no property is named", [this]()
+		{
+			TestEqual(TEXT("no property"), UArticyTextExtension::Get()->Test_GetSource(nullptr, TEXT("$Type.Character")),
+				FString(TEXT("$Type.Character")));
+			TestEqual(TEXT("marker only"), UArticyTextExtension::Get()->Test_GetSource(nullptr, TEXT("$Type")),
+				FString(TEXT("$Type")));
 		});
 	});
 

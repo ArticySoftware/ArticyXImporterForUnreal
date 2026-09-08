@@ -42,14 +42,21 @@ public:
 	UArticyPrimitive* GetSubobject(FArticyId Id) const;
 
 	/**
-	 * Gets the Articy type of this object.
+	 * Gets the Articy type of this object, resolved through the type system.
 	 *
 	 * @return The FArticyType associated with this object.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Articy")
 	FArticyType GetArticyType() const;
 
-	/** The Articy type of this object. */
+	/**
+	 * The technical name of this object's Articy type. Only the name is serialized; the type
+	 * metadata itself is shared through the type system instead of copied onto every object.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Articy")
+	FString ArticyTypeName;
+
+	/** Type metadata assembled by the importer, before the type system is available. */
 	FArticyType ArticyType;
 
 protected:

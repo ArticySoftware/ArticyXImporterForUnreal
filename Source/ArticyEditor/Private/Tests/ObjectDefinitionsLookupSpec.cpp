@@ -170,6 +170,78 @@ void FArticyObjectDefLookupSpec::Define()
 				FArticyObjectDefinitions::GetCppDefaultValue(FName(TEXT("MyNpcTemplate"))).IsEmpty());
 		});
 	});
+
+	// An object carries the properties of its base classes, so its type has to describe them
+	// too - a [$Type.<Template>.DisplayName] token asks about a property declared on Entity.
+	Describe("inherited properties", [this]()
+	{
+		const auto TypeJson = [](const FString& Type, const FString& Class, const FString& Property)
+		{
+			TSharedPtr<FJsonObject> Prop = MakeShared<FJsonObject>();
+			Prop->SetStringField(TEXT("Property"), Property);
+			Prop->SetStringField(TEXT("Type"), TEXT("string"));
+
+			TArray<TSharedPtr<FJsonValue>> Props;
+			Props.Add(MakeShared<FJsonValueObject>(Prop));
+
+			TSharedPtr<FJsonObject> Json = MakeShared<FJsonObject>();
+			Json->SetStringField(TEXT("Type"), Type);
+			Json->SetStringField(TEXT("Class"), Class);
+			Json->SetArrayField(TEXT("Properties"), Props);
+			return MakeShared<FJsonValueObject>(Json);
+		};
+
+		It("folds a base class's properties into the derived type", [this, TypeJson]()
+		{
+			// Derived type listed first, so the pass cannot rely on definition order.
+			TArray<TSharedPtr<FJsonValue>> Json;
+			Json.Add(TypeJson(TEXT("Character"), TEXT("Entity"), TEXT("Motivation")));
+			Json.Add(TypeJson(TEXT("Entity"), TEXT("Entity"), TEXT("DisplayName")));
+
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyObjectDefinitions Defs;
+			Defs.ImportFromJson(&Json, Data);
+
+			const FArticyObjectDef* Character = Defs.GetTypes().Find(FName(TEXT("Character")));
+			if (!TestNotNull(TEXT("Character type"), Character))
+				return;
+
+			TestEqual(TEXT("own property"),
+				Character->ArticyType.GetProperty(TEXT("Motivation")).PropertyType, FString(TEXT("string")));
+			TestEqual(TEXT("inherited property"),
+				Character->ArticyType.GetProperty(TEXT("DisplayName")).PropertyType, FString(TEXT("string")));
+		});
+
+		It("keeps a derived type's own declaration when it redeclares a base property", [this, TypeJson]()
+		{
+			TArray<TSharedPtr<FJsonValue>> Json;
+			Json.Add(TypeJson(TEXT("Entity"), TEXT("Entity"), TEXT("DisplayName")));
+
+			TSharedPtr<FJsonObject> OwnProp = MakeShared<FJsonObject>();
+			OwnProp->SetStringField(TEXT("Property"), TEXT("DisplayName"));
+			OwnProp->SetStringField(TEXT("Type"), TEXT("int"));
+			TArray<TSharedPtr<FJsonValue>> Props;
+			Props.Add(MakeShared<FJsonValueObject>(OwnProp));
+
+			TSharedPtr<FJsonObject> Derived = MakeShared<FJsonObject>();
+			Derived->SetStringField(TEXT("Type"), TEXT("Character"));
+			Derived->SetStringField(TEXT("Class"), TEXT("Entity"));
+			Derived->SetArrayField(TEXT("Properties"), Props);
+			Json.Add(MakeShared<FJsonValueObject>(Derived));
+
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyObjectDefinitions Defs;
+			Defs.ImportFromJson(&Json, Data);
+
+			const FArticyObjectDef* Character = Defs.GetTypes().Find(FName(TEXT("Character")));
+			if (!TestNotNull(TEXT("Character type"), Character))
+				return;
+
+			TestEqual(TEXT("own declaration wins"),
+				Character->ArticyType.GetProperty(TEXT("DisplayName")).PropertyType, FString(TEXT("int")));
+			TestEqual(TEXT("not duplicated"), Character->ArticyType.GetProperties().Num(), 1);
+		});
+	});
 }
 
 #endif // WITH_AUTOMATION_TESTS

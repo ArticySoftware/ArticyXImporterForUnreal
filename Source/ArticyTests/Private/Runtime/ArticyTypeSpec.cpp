@@ -9,19 +9,32 @@
 
 namespace
 {
-	FArticyEnumValueInfo MakeEnumValue(const FString& LocaKey, int Value)
+	FArticyEnumValueInfo MakeEnumValue(const FString& TechnicalName, int Value)
 	{
 		FArticyEnumValueInfo Info;
-		Info.LocaKey_DisplayName = LocaKey;
+		Info.TechnicalName = TechnicalName;
+		Info.DisplayName = TechnicalName;
+		Info.LocaKey_DisplayName = TechnicalName;
 		Info.Value = Value;
 		return Info;
 	}
 
-	FArticyPropertyInfo MakeProperty(const FString& LocaKey, const FString& Type)
+	// The importer fills both names: lookups go by technical name, the loca key is what
+	// gets handed to the string table. They are kept distinct here so a lookup that
+	// matched the wrong one would fail the test.
+	FArticyPropertyInfo MakeProperty(const FString& TechnicalName, const FString& Type)
 	{
 		FArticyPropertyInfo Info;
-		Info.LocaKey_DisplayName = LocaKey;
+		Info.TechnicalName = TechnicalName;
+		Info.LocaKey_DisplayName = TechnicalName + TEXT(".DisplayName");
 		Info.PropertyType = Type;
+		return Info;
+	}
+
+	FArticyPropertyInfo MakeFeatureProperty(const FString& Feature, const FString& TechnicalName, const FString& Type)
+	{
+		FArticyPropertyInfo Info = MakeProperty(Feature + TEXT(".") + TechnicalName, Type);
+		Info.IsTemplateProperty = true;
 		return Info;
 	}
 }
@@ -38,10 +51,10 @@ void FArticyTypeSpec::Define()
 		{
 			FArticyType Type;
 			Type.EnumValues = { MakeEnumValue(TEXT("Red"), 0), MakeEnumValue(TEXT("Green"), 1) };
-			TestEqual(TEXT("by value"), Type.GetEnumValue(1).LocaKey_DisplayName, FString(TEXT("Green")));
+			TestEqual(TEXT("by value"), Type.GetEnumValue(1).TechnicalName, FString(TEXT("Green")));
 		});
 
-		It("finds an enum value by its loca key", [this]()
+		It("finds an enum value by its technical name", [this]()
 		{
 			FArticyType Type;
 			Type.EnumValues = { MakeEnumValue(TEXT("Red"), 0), MakeEnumValue(TEXT("Green"), 1) };
@@ -52,17 +65,25 @@ void FArticyTypeSpec::Define()
 		{
 			FArticyType Type;
 			Type.EnumValues = { MakeEnumValue(TEXT("Red"), 0) };
-			TestEqual(TEXT("missing"), Type.GetEnumValue(99).LocaKey_DisplayName, FString());
+			TestEqual(TEXT("missing"), Type.GetEnumValue(99).TechnicalName, FString());
 		});
 	});
 
 	Describe("GetProperty", [this]()
 	{
-		It("finds a property by its loca key", [this]()
+		It("finds a property by its technical name", [this]()
 		{
 			FArticyType Type;
 			Type.Properties = { MakeProperty(TEXT("Speed"), TEXT("float")) };
 			TestEqual(TEXT("type"), Type.GetProperty(TEXT("Speed")).PropertyType, FString(TEXT("float")));
+		});
+
+		It("finds a feature property by its qualified name", [this]()
+		{
+			FArticyType Type;
+			Type.Properties = { MakeFeatureProperty(TEXT("Stats"), TEXT("Speed"), TEXT("float")) };
+			TestEqual(TEXT("qualified"), Type.GetProperty(TEXT("Stats.Speed")).PropertyType, FString(TEXT("float")));
+			TestTrue(TEXT("unqualified does not match"), Type.GetProperty(TEXT("Speed")).PropertyType.IsEmpty());
 		});
 
 		It("returns a default property when nothing matches", [this]()
@@ -101,10 +122,41 @@ void FArticyTypeSpec::Define()
 			TestEqual(TEXT("loca key"), Type.GetFeatureDisplayNameLocaKey(TEXT("Stats")), FString(TEXT("Stats")));
 		});
 
-		It("returns no properties for a feature (not yet implemented)", [this]()
+		It("returns the properties belonging to a feature", [this]()
 		{
 			FArticyType Type;
-			Type.Properties = { MakeProperty(TEXT("Speed"), TEXT("float")) };
+			Type.Features = { TEXT("Stats") };
+			Type.Properties = {
+				MakeProperty(TEXT("DisplayName"), TEXT("string")),
+				MakeFeatureProperty(TEXT("Stats"), TEXT("Speed"), TEXT("float")),
+				MakeFeatureProperty(TEXT("Stats"), TEXT("Health"), TEXT("int")),
+				MakeFeatureProperty(TEXT("Combat"), TEXT("Damage"), TEXT("int"))
+			};
+
+			const TArray<FArticyPropertyInfo> InFeature = Type.GetPropertiesInFeature(TEXT("Stats"));
+
+			TestEqual(TEXT("count"), InFeature.Num(), 2);
+			if (InFeature.Num() == 2)
+			{
+				// Names stay qualified, so they can be fed straight back into GetProperty.
+				TestEqual(TEXT("first"), InFeature[0].TechnicalName, FString(TEXT("Stats.Speed")));
+				TestEqual(TEXT("second"), InFeature[1].TechnicalName, FString(TEXT("Stats.Health")));
+			}
+		});
+
+		It("returns nothing for a feature that has no properties", [this]()
+		{
+			FArticyType Type;
+			Type.Properties = { MakeFeatureProperty(TEXT("Stats"), TEXT("Speed"), TEXT("float")) };
+			TestEqual(TEXT("empty"), Type.GetPropertiesInFeature(TEXT("Combat")).Num(), 0);
+		});
+
+		It("does not mistake a plain property for a feature property", [this]()
+		{
+			// A non-template property whose name happens to carry a dot must not be
+			// reported as living in a feature.
+			FArticyType Type;
+			Type.Properties = { MakeProperty(TEXT("Stats.Speed"), TEXT("float")) };
 			TestEqual(TEXT("empty"), Type.GetPropertiesInFeature(TEXT("Stats")).Num(), 0);
 		});
 	});
