@@ -47,10 +47,41 @@ protected:
 		return Empty;
 	}
 
-	FText GetStringText(UObject* Outer, const FName& PropName, const FText* BackupText = nullptr)
+	/**
+	 * The reflected property behind a generated string property, which is an FString for an
+	 * ArticyString and an FText for an ArticyMultiLanguageString.
+	 */
+	FProperty* GetStringProperty(const FName& PropName)
 	{
-		FText& Key = GetProperty<FText>(PropName);
-		return ArticyHelpers::LocalizeString(Outer, Key, true, BackupText);
+		FProperty* Prop = IArticyReflectable::GetProperty(PropName);
+
+		if (ArticyHelpers::GetTextPropertyKind(Prop) == ArticyHelpers::EArticyTextPropertyKind::None)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Cannot get string property %s from object %s!"),
+				   *PropName.ToString(), GetReflectedObject() ? *GetReflectedObject()->GetName() : TEXT("(nullptr)"));
+			return nullptr;
+		}
+
+		return Prop;
+	}
+
+	/** Display text of a string property: localized for an FText, text extension only for an FString. */
+	FText GetStringText(const FName& PropName, const FText* BackupText = nullptr)
+	{
+		return ArticyHelpers::GetTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName), true, BackupText);
+	}
+
+	/** Raw value of a string property: the string table key of an FText, or the FString itself. */
+	FString GetStringKey(const FName& PropName)
+	{
+		return ArticyHelpers::GetTextPropertyKey(GetReflectedObject(), GetStringProperty(PropName));
+	}
+
+	/** Writes Text into a string property of either kind and returns what is stored now. */
+	FText SetStringText(const FName& PropName, const FText& Text)
+	{
+		ArticyHelpers::SetTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName), Text);
+		return FText::FromString(GetStringKey(PropName));
 	}
 
 };

@@ -30,7 +30,7 @@ public:
 	virtual FText GetText()
 	{
 		static const auto& PropName = FName("Text");
-		return GetStringText(Cast<UObject>(this), PropName);
+		return GetStringText(PropName);
 	}
 
 	virtual FText GetText() const
@@ -41,17 +41,24 @@ public:
 	//---------------------------------------------------------------------------//
 
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithText")
-	virtual FText& SetText(UPARAM(ref) const FText& Text)
+	virtual FText SetText(UPARAM(ref) const FText& Text)
 	{
 		static const auto& PropName = FName("Text");
-		return GetProperty<FText>(PropName) = Text;
+		return SetStringText(PropName, Text);
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "ArticyObjectWithText")
 	virtual USoundWave* GetVOAsset(UObject* WorldContext)
 	{
 		static const auto& PropName = FName("Text");
-		FText& Key = GetProperty<FText>(PropName);
+
+		// VO assets are exported alongside the localized texts, so a plain ArticyString never has one
+		if (ArticyHelpers::GetTextPropertyKind(GetStringProperty(PropName)) != ArticyHelpers::EArticyTextPropertyKind::LocalizedText)
+		{
+			return nullptr;
+		}
+
+		const FString Key = GetStringKey(PropName);
 		const FText MissingEntry = FText::FromString("<MISSING STRING TABLE ENTRY>");
 		FArticyId AssetId;
 
@@ -66,7 +73,7 @@ public:
 
 		// Find the entry
 		const FStringTable* Table = TablePtr.Get();
-		FStringTableEntryConstPtr EntryPtr = Table->FindEntry(FTextKey(Key.ToString() + ".VOAsset"));
+		FStringTableEntryConstPtr EntryPtr = Table->FindEntry(FTextKey(Key + ".VOAsset"));
 		if (!EntryPtr.IsValid())
 		{
 			return nullptr;
@@ -81,7 +88,7 @@ public:
 		}
 		else
 		{
-			const auto& AssetString = FText::FromString(Key.ToString() + ".VOAsset");
+			const auto& AssetString = FText::FromString(Key + ".VOAsset");
 			AssetId = FArticyId{ ResolveText(WorldContext, &AssetString).ToString() };
 		}
 

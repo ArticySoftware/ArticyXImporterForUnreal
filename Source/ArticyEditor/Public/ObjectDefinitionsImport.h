@@ -121,6 +121,20 @@ public:
      */
     FString GetCppType(const UArticyImportData* Data) const;
 
+    /**
+     * Whether this is a localizable articy text (ArticyMultiLanguageString), imported as FText.
+     *
+     * @return True for a localizable text.
+     */
+    bool IsLocalizedText() const;
+
+    /**
+     * Whether this is a non-localizable articy text (ArticyString), imported as FString.
+     *
+     * @return True for a plain text.
+     */
+    bool IsPlainText() const;
+
 private:
     UPROPERTY(VisibleAnywhere, Category = "ObjectProperty")
     FName Property = "";
@@ -235,6 +249,13 @@ public:
      * @return A pointer to the UClass of the feature.
      */
     UClass* GetUClass(const UArticyImportData* Data) const;
+
+    /**
+     * Returns the type information gathered for the type system.
+     *
+     * @return A constant reference to the FArticyType.
+     */
+    const FArticyType& GetArticyType() const { return ArticyType; }
 
     /**
      * Returns the technical name of the template feature.

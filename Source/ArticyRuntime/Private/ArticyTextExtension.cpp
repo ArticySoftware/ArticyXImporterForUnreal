@@ -294,6 +294,19 @@ void UArticyTextExtension::GetObjectProperty(UObject* Outer, const FString& Sour
 		return;
 	}
 
+	// String properties: an FText holds a string table key to localize, an FString is used as is
+	FString StringProperty = PropertyName;
+	if (UArticyBaseObject* Owner = ExpressoType::TryFeatureReroute(Object, StringProperty))
+	{
+		const FProperty* Property = Owner->GetProperty(*StringProperty);
+		if (ArticyHelpers::GetTextPropertyKind(Property) != ArticyHelpers::EArticyTextPropertyKind::None)
+		{
+			OutString = ArticyHelpers::GetTextPropertyValue(Owner, Property, false).ToString();
+			OutSuccess = true;
+			return;
+		}
+	}
+
 	// Handle based on data type
 	ExpressoType PropertyType {Object, PropertyName};
 	switch (PropertyType.Type) {
