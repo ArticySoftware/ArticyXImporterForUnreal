@@ -8,6 +8,8 @@
 #include "ArticyGlobalVariables.h"
 #include "ArticyPluginSettings.h"
 #include "ArticyExpressoScripts.h"
+#include "Interfaces/ArticyObjectWithDisplayName.h"
+#include "Interfaces/ArticyObjectWithText.h"
 #include "Misc/Paths.h"
 
 /**
@@ -772,6 +774,55 @@ TArray<UArticyObject*> UArticyDatabase::GetAllObjects() const
 		arr.Add(obj);
 	}
 	return arr;
+}
+
+TArray<UArticyObject*> UArticyDatabase::FilterObjects(const FString& Filter) const
+{
+	return FilterObjectsBasedOn(GetAllObjects(), Filter);
+}
+
+TArray<UArticyObject*> UArticyDatabase::FilterObjectsBasedOn(const TArray<UArticyObject*>& Objects, const FString& Filter)
+{
+	return FilterObjectsBasedOn<UArticyObject>(Objects, Filter);
+}
+
+// True if Filter is a hexadecimal number, with or without the 0x prefix
+static bool IsHexId(const FString& Filter)
+{
+	FString Digits = Filter;
+	Digits.RemoveFromStart(TEXT("0x"), ESearchCase::IgnoreCase);
+	if (Digits.IsEmpty())
+		return false;
+
+	for (const TCHAR C : Digits)
+	{
+		if (!FChar::IsHexDigit(C))
+			return false;
+	}
+	return true;
+}
+
+bool UArticyDatabase::MatchesFilter(const UArticyObject* Object, const FString& Filter)
+{
+	if (!Object)
+		return false;
+	if (Filter.IsEmpty())
+		return true;
+
+	if (IsHexId(Filter) && Object->GetId() == FArticyId(ArticyHelpers::HexToUint64(Filter)))
+		return true;
+	if (Object->GetTechnicalName().ToString().Contains(Filter))
+		return true;
+
+	// only some object types carry a display name or a text
+	const IArticyObjectWithDisplayName* WithDisplayName = Cast<IArticyObjectWithDisplayName>(Object);
+	if (WithDisplayName && WithDisplayName->GetDisplayName().ToString().Contains(Filter))
+		return true;
+	const IArticyObjectWithText* WithText = Cast<IArticyObjectWithText>(Object);
+	if (WithText && WithText->GetText().ToString().Contains(Filter))
+		return true;
+
+	return false;
 }
 
 //---------------------------------------------------------------------------//
