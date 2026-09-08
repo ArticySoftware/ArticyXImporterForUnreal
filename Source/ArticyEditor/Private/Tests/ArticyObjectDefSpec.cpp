@@ -65,6 +65,27 @@ void FArticyObjectDefSpec::Define()
 
 			TestEqual(TEXT("cpp type"), Def.GetCppType(Data, false), FString(TEXT("UNPC")));
 		});
+
+		It("records each property's articy type in the type system", [this]()
+		{
+			TArray<TSharedPtr<FJsonValue>> Properties = TestJson::OneObject(TestJson::PropJson(TEXT("DisplayName"), TEXT("ArticyString")));
+			Properties.Add(MakeShared<FJsonValueObject>(TestJson::PropJson(TEXT("Text"), TEXT("ArticyMultiLanguageString"))));
+
+			TSharedPtr<FJsonObject> Json = MakeShared<FJsonObject>();
+			Json->SetStringField(TEXT("Type"), TEXT("Hub"));
+			Json->SetStringField(TEXT("Class"), TEXT("Hub"));
+			Json->SetArrayField(TEXT("Properties"), Properties);
+
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyObjectDef Def;
+			Def.ImportFromJson(Json, Data);
+
+			// What an [Object.Property.$Type] token and Blueprint code use to tell the kinds apart.
+			TestEqual(TEXT("plain"), Def.ArticyType.GetProperty(TEXT("DisplayName")).PropertyType, FString(TEXT("ArticyString")));
+			TestEqual(TEXT("localized"), Def.ArticyType.GetProperty(TEXT("Text")).PropertyType, FString(TEXT("ArticyMultiLanguageString")));
+			TestEqual(TEXT("technical name"), Def.ArticyType.GetProperty(TEXT("Text")).TechnicalName, FString(TEXT("Text")));
+			TestFalse(TEXT("not a template property"), Def.ArticyType.GetProperty(TEXT("Text")).IsTemplateProperty);
+		});
 	});
 }
 

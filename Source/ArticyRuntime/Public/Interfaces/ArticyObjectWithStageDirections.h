@@ -21,10 +21,10 @@ class IArticyObjectWithStageDirections : public IArticyObjectWith_Base
 public:
 	
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithStageDirections")
-	virtual FText& GetStageDirections()
+	virtual FText GetStageDirections()
 	{
 		static const auto& PropName = FName("StageDirections");
-		return GetProperty<FText>(PropName);
+		return GetStringText(PropName);
 	}
 	
 	virtual FText GetStageDirections() const
@@ -35,8 +35,9 @@ public:
 	//---------------------------------------------------------------------------//
 
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithStageDirections")
-	virtual FText& SetStageDirections(UPARAM(ref) const FText& StageDirections)
+	virtual FText SetStageDirections(UPARAM(ref) const FText& StageDirections)
 	{
-		return GetStageDirections() = StageDirections;
+		static const auto& PropName = FName("StageDirections");
+		return SetStringText(PropName, StageDirections);
 	}
 };
