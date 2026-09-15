@@ -32,7 +32,13 @@ build almost to a standstill ("Delaying N processes due to memory pressure"). Ad
 
 ```bash
 UE_ROOT=/path/to/UnrealEngine ./run-tests.sh
+UE_VERSION=5.8 ./run-tests.sh                 # looked up under /Users/Shared/Epic Games (Mac)
+UE_ROOT=... NO_UBA=1 ./run-tests.sh           # the equivalent of -NoUBA above
 ```
+
+`UE_VERSION` resolves against the macOS launcher's installs (the default
+`/Users/Shared/Epic Games/UE_<version>` location, then its `LauncherInstalled.dat` manifest).
+Linux has no launcher to query, so name the engine with `UE_ROOT` there.
 
 The script exits non-zero if any test fails. A full report is written to `Report/`.
 
