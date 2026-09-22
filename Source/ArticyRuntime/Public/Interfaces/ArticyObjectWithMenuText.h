@@ -27,7 +27,7 @@ public:
 	{
 		static const auto& PropName = FName("MenuText");
 		static const auto& BackupText = FText::FromString("...");
-		return GetStringText(Cast<UObject>(this), PropName, &BackupText);
+		return GetStringText(PropName, &BackupText);
 	}
 
 	virtual FText GetMenuText() const
@@ -38,9 +38,9 @@ public:
 	//---------------------------------------------------------------------------//
 
 	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithMenuText")
-	virtual FText& SetMenuText(UPARAM(ref) const FText& MenuText)
+	virtual FText SetMenuText(UPARAM(ref) const FText& MenuText)
 	{
 		static const auto& PropName = FName("MenuText");
-		return GetProperty<FText>(PropName) = MenuText;
+		return SetStringText(PropName, MenuText);
 	}
 };

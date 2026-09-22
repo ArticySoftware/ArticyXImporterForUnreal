@@ -5,6 +5,27 @@
 #include "ArticyType.h"
 #include "ArticyHelpers.h"
 
+// Adds From's properties to Into by name; bOverride decides who wins on a clash
+static void MergeProperties(TArray<FArticyPropertyInfo>& Into, const TArray<FArticyPropertyInfo>& From, const bool bOverride)
+{
+	for (const FArticyPropertyInfo& Property : From)
+	{
+		FArticyPropertyInfo* Existing = Into.FindByPredicate([&Property](const FArticyPropertyInfo& Info)
+		{
+			return Info.LocaKey_DisplayName.Equals(Property.LocaKey_DisplayName);
+		});
+
+		if (!Existing)
+		{
+			Into.Add(Property);
+		}
+		else if (bOverride)
+		{
+			*Existing = Property;
+		}
+	}
+}
+
 FArticyEnumValueInfo FArticyType::GetEnumValue(int Value) const
 {
 	for (const auto& EnumInfo : EnumValues)
@@ -96,10 +117,8 @@ void FArticyType::MergeChild(const FArticyType& Child)
 	{
 		Features = Child.Features;
 	}
-	if (Child.Properties.Num() > 0)
-	{
-		Properties = Child.Properties;
-	}
+	// a templated object merges its class and then each feature, so the lists add up
+	MergeProperties(Properties, Child.Properties, true);
 }
 
 void FArticyType::MergeParent(const FArticyType& Parent)
@@ -126,8 +145,5 @@ void FArticyType::MergeParent(const FArticyType& Parent)
 	{
 		Features = Parent.Features;
 	}
-	if (Properties.Num() == 0)
-	{
-		Properties = Parent.Properties;
-	}
+	MergeProperties(Properties, Parent.Properties, false);
 }

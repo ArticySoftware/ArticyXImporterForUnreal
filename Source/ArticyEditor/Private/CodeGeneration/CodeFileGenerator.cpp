@@ -60,16 +60,25 @@ void CodeFileGenerator::Variable(const FString& Type, const FString& Name, const
 		str += TEXT(" = ") + Value;
 	
 	Line(str, true);
+}
 
-	if(bUproperty && Type.Equals(TEXT("FText")))
+void CodeFileGenerator::TextPropertyAccessor(const FString& Name, const bool bLocalized)
+{
+	// these are served by the IArticyObjectWith* interfaces instead
+	static TArray<FString> ReservedNames = { TEXT("Text"), TEXT("DisplayName"), TEXT("MenuText"), TEXT("CreatedBy"), TEXT("StageDirections")};
+
+	if(ReservedNames.Contains(Name))
+		return;
+
+	if(bLocalized)
 	{
-		static TArray<FString> ReservedNames = { TEXT("Text"), TEXT("DisplayName"), TEXT("MenuText"), TEXT("CreatedBy"), TEXT("StageDirections")};
-
-		if(!ReservedNames.Contains(Name))
-		{
-			Line(TEXT("UFUNCTION(BlueprintPure, meta=(DisplayName=\"Get ") + SplitName(Name) + TEXT(" (Localized)\"))"));
-			Line(Type + TEXT(" Get") + Name + TEXT("() { return GetPropertyText(") + Name + "); }");
-		}
+		Line(TEXT("UFUNCTION(BlueprintPure, meta=(DisplayName=\"Get ") + SplitName(Name) + TEXT(" (Localized)\"))"));
+		Line(TEXT("FText Get") + Name + TEXT("() { return GetPropertyText(") + Name + "); }");
+	}
+	else
+	{
+		Line(TEXT("UFUNCTION(BlueprintPure, meta=(DisplayName=\"Get ") + SplitName(Name) + TEXT(" (Resolved)\"))"));
+		Line(TEXT("FText Get") + Name + TEXT("() { return ResolvePropertyString(") + Name + "); }");
 	}
 }
 

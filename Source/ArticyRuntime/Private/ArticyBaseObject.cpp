@@ -49,3 +49,15 @@ FText UArticyBaseObject::GetPropertyText(const FText Property)
 {
 	return ArticyHelpers::LocalizeString(this, Property, true, &Property);
 }
+
+/**
+ * Resolves the text extension in a non-localizable string property of this Articy object.
+ *
+ * @param Property The plain string property value.
+ * @return The resolved FText.
+ */
+FText UArticyBaseObject::ResolvePropertyString(const FString& Property)
+{
+	const FText Text = FText::FromString(Property);
+	return ArticyHelpers::ResolveText(this, &Text);
+}
