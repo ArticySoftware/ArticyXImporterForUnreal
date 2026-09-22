@@ -6,8 +6,13 @@
 #include "ArticyDatabase.h"
 #include "ArticyGlobalVariables.h"
 #include "ArticyObject.h"
+#include "ArticyFlowClasses.h"
+#include "ArticyHelpers.h"
 #include "ArticyTextExtension.h"
 #include "ArticyFlowPlayer.h"
+#include "Interfaces/ArticyObjectWithDisplayName.h"
+#include "Interfaces/ArticyObjectWithStageDirections.h"
+#include "Interfaces/ArticyObjectWithText.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
 #include "Engine/World.h"
@@ -283,6 +288,128 @@ void FArticyIntegrationSpec::Define()
 
 			Actor->Destroy();
 		});
+	});
+
+	// The demo has both kinds: Hub.DisplayName and StageDirections are plain ArticyStrings,
+	// Entity.DisplayName is a localizable one. A kind mismatch means the project needs a reimport.
+	Describe("Text properties", [this]()
+	{
+		It("reads a hub's plain display name without localizing it", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Hub = nullptr;
+			for (UArticyObject* Candidate : DB->GetObjectsOfClass(UArticyHub::StaticClass()))
+			{
+				IArticyObjectWithDisplayName* Named = Cast<IArticyObjectWithDisplayName>(Candidate);
+				if (Named && !Named->GetDisplayName().IsEmpty())
+				{
+					Hub = Candidate;
+					break;
+				}
+			}
+			if (!Hub)
+			{
+				AddWarning(MissingContentMessage(TEXT("a Hub with a display name")));
+				return;
+			}
+
+			const FProperty* Property = Hub->GetProperty(FName(TEXT("DisplayName")));
+			TestTrue(TEXT("Hub.DisplayName is generated as FString"),
+				ArticyHelpers::GetTextPropertyKind(Property) == ArticyHelpers::EArticyTextPropertyKind::PlainString);
+
+			const FString Shown = Cast<IArticyObjectWithDisplayName>(Hub)->GetDisplayName().ToString();
+			TestEqual(TEXT("plain value shown as is"), Shown, ArticyHelpers::GetTextPropertyKey(Hub, Property));
+		});
+
+		It("localizes an entity's display name instead of showing its key", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Hamster = DB->GetObjectByName(FName(DemoEntity));
+			if (!Hamster)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			const FProperty* Property = Hamster->GetProperty(FName(TEXT("DisplayName")));
+			TestTrue(TEXT("Entity.DisplayName is generated as FText"),
+				ArticyHelpers::GetTextPropertyKind(Property) == ArticyHelpers::EArticyTextPropertyKind::LocalizedText);
+
+			const FString Key = ArticyHelpers::GetTextPropertyKey(Hamster, Property);
+			TestEqual(TEXT("key"), Key, FString(DemoEntity) + TEXT(".DisplayName"));
+
+			const FString Shown = Cast<IArticyObjectWithDisplayName>(Hamster)->GetDisplayName().ToString();
+			TestFalse(TEXT("not empty"), Shown.IsEmpty());
+			TestNotEqual(TEXT("localized, not the key"), Shown, Key);
+		});
+
+		It("resolves an [Object.DisplayName] token to the localized name, not the key", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Hamster = DB->GetObjectByName(FName(DemoEntity));
+			if (!Hamster)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			const FText Format = FText::FromString(FString::Printf(TEXT("[%s.DisplayName]"), DemoEntity));
+			const FString Resolved = UArticyTextExtension::Get()->Resolve(World, &Format).ToString();
+			TestEqual(TEXT("token shows the display name"), Resolved,
+				Cast<IArticyObjectWithDisplayName>(Hamster)->GetDisplayName().ToString());
+		});
+
+		It("reads a dialogue fragment's plain stage directions and finds no VO asset", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			const TArray<UArticyObject*> Fragments = DB->GetObjectsOfClass(UArticyDialogueFragment::StaticClass());
+			if (Fragments.Num() == 0)
+			{
+				AddWarning(MissingContentMessage(TEXT("a DialogueFragment")));
+				return;
+			}
+			UArticyObject* Fragment = Fragments[0];
+
+			TestTrue(TEXT("StageDirections is generated as FString"),
+				ArticyHelpers::GetTextPropertyKind(Fragment->GetProperty(FName(TEXT("StageDirections"))))
+				== ArticyHelpers::EArticyTextPropertyKind::PlainString);
+			TestEqual(TEXT("stage directions"), Cast<IArticyObjectWithStageDirections>(Fragment)->GetStageDirections().ToString(),
+				ArticyHelpers::GetTextPropertyKey(Fragment, Fragment->GetProperty(FName(TEXT("StageDirections")))));
+
+			// The demo ships no voice-over, so the lookup must come back empty rather than crash.
+			TestNull(TEXT("no VO asset"), Cast<IArticyObjectWithText>(Fragment)->GetVOAsset(World));
+		});
+
+		// NOTE: UArticyBaseObject::ArticyType is not a UPROPERTY, so the export type recorded at
+		// import never reaches a loaded package and [Object.Property.$Type] stays unresolved.
 	});
 }
 

@@ -16,6 +16,12 @@
 // Ensure the static Map is filled with predefined types
 FArticyPredefTypes FArticyPredefTypes::StaticInstance = FArticyPredefTypes{};
 
+// Converts Unity rich text markup in an imported articy text (if the setting is enabled)
+static FString ConvertImportedMarkup(const FString& Text)
+{
+	return GetDefault<UArticyPluginSettings>()->bConvertUnityToUnrealRichText ? ConvertUnityMarkupToUnreal(Text) : Text;
+}
+
 FArticyPredefTypes::FArticyPredefTypes()
 {
 	// Generic type for enums
@@ -29,17 +35,15 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Reset();
 	
 	const auto& StringType = PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? Json->AsString() : FString{}; });
+	// Non-localizable articy text (ArticyString): a plain FString that still carries rich text markup
+	const auto& PlainTextType = PREDEFINE_TYPE_EXT(FString, "TEXT(\"\")", [](PROP_SETTER_PARAMS) { return Json->Type == EJson::String ? ConvertImportedMarkup(Json->AsString()) : FString{}; });
+	// Localizable articy text (ArticyMultiLanguageString): an FText whose value is the string table key
 	const auto& TextType = PREDEFINE_TYPE_EXT(FText, TEXT("FText::GetEmpty()"), [](PROP_SETTER_PARAMS)
 		{
 			if (Json->Type == EJson::String)
 			{
-				// Convert Unity rich text markup to Unreal (if the setting is enabled)
-				const FString Processed = GetDefault<UArticyPluginSettings>()->bConvertUnityToUnrealRichText ?
-					ConvertUnityMarkupToUnreal(Json->AsString()) :
-					Json->AsString();
-
 				// Return a new FText, where the Path is the key and the Property value is the default-language text
-				return FText::ChangeKey(PackageName, Path, FText::FromString(Processed));
+				return FText::ChangeKey(PackageName, Path, FText::FromString(ConvertImportedMarkup(Json->AsString())));
 			}
 			return FText::GetEmpty();
 		});
@@ -61,7 +65,7 @@ FArticyPredefTypes::FArticyPredefTypes()
 	Types.Add(TEXT("point"), PREDEFINE_TYPE_EXT(FVector2D, "FVector2D::ZeroVector", [](PROP_SETTER_PARAMS) { return ArticyHelpers::ParseFVector2DFromJson(Json); }));
 	Types.Add(TEXT("size"), PREDEFINE_TYPE(FArticySize));
 	Types.Add(TEXT("float"), PREDEFINE_TYPE_EXT(float, "0.f", [](PROP_SETTER_PARAMS) { return Json->IsNull() ? 0.f : static_cast<float>(Json->AsNumber()); }));
-	Types.Add(TEXT("ArticyString"), TextType);
+	Types.Add(TEXT("ArticyString"), PlainTextType);
 	Types.Add(TEXT("ArticyMultiLanguageString"), TextType);
 
 	auto int32Info = PREDEFINE_TYPE_EXT(int32, "0", [](PROP_SETTER_PARAMS) {
