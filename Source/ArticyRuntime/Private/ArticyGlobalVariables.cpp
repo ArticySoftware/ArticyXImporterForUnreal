@@ -11,6 +11,8 @@
 #include "ArticyAlternativeGlobalVariables.h"
 #include "AssetRegistry/AssetData.h"
 #include <ArticyPins.h>
+#include "ArticyGlobalVariablesWorldSubsystem.h"
+#include "Engine/World.h"
 
 /**
  * Constructor for FArticyGvName using full variable name.
@@ -124,6 +126,46 @@ void UArticyBaseVariableSet::BroadcastOnVariableChanged(UArticyVariable* Variabl
 //---------------------------------------------------------------------------//
 
 /**
+ * Makes the outer of a runtime GV clone keep it alive: the game instance for a persistent clone, the world's
+ * UArticyGlobalVariablesWorldSubsystem for a per-world one. The clone then lives exactly as long as its outer,
+ * so it survives garbage collection during play and is collected together with the outer when play ends.
+ * @param RuntimeClone The clone to keep alive.
+ */
+static void KeepRuntimeCloneAlive(UArticyGlobalVariables* RuntimeClone)
+{
+    if (UGameInstance* GameInstance = Cast<UGameInstance>(RuntimeClone->GetOuter()))
+    {
+        GameInstance->RegisterReferencedObject(RuntimeClone);
+    }
+    else if (UWorld* World = Cast<UWorld>(RuntimeClone->GetOuter()))
+    {
+        if (UArticyGlobalVariablesWorldSubsystem* Subsystem = World->GetSubsystem<UArticyGlobalVariablesWorldSubsystem>())
+        {
+            Subsystem->KeepAlive(RuntimeClone);
+        }
+    }
+}
+
+/**
+ * Undoes KeepRuntimeCloneAlive; does nothing for a clone that was never kept alive.
+ * @param RuntimeClone The clone to release.
+ */
+static void ReleaseRuntimeClone(UArticyGlobalVariables* RuntimeClone)
+{
+    if (UGameInstance* GameInstance = Cast<UGameInstance>(RuntimeClone->GetOuter()))
+    {
+        GameInstance->UnregisterReferencedObject(RuntimeClone);
+    }
+    else if (UWorld* World = Cast<UWorld>(RuntimeClone->GetOuter()))
+    {
+        if (UArticyGlobalVariablesWorldSubsystem* Subsystem = World->GetSubsystem<UArticyGlobalVariablesWorldSubsystem>())
+        {
+            Subsystem->Release(RuntimeClone);
+        }
+    }
+}
+
+/**
  * Retrieves the default global variables object, creating a clone if necessary.
  * @param WorldContext The context within which the object is retrieved.
  * @return A pointer to the default UArticyGlobalVariables object.
@@ -186,11 +228,14 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetDefault(const UObject* WorldC
         // DuplicateObject copies the source asset's RF_Standalone flag onto the runtime clone,
         // making the clone a GC root on its own. In the editor that rooted clone can survive
         // Stop-PIE and pin the now-garbage PIE GameInstance/world it is outered to, tripping
-        // UE's strict PIE leak check (PlayLevel.cpp). Strip the flag so GC can reclaim the clone
-        // together with the world. Packaged builds still AddToRoot above and are unaffected.
+        // UE's strict PIE leak check (PlayLevel.cpp). Strip the flag, and let the outer own the
+        // clone instead: nothing else references it (Clone is a weak pointer, and an outer does
+        // not keep its inners alive), so without an owner GC would reset every variable on its
+        // next pass. Packaged builds still AddToRoot above and are unaffected.
         if (Clone.IsValid())
         {
             Clone->ClearFlags(RF_Standalone);
+            KeepRuntimeCloneAlive(Clone.Get());
         }
 #endif
 
@@ -297,10 +342,12 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
 
 #if WITH_EDITOR
     // See GetDefault: strip the RF_Standalone flag inherited from the asset so the runtime clone
-    // isn't a self-rooting object that survives Stop-PIE and trips UE's PIE leak check.
+    // isn't a self-rooting object that survives Stop-PIE and trips UE's PIE leak check, and let
+    // the outer own the clone instead.
     if (NewClone)
     {
         NewClone->ClearFlags(RF_Standalone);
+        KeepRuntimeCloneAlive(NewClone);
     }
 #endif
 
@@ -316,6 +363,8 @@ void UArticyGlobalVariables::UnloadGlobalVariables()
 {
     if (Clone.IsValid())
     {
+        // Drop the outer's reference too, or the destroyed clone stays referenced until the outer dies
+        ReleaseRuntimeClone(Clone.Get());
         Clone->RemoveFromRoot();
         Clone->ConditionalBeginDestroy();
         Clone = NULL;
