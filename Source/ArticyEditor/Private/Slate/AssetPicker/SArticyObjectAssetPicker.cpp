@@ -7,6 +7,7 @@
 #include "EditorStyleSet.h"
 #include "GenericPlatform/ICursor.h"
 #include "Slate/AssetPicker/SArticyObjectTileView.h"
+#include "Slate/AssetPicker/SArticyObjectHierarchyView.h"
 #include "ArticyGlobalVariables.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
 #include "Types/WidgetActiveTimerDelegate.h"
@@ -20,8 +21,17 @@
 #include "ArticyEditorModule.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "Async/Async.h"
+#include "Misc/ConfigCacheIni.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 
 #define LOCTEXT_NAMESPACE "ArticyObjectAssetPicker"
+
+namespace
+{
+	// The view mode is a per-user preference, remembered across editor sessions
+	const TCHAR* ViewModeConfigSection = TEXT("ArticyObjectAssetPicker");
+	const TCHAR* ViewModeConfigKey = TEXT("ViewMode");
+}
 
 /**
  * @brief Destructor for SArticyObjectAssetPicker.
@@ -46,6 +56,14 @@ void SArticyObjectAssetPicker::Construct(const FArguments& InArgs)
 	bExactClass = InArgs._bExactClass;
 	bExactClassEditable = InArgs._bExactClassEditable;
 	bClassFilterEditable = InArgs._bClassFilterEditable;
+	CurrentObjectId = InArgs._CurrentObjectId;
+
+	int32 SavedViewMode = static_cast<int32>(EArticyObjectPickerViewMode::Tiles);
+	GConfig->GetInt(ViewModeConfigSection, ViewModeConfigKey, SavedViewMode, GEditorPerProjectIni);
+	ViewMode = SavedViewMode == static_cast<int32>(EArticyObjectPickerViewMode::Hierarchy)
+		? EArticyObjectPickerViewMode::Hierarchy
+		: EArticyObjectPickerViewMode::Tiles;
+	bRevealCurrentObjectPending = ViewMode == EArticyObjectPickerViewMode::Hierarchy;
 
 	if (!CurrentClassRestriction->IsChildOf(TopLevelClassRestriction.Get()))
 	{
@@ -78,7 +96,7 @@ void SArticyObjectAssetPicker::Construct(const FArguments& InArgs)
 
 	MenuBuilder.BeginSection(NAME_None, LOCTEXT("BrowseHeader", "Browse"));
 	{
-		MenuBuilder.AddWidget(SearchField.ToSharedRef(), FText::GetEmpty(), true);
+		MenuBuilder.AddWidget(CreateSearchRow(), FText::GetEmpty(), true);
 		MenuBuilder.AddWidget(AssetViewContainer.ToSharedRef(), FText::GetEmpty(), true);
 	}
 	MenuBuilder.EndSection();
@@ -148,6 +166,13 @@ void SArticyObjectAssetPicker::CreateInternalWidgets()
 		.WidthOverride(325)
 		.HeightOverride(325)
 		[
+			SNew(SWidgetSwitcher)
+				.WidgetIndex_Lambda([this]()
+				{
+					return ViewMode == EArticyObjectPickerViewMode::Hierarchy ? 1 : 0;
+				})
+			+ SWidgetSwitcher::Slot()
+			[
 			SAssignNew(AssetView, STileView<TWeakObjectPtr<UArticyObject>>)
 				.SelectionMode(ESelectionMode::Single)
 				.ListItemsSource(&FilteredObjects)
@@ -172,6 +197,16 @@ void SArticyObjectAssetPicker::CreateInternalWidgets()
 				.ItemHeight(this, &SArticyObjectAssetPicker::GetTileViewHeight)
 				.ItemWidth(this, &SArticyObjectAssetPicker::GetTileViewWidth)
 				.ItemAlignment(EListItemAlignment::EvenlyDistributed)
+			]
+			+ SWidgetSwitcher::Slot()
+			[
+				SAssignNew(HierarchyView, SArticyObjectHierarchyView)
+					.OnObjectSelected(this, &SArticyObjectAssetPicker::OnHierarchyObjectSelected)
+					.HighlightText_Lambda([this]()
+					{
+						return ArticyObjectFilter.IsValid() ? ArticyObjectFilter->GetRawFilterText() : FText::GetEmpty();
+					})
+			]
 		];
 
 	ClassFilterButton = SNew(SComboButton)
@@ -232,6 +267,94 @@ void SArticyObjectAssetPicker::CreateInternalWidgets()
 									[
 										ClassFilterButton.ToSharedRef()
 									];
+}
+
+/**
+ * @brief Creates the row with the search field and the view mode toggles.
+ *
+ * @return The created widget.
+ */
+TSharedRef<SWidget> SArticyObjectAssetPicker::CreateSearchRow()
+{
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >0
+	const FCheckBoxStyle* ToggleStyle = &FAppStyle::Get().GetWidgetStyle<FCheckBoxStyle>("ToggleButtonCheckbox");
+#else
+	const FCheckBoxStyle* ToggleStyle = &FEditorStyle::Get().GetWidgetStyle<FCheckBoxStyle>("ToggleButtonCheckbox");
+#endif
+
+	auto MakeToggle = [this, ToggleStyle](EArticyObjectPickerViewMode Mode, const FText& Label, const FText& ToolTip) -> TSharedRef<SWidget>
+	{
+		return SNew(SCheckBox)
+			.Style(ToggleStyle)
+			.ToolTipText(ToolTip)
+			.IsChecked_Lambda([this, Mode]()
+			{
+				return ViewMode == Mode ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			})
+			.OnCheckStateChanged_Lambda([this, Mode](ECheckBoxState)
+			{
+				SetViewMode(Mode);
+			})
+			[
+				SNew(STextBlock)
+					.Text(Label)
+					.Margin(FMargin(6.f, 2.f))
+			];
+	};
+
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.FillWidth(1.f)
+		.VAlign(VAlign_Center)
+		[
+			SearchField.ToSharedRef()
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		.Padding(4.f, 0.f, 0.f, 0.f)
+		[
+			MakeToggle(EArticyObjectPickerViewMode::Tiles,
+				LOCTEXT("TilesView", "Tiles"),
+				LOCTEXT("TilesView_ToolTip", "Show the objects as tiles"))
+		]
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		[
+			MakeToggle(EArticyObjectPickerViewMode::Hierarchy,
+				LOCTEXT("HierarchyView", "Tree"),
+				LOCTEXT("HierarchyView_ToolTip", "Show the objects in the articy project tree, like articy's navigator"))
+		];
+}
+
+/**
+ * @brief Switches between the tile and the hierarchy view and remembers the choice.
+ *
+ * @param NewViewMode The view mode to use.
+ */
+void SArticyObjectAssetPicker::SetViewMode(EArticyObjectPickerViewMode NewViewMode)
+{
+	if (ViewMode == NewViewMode)
+	{
+		return;
+	}
+
+	ViewMode = NewViewMode;
+	GConfig->SetInt(ViewModeConfigSection, ViewModeConfigKey, static_cast<int32>(ViewMode), GEditorPerProjectIni);
+
+	bRevealCurrentObjectPending = ViewMode == EArticyObjectPickerViewMode::Hierarchy;
+	RequestSlowFullListRefresh();
+}
+
+/**
+ * @brief Called when an object is picked in the hierarchy view.
+ *
+ * @param Object The picked object.
+ */
+void SArticyObjectAssetPicker::OnHierarchyObjectSelected(UArticyObject* Object) const
+{
+	SelectAsset(Object, ESelectInfo::OnMouseClick);
 }
 
 /**
@@ -460,6 +583,27 @@ void SArticyObjectAssetPicker::RefreshSourceItems()
 	if (AssetView.IsValid())
 	{
 		AssetView->RequestListRefresh();
+	}
+
+	// The hierarchy is only rebuilt while it is shown; switching views requests a refresh
+	if (HierarchyView.IsValid() && ViewMode == EArticyObjectPickerViewMode::Hierarchy)
+	{
+		TMap<FArticyId, TWeakObjectPtr<UArticyObject>> SelectableObjects;
+		SelectableObjects.Reserve(FilteredObjects.Num());
+		for (const TWeakObjectPtr<UArticyObject>& Object : FilteredObjects)
+		{
+			SelectableObjects.Add(Object->GetId(), Object);
+		}
+
+		// Show every match while searching; otherwise keep the tree as the user left it
+		const bool bIsSearching = !ArticyObjectFilter->GetRawFilterText().IsEmpty();
+		HierarchyView->SetSelectableObjects(SelectableObjects, bIsSearching);
+
+		if (bRevealCurrentObjectPending)
+		{
+			HierarchyView->RevealObject(CurrentObjectId);
+			bRevealCurrentObjectPending = false;
+		}
 	}
 }
 
