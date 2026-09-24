@@ -258,7 +258,14 @@ private:
     /** Handle to the ticker that drains BranchQueue. */
     FTSTicker::FDelegateHandle TickerHandle;
 
-    /** Cached expresso scripts instance used by this flow player. */
+    /**
+     * Cached expresso scripts instance used by this flow player.
+     *
+     * A UPROPERTY so the garbage collector tracks it: as a raw pointer it would dangle once the database clone
+     * owning the instance is collected, and a dangling pointer passes a null check. It also keeps that database
+     * clone alive for as long as this flow player lives, which is fine while the flow player lives in a world.
+     */
+    UPROPERTY(Transient)
     UArticyExpressoScripts* CachedExpressoInstance = nullptr;
 
 private:
