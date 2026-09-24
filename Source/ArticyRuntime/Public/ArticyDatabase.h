@@ -9,6 +9,7 @@
 #include "ShadowStateManager.h"
 #include "ArticyObject.h"
 #include "ArticyPackage.h"
+#include "ArticyHierarchyManager.h"
 #include "AssetRegistry/AssetData.h"
 #include "ArticyDatabase.generated.h"
 
@@ -522,6 +523,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Articy")
 	void SetExpressoScriptsClass(TSubclassOf<UArticyExpressoScripts> NewClass);
 
+	/**
+	 * Gets the project hierarchy: lightweight information about all objects of the articy project,
+	 * including objects that were excluded from the export or were never exported.
+	 * @return The hierarchy manager, whose project node is empty if no hierarchy was imported.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy|Hierarchy")
+	UArticyHierarchyManager* GetProjectHierarchy() const { return Hierarchy; }
+
 protected:
 
 	/** A list of all packages that were imported from articy:draft. */
@@ -538,6 +547,10 @@ protected:
 
 	UPROPERTY(Transient)
 	bool bIsInitialized = false;
+
+	/** The project hierarchy, stored as part of the database asset. */
+	UPROPERTY(VisibleAnywhere, Category = "Articy")
+	UArticyHierarchyManager* Hierarchy;
 
 	void UnloadAllPackages();
 

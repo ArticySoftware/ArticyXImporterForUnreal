@@ -391,6 +391,12 @@ public:
 	UADIHierarchyObject* RootObject = nullptr;
 
 	void ImportFromJson(UArticyImportData* ImportData, const TSharedPtr<FJsonObject> JsonRoot);
+
+	/**
+	 * Flattens the hierarchy into the pre-order node list stored by UArticyHierarchyManager.
+	 * @param OutNodes Receives the nodes; empty if no hierarchy was imported.
+	 */
+	void BuildRuntimeNodes(TArray<struct FArticyHierarchyNodeData>& OutNodes) const;
 };
 
 /**

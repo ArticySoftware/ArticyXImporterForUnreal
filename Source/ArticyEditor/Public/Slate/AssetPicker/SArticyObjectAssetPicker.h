@@ -32,9 +32,23 @@ namespace FArticyObjectAssetPicketConstants {
 }
 
 /**
+ * @brief How the asset picker lays out the articy objects.
+ */
+enum class EArticyObjectPickerViewMode : uint8
+{
+	/** A tile per object. */
+	Tiles,
+	/** The articy project tree, similar to articy's navigator. */
+	Hierarchy
+};
+
+class SArticyObjectHierarchyView;
+
+/**
  * @brief A widget for picking Articy object assets.
  *
- * This widget allows users to search and filter Articy objects, displaying them in a tile view for easy selection.
+ * This widget allows users to search and filter Articy objects, displaying them in a tile view or in
+ * a tree view of the articy project hierarchy for easy selection.
  */
 class ARTICYEDITOR_API SArticyObjectAssetPicker : public SCompoundWidget
 {
@@ -53,6 +67,8 @@ public:
 		SLATE_ATTRIBUTE(bool, bExactClassEditable)
 		SLATE_ATTRIBUTE(bool, bClassFilterEditable)
 		SLATE_EVENT(FOnClassPicked, OnClassPicked)
+		/** The object currently referenced; the hierarchy view reveals it when opened. */
+		SLATE_ARGUMENT(FArticyId, CurrentObjectId)
 	SLATE_END_ARGS()
 
 	~SArticyObjectAssetPicker();
@@ -91,6 +107,27 @@ private:
 	 * @brief Creates internal UI widgets for the asset picker.
 	 */
 	void CreateInternalWidgets();
+
+	/**
+	 * @brief Creates the row with the search field and the view mode toggles.
+	 *
+	 * @return The created widget.
+	 */
+	TSharedRef<SWidget> CreateSearchRow();
+
+	/**
+	 * @brief Switches between the tile and the hierarchy view and remembers the choice.
+	 *
+	 * @param NewViewMode The view mode to use.
+	 */
+	void SetViewMode(EArticyObjectPickerViewMode NewViewMode);
+
+	/**
+	 * @brief Called when an object is picked in the hierarchy view.
+	 *
+	 * @param Object The picked object.
+	 */
+	void OnHierarchyObjectSelected(UArticyObject* Object) const;
 
 	/**
 	 * @brief Copies the property value of the specified ArticyId to the clipboard.
@@ -217,6 +254,7 @@ private: // Widgets
 	TSharedPtr<SAssetSearchBox> SearchField; //!< Shared pointer to the search box widget.
 	TSharedPtr<SWidget> AssetViewContainer; //!< Shared pointer to the asset view container widget.
 	TSharedPtr<SListView<TWeakObjectPtr<UArticyObject>>> AssetView; //!< Shared pointer to the asset view list widget.
+	TSharedPtr<SArticyObjectHierarchyView> HierarchyView; //!< Shared pointer to the hierarchy tree view widget.
 	TSharedPtr<SHorizontalBox> FilterBox; //!< Shared pointer to the filter box widget.
 	TSharedPtr<SComboButton> ClassFilterButton; //!< Shared pointer to the class filter button widget.
 
@@ -228,6 +266,9 @@ private: // Internal Data
 	TArray<FAssetData> ArticyPackageDataAssets; //!< Array of asset data for Articy packages.
 	TArray<TWeakObjectPtr<UArticyObject>> FilteredObjects; //!< Array of filtered Articy objects.
 	bool bSlowFullListRefreshRequested = false; //!< Flag indicating whether a slow full list refresh is requested.
+	EArticyObjectPickerViewMode ViewMode = EArticyObjectPickerViewMode::Tiles; //!< The current view mode.
+	FArticyId CurrentObjectId; //!< The object currently referenced, revealed in the hierarchy view.
+	bool bRevealCurrentObjectPending = false; //!< Whether the hierarchy view still has to reveal the current object.
 };
 
 #undef LOCTEXT_NAMESPACE

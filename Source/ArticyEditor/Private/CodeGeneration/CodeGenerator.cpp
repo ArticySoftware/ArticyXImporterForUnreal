@@ -829,6 +829,14 @@ void CodeGenerator::GenerateAssets(UArticyImportData* Data, bool bAllowRemoval)
 	PackagesGenerator::GenerateAssets(Data);
 	ArticyDatabase->SetLoadedPackages(Data->GetPackagesDirect());
 
+	// Store the project hierarchy with the database
+	if (UArticyHierarchyManager* HierarchyManager = ArticyDatabase->GetProjectHierarchy())
+	{
+		TArray<FArticyHierarchyNodeData> HierarchyNodes;
+		Data->GetHierarchy().BuildRuntimeNodes(HierarchyNodes);
+		HierarchyManager->SetSerializedNodes(MoveTemp(HierarchyNodes));
+	}
+
 	// Gather all Articy assets to save them
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> GeneratedAssets;
