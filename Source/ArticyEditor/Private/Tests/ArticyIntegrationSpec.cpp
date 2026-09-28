@@ -6,8 +6,11 @@
 #include "ArticyDatabase.h"
 #include "ArticyGlobalVariables.h"
 #include "ArticyObject.h"
+#include "ArticyEntity.h"
+#include "ArticyHelpers.h"
 #include "ArticyTextExtension.h"
 #include "ArticyFlowPlayer.h"
+#include "Interfaces/ArticyObjectWithDisplayName.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
 #include "Engine/World.h"
@@ -27,6 +30,8 @@ namespace
 	const TCHAR* DemoDialogue = TEXT("Dlg_TheTherapist");
 	const TCHAR* DemoEntity = TEXT("Chr_Hamster");
 	const TCHAR* DemoEntityProperty = TEXT("ZIndex");
+	const TCHAR* DemoTextObject = TEXT("FFr_Cell");
+	const TCHAR* DemoTextPart = TEXT("padded cell");
 	const TCHAR* DemoVarNamespace = TEXT("GameState");
 	const TCHAR* DemoVarName = TEXT("awake");
 
@@ -282,6 +287,96 @@ void FArticyIntegrationSpec::Define()
 			TestTrue(TEXT("cursor advanced"), CursorAfter != CursorBefore);
 
 			Actor->Destroy();
+		});
+	});
+
+	Describe("Object filtering", [this]()
+	{
+		It("returns every object for an empty filter", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			TestEqual(TEXT("all objects"), DB->FilterObjects(FString()).Num(), DB->GetAllObjects().Num());
+		});
+
+		It("finds an entity by a part of its technical name, by its id and by its display name", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Hamster = DB->GetObjectByName(FName(DemoEntity));
+			if (!Hamster)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			TestTrue(TEXT("technical name part"), DB->FilterObjects(FString(DemoEntity).Left(7)).Contains(Hamster));
+			TestTrue(TEXT("hex id"), DB->FilterObjects(ArticyHelpers::Uint64ToHex(Hamster->GetId().Get())).Contains(Hamster));
+
+			// The localized display name is what a user would type.
+			const FString DisplayName = Cast<IArticyObjectWithDisplayName>(Hamster)->GetDisplayName().ToString();
+			TestFalse(TEXT("has a display name"), DisplayName.IsEmpty());
+			TestTrue(TEXT("display name"), DB->FilterObjects(DisplayName).Contains(Hamster));
+		});
+
+		It("finds a flow fragment by a part of its text", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Cell = DB->GetObjectByName(FName(DemoTextObject));
+			if (!Cell)
+			{
+				AddWarning(MissingContentMessage(DemoTextObject));
+				return;
+			}
+
+			TestTrue(TEXT("text part"), DB->FilterObjects(DemoTextPart).Contains(Cell));
+		});
+
+		It("narrows a class query with FilterObjectsBasedOn", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Hamster = DB->GetObjectByName(FName(DemoEntity));
+			if (!Hamster)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			const TArray<UArticyObject*> Entities = DB->GetObjectsOfClass(UArticyEntity::StaticClass());
+			const TArray<UArticyObject*> Found = UArticyDatabase::FilterObjectsBasedOn(Entities, DemoEntity);
+
+			TestTrue(TEXT("found"), Found.Contains(Hamster));
+			TestTrue(TEXT("narrower than the class query"), Found.Num() < Entities.Num());
+			for (const UArticyObject* Object : Found)
+			{
+				TestTrue(TEXT("still an entity"), Object->IsA(UArticyEntity::StaticClass()));
+			}
 		});
 	});
 }
