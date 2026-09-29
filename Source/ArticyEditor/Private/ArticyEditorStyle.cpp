@@ -159,6 +159,28 @@ TSharedRef< FSlateStyleSet > FArticyEditorStyle::Create()
 	Style->Set("ArticyImporter.Type.Spot.16", new IMAGE_BRUSH(TEXT("256/spot"), Icon16x16));
 	Style->Set("ArticyImporter.Type.Path.16", new IMAGE_BRUSH(TEXT("256/path"), Icon16x16));
 
+	// Folders and system objects that only appear in the project hierarchy, keyed by their hierarchy type
+	Style->Set("ArticyImporter.Type.Project.16", new IMAGE_BRUSH(TEXT("128/project"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Flow.16", new IMAGE_BRUSH(TEXT("128/flowfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Entities.16", new IMAGE_BRUSH(TEXT("128/entityfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.EntitiesUserFolder.16", new IMAGE_BRUSH(TEXT("128/entityfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Locations.16", new IMAGE_BRUSH(TEXT("128/worldsfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.LocationsUserFolder.16", new IMAGE_BRUSH(TEXT("128/worldsfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.LayerFolder.16", new IMAGE_BRUSH(TEXT("128/locationlayerfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Documents.16", new IMAGE_BRUSH(TEXT("128/document"), Icon16x16));
+	Style->Set("ArticyImporter.Type.DocumentsUserFolder.16", new IMAGE_BRUSH(TEXT("128/userfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Journeys.16", new IMAGE_BRUSH(TEXT("128/journeysfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Journey.16", new IMAGE_BRUSH(TEXT("128/journey"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Assets.16", new IMAGE_BRUSH(TEXT("128/assetfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.AssetsUserFolder.16", new IMAGE_BRUSH(TEXT("128/assetfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Notes.16", new IMAGE_BRUSH(TEXT("128/notefolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Note.16", new IMAGE_BRUSH(TEXT("128/note"), Icon16x16));
+	Style->Set("ArticyImporter.Type.SystemFolder.16", new IMAGE_BRUSH(TEXT("128/systemfolder"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Template.16", new IMAGE_BRUSH(TEXT("128/modeltemplate"), Icon16x16));
+	Style->Set("ArticyImporter.Type.Feature.16", new IMAGE_BRUSH(TEXT("128/modeltemplate"), Icon16x16));
+	Style->Set("ArticyImporter.Type.EnumPropertyTemplate.16", new IMAGE_BRUSH(TEXT("128/enum"), Icon16x16));
+	Style->Set("ArticyImporter.Type.ProjectSettings.16", new IMAGE_BRUSH(TEXT("128/application"), Icon16x16));
+
 	Style->Set("ArticyImporter.Type.DialogueFragment.32", new IMAGE_BRUSH(TEXT("128/dialoguefragment"), Icon32x32));
 	Style->Set("ArticyImporter.Type.Dialogue.32", new IMAGE_BRUSH(TEXT("128/dialogue2"), Icon32x32));
 	Style->Set("ArticyImporter.Type.Entity.32", new IMAGE_BRUSH(TEXT("128/entity"), Icon32x32));
