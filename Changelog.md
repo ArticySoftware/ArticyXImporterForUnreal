@@ -1,3 +1,10 @@
+## Unreal Importer next Changelog :
+
+- New Features:
+    - Runtime type system with feature and inherited property metadata
+- Fixes:
+    - Fix type metadata not available at runtime
+
 ## Unreal Importer 1.6.0 Changelog :
 
 - New Features:

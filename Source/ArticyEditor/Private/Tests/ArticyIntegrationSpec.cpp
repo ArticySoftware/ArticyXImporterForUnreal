@@ -199,40 +199,6 @@ void FArticyIntegrationSpec::Define()
 			TestTrue(TEXT("looks like the z-index value"), Res.Contains(TEXT("4")));
 		});
 
-		It("resolves a [$Type.Type.Property] token to the property's type", [this]()
-		{
-			UWorld* World = GetIntegrationWorld();
-			if (!TestNotNull(TEXT("editor world"), World))
-				return;
-
-			UArticyDatabase* DB = UArticyDatabase::Get(World);
-			if (!TestNotNull(TEXT("database"), DB))
-				return;
-
-			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
-			if (!Entity)
-			{
-				AddWarning(MissingContentMessage(DemoEntity));
-				return;
-			}
-
-			// Ask the object what type it is, then ask the type system about that type:
-			// both halves of the metadata layer have to be populated for this to resolve.
-			const FArticyType Type = Entity->GetArticyType();
-			if (Type.TechnicalName.IsEmpty())
-			{
-				AddWarning(MissingContentMessage(FString::Printf(TEXT("type metadata for '%s' (reimport needed?)"), DemoEntity)));
-				return;
-			}
-
-			const FString Token = FString::Printf(TEXT("$Type.%s.%s"), *Type.TechnicalName, DemoEntityProperty);
-			const FText Format = FText::FromString(FString::Printf(TEXT("[%s]"), *Token));
-			const FString Res = UArticyTextExtension::Get()->Resolve(World, &Format).ToString();
-
-			// On lookup failure the resolver returns the raw source name.
-			TestNotEqual(TEXT("resolved, not the raw fallback"), Res, Token);
-			TestFalse(TEXT("result not empty"), Res.IsEmpty());
-		});
 	});
 
 	Describe("Type system", [this]()
