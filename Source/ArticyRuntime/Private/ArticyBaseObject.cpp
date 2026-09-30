@@ -61,7 +61,7 @@ FArticyType UArticyBaseObject::GetArticyType() const
  */
 FText UArticyBaseObject::GetPropertyText(const FText Property)
 {
-	return ArticyHelpers::LocalizeString(this, Property, true, &Property);
+	return ArticyHelpers::LocalizeString(this, Property, ArticyHelpers::ShouldResolveStrings(), &Property);
 }
 
 /**
@@ -73,5 +73,5 @@ FText UArticyBaseObject::GetPropertyText(const FText Property)
 FText UArticyBaseObject::ResolvePropertyString(const FString& Property)
 {
 	const FText Text = FText::FromString(Property);
-	return ArticyHelpers::ResolveText(this, &Text);
+	return ArticyHelpers::ShouldResolveStrings() ? ArticyHelpers::ResolveText(this, &Text) : Text;
 }

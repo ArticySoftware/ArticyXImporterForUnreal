@@ -68,7 +68,7 @@ protected:
 	/** Display text of a string property: localized for an FText, text extension only for an FString. */
 	FText GetStringText(const FName& PropName, const FText* BackupText = nullptr)
 	{
-		return ArticyHelpers::GetTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName), true, BackupText);
+		return ArticyHelpers::GetTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName), ArticyHelpers::ShouldResolveStrings(), BackupText);
 	}
 
 	/** Raw value of a string property: the string table key of an FText, or the FString itself. */

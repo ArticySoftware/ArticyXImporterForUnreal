@@ -63,6 +63,21 @@ public:
 	UPROPERTY(VisibleAnywhere, config, Category = ImportSettings, meta = (DisplayName = "Articy Directory", ContentDir, LongPackageName))
 	FString ArticyDirectory;
 
+	/**
+	 * If true, text extension tokens inside articy object texts (DisplayName, Text, MenuText,
+	 * template texts, ...) are resolved automatically when the text is read. Turn this off to
+	 * get the raw strings and resolve them yourself through UArticyTextExtension.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = ImportSettings, meta = (DisplayName = "Resolve strings"))
+	bool bResolveStrings;
+
+	/**
+	 * If true, a text extension token that cannot be resolved is replaced by an empty string.
+	 * If false, an unresolvable token makes the whole text resolve to its (unresolved) input.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = ImportSettings, meta = (DisplayName = "Allow invalid tokens"))
+	bool bAllowInvalidTokens;
+
 
 	/**
 	 * Keeps one instance of the database for the whole game alive, even if the world changes.

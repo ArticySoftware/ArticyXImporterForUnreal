@@ -88,12 +88,13 @@ void FArticyTextPropertiesSpec::Define()
 
 		It("resolves text extension tokens in the value", [this]()
 		{
-			// Without a world no token can resolve, so it collapses to its own source name.
+			// Without a world no token can resolve; an escape sequence shows the text went through
+			// the text extension without depending on the "Allow invalid tokens" setting.
 			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
-			Object->DisplayName = TEXT("Ask [GameState.Name]");
+			Object->DisplayName = TEXT("Ask \\[GameState.Name\\]");
 
 			IArticyObjectWithDisplayName* Named = Object;
-			TestEqual(TEXT("resolved"), Named->GetDisplayName().ToString(), FString(TEXT("Ask GameState.Name")));
+			TestEqual(TEXT("resolved"), Named->GetDisplayName().ToString(), FString(TEXT("Ask [GameState.Name]")));
 		});
 
 		It("writes a display name through the setter", [this]()
