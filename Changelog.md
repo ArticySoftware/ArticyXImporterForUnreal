@@ -1,3 +1,23 @@
+## Unreal Importer next Changelog :
+
+- New Features:
+  - Text extensions: parity with the Unity importer
+    - Escape sequences (`\[`, `\]`, `\\`) and nested tokens, resolved innermost first
+    - String, number and enum literals as token sources; objects by hex/decimal ID and object representation
+    - Reference strip access by index, from the end (`<-1>`) and at random (`<?>`, see `GetLastRandomResults`)
+    - `$Self` and `$Speaker` context objects, `$Type` type information (type, enum and property meta data; a bare type or property resolves to its display name, unknown ones to an empty string)
+    - Enum properties resolve to their display name; `:D` yields the numeric value
+    - C# standard (`D`, `F`, `N`, `P`, `E`, `X`) and custom (`0`, `#`, `,`, `%`, literals, sections) numeric formats
+    - Script properties: text without parentheses, evaluated with `()`
+    - `if` / `not` with the Unity signature (`condition, then[, else]`), quoted arguments, token and method arguments
+    - `ResolveToken` for single tokens, `ResolveAdvance` with a per-token callback and `FArticyTextToken`
+    - `AddUserMethod` callbacks receive the token; `RemoveUserMethod` / `HasUserMethod`
+    - `Resolve` accepts numbers, strings and texts as positional parameters and localizes a loca key input
+    - Plugin settings "Resolve strings" and "Allow invalid tokens"
+- Changes:
+  - An unresolvable token no longer shows its source name: it resolves to an empty string, or returns the whole input when invalid tokens are not allowed
+  - The type system loads the generated type system asset, so `$Type` works at runtime
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
