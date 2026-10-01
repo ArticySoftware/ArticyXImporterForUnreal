@@ -125,7 +125,7 @@ void FArticyTypeSpec::Define()
 		It("returns the properties belonging to a feature", [this]()
 		{
 			FArticyType Type;
-			Type.Features = { TEXT("Stats") };
+			Type.Features = { TEXT("Stats"), TEXT("Combat") };
 			Type.Properties = {
 				MakeProperty(TEXT("DisplayName"), TEXT("string")),
 				MakeFeatureProperty(TEXT("Stats"), TEXT("Speed"), TEXT("float")),
@@ -141,6 +141,13 @@ void FArticyTypeSpec::Define()
 				// Names stay qualified, so they can be fed straight back into GetProperty.
 				TestEqual(TEXT("first"), InFeature[0].TechnicalName, FString(TEXT("Stats.Speed")));
 				TestEqual(TEXT("second"), InFeature[1].TechnicalName, FString(TEXT("Stats.Health")));
+			}
+
+			const TArray<FArticyPropertyInfo> InOtherFeature = Type.GetPropertiesInFeature(TEXT("Combat"));
+			TestEqual(TEXT("other feature count"), InOtherFeature.Num(), 1);
+			if (InOtherFeature.Num() == 1)
+			{
+				TestEqual(TEXT("other feature property"), InOtherFeature[0].TechnicalName, FString(TEXT("Combat.Damage")));
 			}
 		});
 
