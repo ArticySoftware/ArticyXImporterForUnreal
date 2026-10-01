@@ -1,3 +1,11 @@
+## Unreal Importer next Changelog :
+
+- New Features:
+    - Text extension parity with the Unity importer
+    - Text extension settings "Resolve strings" and "Allow invalid tokens"
+- Changes:
+    - Invalid text extension tokens resolve to an empty string instead of their source name
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:

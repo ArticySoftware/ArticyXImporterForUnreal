@@ -50,7 +50,7 @@ protected:
 	FText GetStringText(UObject* Outer, const FName& PropName, const FText* BackupText = nullptr)
 	{
 		FText& Key = GetProperty<FText>(PropName);
-		return ArticyHelpers::LocalizeString(Outer, Key, true, BackupText);
+		return ArticyHelpers::LocalizeString(Outer, Key, ArticyHelpers::ShouldResolveStrings(), BackupText);
 	}
 
 };

@@ -306,7 +306,8 @@ TSharedRef<SWidget> SArticyIdProperty::CreateArticyObjectAssetPicker()
 		.TopLevelClassRestriction(TopLevelClassRestriction)
 		.bExactClass(bExactClass)
 		.bExactClassEditable(bExactClassEditable)
-		.bClassFilterEditable(this, &SArticyIdProperty::IsClassFilterEditable);
+		.bClassFilterEditable(this, &SArticyIdProperty::IsClassFilterEditable)
+		.CurrentObjectId(GetCurrentObjectID());
 	return AssetPicker;
 }
 

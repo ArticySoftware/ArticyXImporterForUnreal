@@ -20,6 +20,8 @@ UArticyPluginSettings::UArticyPluginSettings()
 	bConvertUnityToUnrealRichText = false;
 	bVerifyArticyReferenceBeforeImport = true;
 	bUseLegacyImporter = false;
+	bResolveStrings = true;
+	bAllowInvalidTokens = true;
 
 	bSortChildrenAtGeneration = false;
 	ArticyDirectory = TEXT("/Game");

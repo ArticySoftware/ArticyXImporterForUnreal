@@ -8,6 +8,11 @@
 #include "ArticyObject.h"
 #include "ArticyTextExtension.h"
 #include "ArticyFlowPlayer.h"
+#include "ArticyHierarchyManager.h"
+#include "ArticyPluginSettings.h"
+#include "ArticyTypeSystem.h"
+#include "Interfaces/ArticyObjectWithDisplayName.h"
+#include "Interfaces/ArticyObjectWithSpeaker.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
 #include "Engine/World.h"
@@ -198,8 +203,194 @@ void FArticyIntegrationSpec::Define()
 			TestTrue(TEXT("looks like the z-index value"), Res.Contains(TEXT("4")));
 		});
 
-		// NOTE: a [$Type.Type.Property] token test is intentionally absent; that feature is
-		// non-functional because UArticyTypeSystem::Types is never populated at runtime.
+		It("resolves $Self against the object a text is resolved for", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			// $Self is the context object; its base property must match what the object reports.
+			const FString ViaSelf = UArticyTextExtension::Get()->Resolve(Entity, FString::Printf(TEXT("[$Self.%s]"), DemoEntityProperty)).ToString();
+			const FString ViaName = UArticyTextExtension::Get()->Resolve(Entity, FString::Printf(TEXT("[%s.%s]"), DemoEntity, DemoEntityProperty)).ToString();
+			TestEqual(TEXT("$Self reads the same property"), ViaSelf, ViaName);
+			TestFalse(TEXT("resolved to a value"), ViaSelf.IsEmpty());
+
+			// A bare object token shows the display name, the same one the interface returns.
+			const IArticyObjectWithDisplayName* WithDisplayName = Cast<IArticyObjectWithDisplayName>(Entity);
+			if (!TestNotNull(TEXT("entity has a display name"), WithDisplayName))
+				return;
+			TestEqual(TEXT("bare object token is the display name"),
+				UArticyTextExtension::Get()->Resolve(Entity, FString(TEXT("[$Self]"))).ToString(),
+				WithDisplayName->GetDisplayName().ToString());
+			TestEqual(TEXT("technical name lookup matches"),
+				UArticyTextExtension::Get()->Resolve(Entity, FString::Printf(TEXT("[%s]"), DemoEntity)).ToString(),
+				WithDisplayName->GetDisplayName().ToString());
+		});
+
+		It("resolves $Speaker on a dialogue fragment of the demo dialogue", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Dialogue = DB->GetObjectByName(FName(DemoDialogue));
+			if (!Dialogue)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
+				return;
+			}
+
+			// Find a fragment with a speaker among the dialogue's children.
+			UArticyObject* Fragment = nullptr;
+			for (const TWeakObjectPtr<UArticyObject>& Child : Dialogue->GetChildren())
+			{
+				const IArticyObjectWithSpeaker* WithSpeaker = Child.IsValid() ? Cast<IArticyObjectWithSpeaker>(Child.Get()) : nullptr;
+				if (WithSpeaker && !WithSpeaker->GetSpeakerId().IsNull())
+				{
+					Fragment = Child.Get();
+					break;
+				}
+			}
+			if (!Fragment)
+			{
+				AddWarning(MissingContentMessage(TEXT("a dialogue fragment with a speaker")));
+				return;
+			}
+
+			UArticyObject* Speaker = Cast<IArticyObjectWithSpeaker>(Fragment)->GetSpeaker();
+			const IArticyObjectWithDisplayName* SpeakerName = Speaker ? Cast<IArticyObjectWithDisplayName>(Speaker) : nullptr;
+			if (!TestNotNull(TEXT("speaker with display name"), SpeakerName))
+				return;
+
+			TestEqual(TEXT("$Speaker is the fragment's speaker"),
+				UArticyTextExtension::Get()->Resolve(Fragment, FString(TEXT("[$Speaker]"))).ToString(),
+				SpeakerName->GetDisplayName().ToString());
+		});
+
+		It("keeps escaped brackets and drops invalid tokens in generated texts", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			const UArticyPluginSettings* Settings = UArticyPluginSettings::Get();
+			if (!TestNotNull(TEXT("settings"), Settings) || !Settings->bAllowInvalidTokens)
+			{
+				AddWarning(TEXT("Allow invalid tokens is off in this project; skipping."));
+				return;
+			}
+
+			TestEqual(TEXT("escape"), UArticyTextExtension::Get()->Resolve(World, FString(TEXT("a \\[b\\] c"))).ToString(), FString(TEXT("a [b] c")));
+			TestEqual(TEXT("invalid token dropped"), UArticyTextExtension::Get()->Resolve(World, FString(TEXT("a [No.Such.Thing] c"))).ToString(), FString(TEXT("a  c")));
+		});
+
+		It("reads $Type information from the generated type system", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyTypeSystem* TypeSystem = UArticyTypeSystem::Get();
+			if (!TestNotNull(TEXT("type system"), TypeSystem))
+				return;
+			if (TypeSystem->Types.Num() == 0)
+			{
+				AddWarning(TEXT("The type system has no types - has the project been imported since the type system asset was added?"));
+				return;
+			}
+
+			// Any type with a technical name must report it through $Type.
+			FString TypeName;
+			for (const auto& Pair : TypeSystem->Types)
+			{
+				if (!Pair.Value.TechnicalName.IsEmpty())
+				{
+					TypeName = Pair.Key;
+					break;
+				}
+			}
+			if (!TestFalse(TEXT("a type with a technical name exists"), TypeName.IsEmpty()))
+				return;
+
+			const FString Token = FString::Printf(TEXT("[$Type.%s.TechnicalName]"), *TypeName);
+			TestEqual(TEXT("$Type technical name"), UArticyTextExtension::Get()->Resolve(World, Token).ToString(),
+				TypeSystem->Types[TypeName].TechnicalName);
+		});
+	});
+
+	Describe("Hierarchy", [this]()
+	{
+		It("exposes the imported project tree", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB) || !TestNotNull(TEXT("project hierarchy"), DB->GetProjectHierarchy()))
+				return;
+
+			UArticyHierarchyNode* Root = DB->GetProjectHierarchy()->GetProjectNode();
+			if (!TestNotNull(TEXT("project node - has the project been reimported since hierarchy support was added?"), Root))
+				return;
+
+			TestEqual(TEXT("root type"), Root->GetArticyType(), FString(TEXT("Project")));
+			TestTrue(TEXT("root has no parent"), Root->GetParent().IsNull());
+			TestTrue(TEXT("root has children"), Root->GetChildren().Num() > 0);
+		});
+
+		It("resolves a known object and walks up to the project node", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Lobby = DB->GetObjectByName(FName(DemoFlowFragment));
+			if (!Lobby)
+			{
+				AddWarning(MissingContentMessage(DemoFlowFragment));
+				return;
+			}
+
+			UArticyHierarchyManager* Hierarchy = DB->GetProjectHierarchy();
+			UArticyHierarchyNode* Node = Hierarchy ? Hierarchy->GetHierarchyInfo(Lobby->GetId()) : nullptr;
+			if (!TestNotNull(TEXT("hierarchy node for the object"), Node))
+				return;
+
+			TestEqual(TEXT("technical name"), Node->GetTechnicalName(), FString(DemoFlowFragment));
+			TestEqual(TEXT("type"), Node->GetArticyType(), FString(TEXT("FlowFragment")));
+			TestTrue(TEXT("node resolves to the database object"), Node->GetObject() == Lobby);
+			TestTrue(TEXT("hierarchy parent matches object parent"), Node->GetParent() == Lobby->GetParentID());
+
+			// Every node's parent chain ends at the project node.
+			int32 Depth = 0;
+			UArticyHierarchyNode* Current = Node;
+			while (Current && !Current->GetParent().IsNull() && Depth < 1000)
+			{
+				Current = Hierarchy->GetHierarchyInfo(Current->GetParent());
+				++Depth;
+			}
+			TestTrue(TEXT("reached the project node"), Current == Hierarchy->GetProjectNode());
+		});
 	});
 
 	Describe("Flow player", [this]()

@@ -150,6 +150,8 @@ void UArticyCloneableObject::AddClone(UArticyObject* Clone, int32 CloneId)
 
 UArticyDatabase::UArticyDatabase()
 {
+	Hierarchy = CreateDefaultSubobject<UArticyHierarchyManager>(TEXT("HierarchyManager"));
+
 	// Dynamically find the class that inherits from UArticyExpressoScripts
 	TArray<UClass*> ExpressoScriptClasses;
 	for (TObjectIterator<UClass> It; It; ++It)

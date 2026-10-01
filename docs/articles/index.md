@@ -16,6 +16,7 @@ Find a list of articles here:
 - \subpage localization
 - \subpage objectHandlingArticyRef
 - \subpage objectTemplates
+- \subpage projectHierarchy
 - \subpage scripting
 - \subpage selectiveImport
 - \subpage textExtensions
