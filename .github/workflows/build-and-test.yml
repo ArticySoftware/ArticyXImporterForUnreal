@@ -7,45 +7,47 @@ on:
   pull_request_review:
     types:
       - submitted
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Test on Unreal Engine ${{ matrix.ue_version }}
+    name: Test on ${{ matrix.platform }} / Unreal Engine ${{ matrix.ue_version }}
     if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
-    runs-on: [self-hosted, Windows, Unreal]
+    runs-on: [self-hosted, "${{ matrix.platform }}", Unreal]
     strategy:
+      fail-fast: false
       matrix:
-        ue_version: [5.6, 5.7, 5.8]
-      fail-fast: true
+        include:
+          - { platform: Windows, ue_version: '5.6' }
+          - { platform: Windows, ue_version: '5.7' }
+          - { platform: Windows, ue_version: '5.8' }
+          - { platform: macOS, ue_version: '5.8' }
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
       - name: Run Tests for UE ${{ matrix.ue_version }}
+        if: runner.os == 'Windows'
         working-directory: Tests
         run: |
           & .\run-tests.ps1 -UeVersion ${{ matrix.ue_version }} -NoUBA
         shell: pwsh
 
-      - name: Test Passed
-        if: success()
+      - name: Run Tests for UE ${{ matrix.ue_version }}
+        if: runner.os == 'macOS'
+        working-directory: Tests
+        env:
+          UE_VERSION: ${{ matrix.ue_version }}
+          NO_UBA: '1'
         run: |
-          Write-Host "✓ Tests passed for UE ${{ matrix.ue_version }}" -ForegroundColor Green
-        shell: pwsh
+          ./run-tests.sh
+        shell: bash
 
       - name: Upload Test Report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-report-ue-${{ matrix.ue_version }}-${{ github.run_id }}
+          name: test-report-${{ matrix.platform }}-ue-${{ matrix.ue_version }}-${{ github.run_id }}
           path: Tests/Report/
           retention-days: 90
-
-      - name: Test Failed
-        if: failure()
-        run: |
-          Write-Host "✗ Tests failed for UE ${{ matrix.ue_version }}" -ForegroundColor Red
-          exit 1
-        shell: pwsh

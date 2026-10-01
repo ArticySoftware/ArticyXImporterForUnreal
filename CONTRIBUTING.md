@@ -52,12 +52,16 @@ Changes for the upcoming version are integrated in the `main` branch. `main` alw
 
 ### Pull Requests workflow
 
-- Fork this repository and apply your changes on any branch
-- For usual changes, create a pull request from your fork's branch to this repository's `main` branch
-- For comprehensive developments, a feature or bugfix branch may be created by the maintainers
-- Any PR towards this repository must be reviewed and approved by at least 1 maintainer
-- Use [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) for everything that is pushed on `main`
-  - If necessary, pull requests will be squashed and merged onto `main` for a clean history
+- **Fork this repository** and apply your changes on any branch
+- For usual changes, **create a pull request** from your fork's branch to this repository's `main` branch
+- For comprehensive developments, a **feature or bugfix branch** may be created by the maintainers
+- Any PR towards this repository **must be reviewed and approved by at least 1 maintainer**
+- Use **[conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)** for everything that is pushed on `main`
+  - Your changes will usually be **merged using rebase**
+  - If necessary, pull requests may be squashed and merged onto `main` for a clean history. This may be done when...
+    - ...if particular commits of a PR don't follow conventional commits
+    - ...if we want to summarise the changes of the PR differently
+- If you need to **update your fork's branch with changes from `main`, use rebase to do so** to keep the history clean
 - Maintainers may work on this repository directly
 
 ### Tags and releases

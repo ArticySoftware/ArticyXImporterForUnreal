@@ -1,0 +1,23 @@
+name: Release Candidate Increaser
+description: Increases the RC number of the latest tag on the repository
+
+inputs:
+  token:
+    description: GitHub token
+    required: true
+
+outputs:
+  current:
+    description: Current version number / latest tag
+  next:
+    description: Next full version number in format v0.0.0-rcX
+  nextVersion:
+    description: The base version number of the release candidate in format v0.0.0
+  nextVersionStrict:
+    description: The base version number of the release candidate without v prefix
+  nextReleaseCandidate:
+    description: The next RC number to be used
+
+runs:
+  using: node24
+  main: dist/index.js

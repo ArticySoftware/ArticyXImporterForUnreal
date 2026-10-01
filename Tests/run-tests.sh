@@ -11,15 +11,11 @@
 #
 # Usage:
 #   UE_ROOT=/path/to/UnrealEngine ./run-tests.sh
+#   UE_VERSION=5.8 ./run-tests.sh               # look the engine up by version instead (Mac)
+#   UE_ROOT=... NO_UBA=1 ./run-tests.sh         # disable UBA on memory-tight machines
 #   UE_ROOT=... KEEP_STAGING=1 ./run-tests.sh   # keep the staged copy for incremental runs
 #
 set -euo pipefail
-
-UE_ROOT="${UE_ROOT:-}"
-if [[ -z "$UE_ROOT" ]]; then
-	echo "Set the UE_ROOT environment variable to your Unreal Engine root." >&2
-	exit 2
-fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$script_dir/.." && pwd)"
@@ -29,6 +25,47 @@ report_dir="$script_dir/Report"
 
 # Determine the host platform as Unreal names it.
 if [[ "$(uname -s)" == "Darwin" ]]; then platform="Mac"; else platform="Linux"; fi
+
+# Turns an engine version into an installation path, the way Resolve-UeRoot.ps1 does it from
+# the registry on Windows. Only the macOS launcher records its installs somewhere readable;
+# on Linux there is nothing to look up, so UE_ROOT stays mandatory there.
+resolve_ue_root_for_version() {
+	local version="$1"
+	[[ "$platform" == "Mac" ]] || return 0
+
+	local default="/Users/Shared/Epic Games/UE_$version"
+	if [[ -d "$default" ]]; then echo "$default"; return 0; fi
+
+	# Not every install lands in the default location, so check the launcher's manifest too.
+	# InstallLocation precedes AppName within a record, so remember the last one seen and
+	# print it once the matching AppName shows up.
+	local manifest="/Users/Shared/Epic Games/UnrealEngineLauncher/LauncherInstalled.dat"
+	if [[ -f "$manifest" ]]; then
+		local dir
+		dir=$(awk -v version="$version" '
+			/"InstallLocation"/ { loc = $0 }
+			/"AppName"/ && index($0, "\"UE_" version "\"") { print loc; exit }
+		' "$manifest" | sed -E 's/.*"InstallLocation"[[:space:]]*:[[:space:]]*"(.*)".*/\1/')
+		if [[ -n "$dir" && -d "$dir" ]]; then echo "$dir"; return 0; fi
+	fi
+
+	return 0
+}
+
+UE_ROOT="${UE_ROOT:-}"
+if [[ -z "$UE_ROOT" && -n "${UE_VERSION:-}" ]]; then
+	UE_ROOT="$(resolve_ue_root_for_version "$UE_VERSION")"
+	if [[ -z "$UE_ROOT" ]]; then
+		echo "No Unreal Engine installation found for version '$UE_VERSION'." >&2
+		exit 2
+	fi
+	echo "Using Unreal Engine $UE_VERSION at $UE_ROOT"
+fi
+
+if [[ -z "$UE_ROOT" ]]; then
+	echo "Set the UE_ROOT or UE_VERSION environment variable to name your Unreal Engine." >&2
+	exit 2
+fi
 
 # Locate the editor binary
 editor=""
@@ -130,8 +167,9 @@ rsync -a --delete \
 	"$repo/" "$plugin_dir/"
 
 # Build the host editor target so the plugin (and its test module) are compiled.
-"$UE_ROOT/Engine/Build/BatchFiles/$platform/Build.sh" \
-	HostProjectEditor "$platform" Development -Project="$project" -WaitMutex
+build_args=(HostProjectEditor "$platform" Development -Project="$project" -WaitMutex)
+if [[ -n "${NO_UBA:-}" ]]; then build_args+=(-NoUBA -NoUBALocal); fi
+"$UE_ROOT/Engine/Build/BatchFiles/$platform/Build.sh" "${build_args[@]}"
 
 rm -rf "$report_dir"
 
