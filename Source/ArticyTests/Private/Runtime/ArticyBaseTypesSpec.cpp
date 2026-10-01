@@ -69,7 +69,10 @@ void FArticyIdSpec::Define()
 		It("hashes as Low xor High", [this]()
 		{
 			const FArticyId Id = static_cast<uint64>(0x0000000100000002ull);
-			TestEqual(TEXT("hash"), GetTypeHash(Id), static_cast<uint32>(2 ^ 1));
+			// Low is 2 and High is 1, so the hash is 2 xor 1 == 3. Spelled as a plain literal on
+			// purpose: clang reads a decimal "2 ^ 1" as a mistyped pow() and raises
+			// -Wxor-used-as-pow, which is an error under the -Werror macOS builds use.
+			TestEqual(TEXT("hash"), GetTypeHash(Id), static_cast<uint32>(3));
 		});
 	});
 }

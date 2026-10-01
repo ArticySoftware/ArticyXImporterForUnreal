@@ -1,0 +1,120 @@
+name: Promote release candidate
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: promote-rc
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote latest release candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      PLUGIN_NAME: ArticyXImporter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine release version
+        id: version
+        run: |
+          RC_TAG=`git describe --tags --abbrev=0`
+          echo "Latest tag is $RC_TAG" >> $GITHUB_STEP_SUMMARY
+
+          case "$RC_TAG" in
+            *-rc*) ;;
+            *)
+              echo "::error title=No RC::Latest tag '$RC_TAG' is not a release candidate, aborting."
+              exit 1
+              ;;
+          esac
+
+          RELEASE_VERSION="${RC_TAG%-rc*}"
+          if git rev-parse -q --verify "refs/tags/$RELEASE_VERSION" > /dev/null; then
+            echo "::error title=Already released::Tag '$RELEASE_VERSION' already exists, aborting."
+            exit 1
+          fi
+
+          RELEASE_COMMIT=`git rev-list -n 1 "$RC_TAG"`
+
+          echo "rc_tag=$RC_TAG" >> "$GITHUB_OUTPUT"
+          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Promoting $RC_TAG to $RELEASE_VERSION (commit $RELEASE_COMMIT)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check out release candidate commit
+        run: git checkout --detach "${{ steps.version.outputs.release_commit }}"
+
+      - name: Extract changelog
+        id: changelog
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+        run: |
+          NOTES="$RUNNER_TEMP/release-notes.md"
+
+          awk -v v1=" $RELEASE_VERSION " -v v2=" ${RELEASE_VERSION#v} " '
+            /^## / {
+              if (found) exit
+              if (index($0, v1) > 0 || index($0, v2) > 0) { found = 1; next }
+            }
+            found { print }
+          ' Changelog.md > "$NOTES"
+
+          if ! grep -q '[^[:space:]]' "$NOTES"; then
+            echo "::error title=No changelog::No changelog section found for $RELEASE_VERSION in Changelog.md"
+            exit 1
+          fi
+
+          echo "notes_file=$NOTES" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release notes for $RELEASE_VERSION"
+            cat "$NOTES"
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release package
+        id: package
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+        run: |
+          PACKAGE="$RUNNER_TEMP/${GITHUB_REPOSITORY#*/}-$RELEASE_VERSION.zip"
+          zip -r "$PACKAGE" \
+            Config \
+            Content \
+            Resources \
+            Source \
+            "$PLUGIN_NAME.uplugin" \
+            LICENSE
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "Packaged $(basename "$PACKAGE") ($(du -h "$PACKAGE" | cut -f1))" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+          RC_TAG: ${{ steps.version.outputs.rc_tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION (promoted from $RC_TAG)"
+          git push origin "refs/tags/$RELEASE_VERSION"
+
+      - name: Create release on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+          PACKAGE: ${{ steps.package.outputs.package }}
+          NOTES: ${{ steps.changelog.outputs.notes_file }}
+        run: |
+          gh release create "$RELEASE_VERSION" "$PACKAGE" \
+            --title "$RELEASE_VERSION" \
+            --notes-file "$NOTES" \
+            --verify-tag
+          echo "Created release $RELEASE_VERSION" >> $GITHUB_STEP_SUMMARY
