@@ -1,3 +1,8 @@
+## Unreal Importer next Changelog :
+
+- Fixes:
+    - Fix packaging for projects upgraded from the Articy Importer plugin name
+
 ## Unreal Importer 1.6.0 Changelog :
 
 - New Features:
