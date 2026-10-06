@@ -214,7 +214,8 @@ UArticyGlobalVariables* UArticyFlowPlayer::GetGVs() const
  */
 UObject* UArticyFlowPlayer::GetMethodsProvider()
 {
-    if (!CachedExpressoInstance)
+    // IsValid rather than a null check: also re-fetches an instance that was marked as garbage
+    if (!IsValid(CachedExpressoInstance))
     {
         CachedExpressoInstance = GetDB()->GetExpressoInstance();
     }
