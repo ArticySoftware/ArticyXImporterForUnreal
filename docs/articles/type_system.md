@@ -102,6 +102,21 @@ for (const FArticyPropertyInfo& Attr : Attributes)
 ```
 In this example, we access all properties in the "Attributes" feature of the `Character` type.
 
+A feature's properties are part of the type they belong to, listed under their qualified
+`<Feature>.<Property>` technical name. That is the same name a text-extension token uses, so
+`GetProperty()` and `GetPropertiesInFeature()` both work with it:
+
+```cpp
+FArticyType CharacterType = UArticyTypeSystem::Get()->GetArticyType("Character");
+
+// Both of these describe the same property
+FArticyPropertyInfo Speed = CharacterType.GetProperty("Attributes.Speed");
+FArticyPropertyInfo Same  = CharacterType.GetPropertiesInFeature("Attributes")[0];
+```
+
+`Features` lists the technical names of a type's features, so an entry can be passed straight
+into `GetPropertiesInFeature()`.
+
 ---
 
 ### Enums in the Type System

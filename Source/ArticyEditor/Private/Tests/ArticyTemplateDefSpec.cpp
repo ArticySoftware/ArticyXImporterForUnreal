@@ -33,6 +33,33 @@ void FArticyTemplateDefSpec::Define()
 				TestEqual(TEXT("feature name"), Template.GetFeatures()[0].GetTechnicalName(), FString(TEXT("Stats")));
 			}
 		});
+
+		It("lists its features by technical name in the type", [this]()
+		{
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyTemplateDef Template;
+			Template.ImportFromJson(TestJson::TemplateJson(TEXT("NPCTemplate"), TEXT("NPC")), Data);
+
+			// Technical names, because that is how tokens and generated properties
+			// address a feature.
+			TestEqual(TEXT("feature count"), Template.ArticyType.Features.Num(), 1);
+			TestTrue(TEXT("listed by technical name"), Template.ArticyType.Features.Contains(TEXT("Stats")));
+			TestTrue(TEXT("has template"), Template.ArticyType.HasTemplate);
+		});
+
+		It("adopts the feature properties under their qualified names", [this]()
+		{
+			UArticyImportData* Data = NewObject<UArticyImportData>();
+			FArticyTemplateDef Template;
+			Template.ImportFromJson(TestJson::TemplateJson(TEXT("NPCTemplate"), TEXT("NPC")), Data);
+
+			const FArticyPropertyInfo Info = Template.ArticyType.GetProperty(TEXT("Stats.HP"));
+			TestEqual(TEXT("qualified name"), Info.TechnicalName, FString(TEXT("Stats.HP")));
+			TestEqual(TEXT("property type"), Info.PropertyType, FString(TEXT("int")));
+
+			const TArray<FArticyPropertyInfo> InFeature = Template.ArticyType.GetPropertiesInFeature(TEXT("Stats"));
+			TestEqual(TEXT("properties in feature"), InFeature.Num(), 1);
+		});
 	});
 }
 
