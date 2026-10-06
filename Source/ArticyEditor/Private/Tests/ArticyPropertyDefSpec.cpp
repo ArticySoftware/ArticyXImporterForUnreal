@@ -159,8 +159,13 @@ void FArticyPropertyDefSpec::Define()
 
 			const FString Path = CodeGenerator::GetSourceFolder() / FileName;
 			FString Content;
-			TestTrue(TEXT("file written"), FFileHelper::LoadFileToString(Content, *Path));
+			const bool bLoaded = FFileHelper::LoadFileToString(Content, *Path);
 			IFileManager::Get().Delete(*Path);
+			if (!bLoaded)
+			{
+				AddError(FString::Printf(TEXT("Could not read the generated file %s"), *Path));
+				return;
+			}
 
 			TestTrue(TEXT("localized property"), Content.Contains(TEXT("FText Motivation = FText::GetEmpty();")));
 			TestTrue(TEXT("localized getter"), Content.Contains(TEXT("FText GetMotivation() { return GetPropertyText(Motivation); }")));

@@ -1,10 +1,14 @@
 ## Unreal Importer next Changelog :
 
+- Breaking Changes:
+    - Non-localizable text properties (`ArticyString`) are now generated as `FString` instead of `FText`. C++ and Blueprint code reading these properties directly must be updated; the generated getters (e.g. `GetVoiceActor()`) and `GetDisplayName()` / `GetText()` / `GetMenuText()` / `GetStageDirections()` still return `FText`
 - New Features:
     - Runtime type system with feature and inherited property metadata
+    - Generated getters for non-localizable text properties, resolving text extension tokens (`ResolvePropertyString`)
 - Fixes:
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
+    - Fix localizable and non-localizable text properties being imported with the same type
     
 ## Unreal Importer v1.6.1 Changelog :
 
