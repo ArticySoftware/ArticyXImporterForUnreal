@@ -1,3 +1,8 @@
+## Unreal Importer next Changelog :
+
+- Fixes:
+    - Fix flow player crash on a garbage-collected expresso instance
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
