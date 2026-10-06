@@ -307,12 +307,16 @@ namespace ArticyHelpers
 	inline FText GetTextPropertyValue(UObject* Object, const FProperty* Property, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
 	{
 		const EArticyTextPropertyKind Kind = Object ? GetTextPropertyKind(Property) : EArticyTextPropertyKind::None;
+		if (Kind == EArticyTextPropertyKind::None)
+		{
+			return BackupText ? *BackupText : FText::GetEmpty();
+		}
 		if (Kind == EArticyTextPropertyKind::LocalizedText)
 		{
 			return LocalizeString(Object, *Property->ContainerPtrToValuePtr<FText>(Object), ResolveTextExtension, BackupText);
 		}
 
-		FText Plain = Kind == EArticyTextPropertyKind::PlainString ? FText::FromString(*Property->ContainerPtrToValuePtr<FString>(Object)) : FText::GetEmpty();
+		FText Plain = FText::FromString(*Property->ContainerPtrToValuePtr<FString>(Object));
 		if (Plain.IsEmpty() && BackupText)
 		{
 			Plain = *BackupText;

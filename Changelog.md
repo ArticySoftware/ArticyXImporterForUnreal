@@ -3,13 +3,17 @@
 - New Features:
     - Runtime type system with feature and inherited property metadata
     - Database object filtering by ID, technical name, display name or text
+    - Generated getters for non-localizable text properties
 - Fixes:
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix output pin script executed twice by FinishCurrentPausedObject
     - Fix flow player crash on a garbage-collected expresso instance
     - Fix global variables reset by garbage collection during play
-
+    - Fix type metadata not available at runtime
+    - Fix packaging for projects upgraded from the Articy Importer plugin name
+    - Fix localizable and non-localizable text properties being imported with the same type
+    
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
