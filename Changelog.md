@@ -1,3 +1,8 @@
+## Unreal Importer next Changelog :
+
+- Fixes:
+    - Fix output pin script executed twice by FinishCurrentPausedObject
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
