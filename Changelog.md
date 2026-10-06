@@ -2,6 +2,7 @@
 
 - New Features:
     - Runtime type system with feature and inherited property metadata
+    - Database object filtering by ID, technical name, display name or text
 - Fixes:
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
