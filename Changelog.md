@@ -8,7 +8,8 @@
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix output pin script executed twice by FinishCurrentPausedObject
     - Fix flow player crash on a garbage-collected expresso instance
-    
+    - Fix global variables reset by garbage collection during play
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
