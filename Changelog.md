@@ -1,3 +1,8 @@
+## Unreal Importer next Changelog :
+
+- Fixes:
+    - Fix global variables reset by garbage collection during play
+
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
