@@ -147,11 +147,6 @@ void UArticyFlowPlayer::FinishCurrentPausedObject(int PinIndex)
     {
         auto outputPins = outputPinOwner->GetOutputPinsPtr();
 
-        int numPins = outputPins->Num();
-        if (numPins > 0 && PinIndex < numPins)
-        {
-            (*outputPins)[PinIndex]->Execute(GetGVs(), GetMethodsProvider());
-        }
         if (outputPins->Num() > 0)
         {
             if (PinIndex < outputPins->Num())
