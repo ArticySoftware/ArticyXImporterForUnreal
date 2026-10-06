@@ -1,8 +1,12 @@
 ## Unreal Importer next Changelog :
 
+- New Features:
+    - Runtime type system with feature and inherited property metadata
 - Fixes:
+    - Fix type metadata not available at runtime
+    - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix output pin script executed twice by FinishCurrentPausedObject
-
+    
 ## Unreal Importer v1.6.1 Changelog :
 
 - Fixes:
