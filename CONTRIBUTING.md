@@ -31,6 +31,8 @@ To do that you just need to get the sources from here on GitHub, your best bet i
 
 The plugin ships with an automated test suite built on Unreal's Automation framework, under the `Tests/` directory. Please run it before submitting a contribution, and add tests where practical: unit tests for self-contained logic (parsing, type handling, formatting) and integration tests for runtime behaviour that needs imported content (database, global variables, Flow Player). See [`Tests/README.md`](Tests/README.md) for how to run them.
 
+The same suite runs in CI on every push to a pull request, across the supported Unreal Engine versions on Windows and macOS. If you are contributing from a fork, a maintainer has to release the workflow run before it starts, so your checks may sit at *waiting for approval* for a while after you push. That is expected and nothing you need to act on.
+
 ### Setup development environment
 
 We usually use the Maniac Manfred demo project to develop and test changes directly. To start developing for **ArticyXImporter** make sure to have Unreal Engine installed. This is how a quick setup of the projects could look like:
