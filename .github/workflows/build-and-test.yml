@@ -4,15 +4,22 @@ on:
   push:
     branches:
       - main
-  pull_request_review:
+  pull_request:
     types:
-      - submitted
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
     name: Test on ${{ matrix.platform }} / Unreal Engine ${{ matrix.ue_version }}
-    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: [self-hosted, "${{ matrix.platform }}", Unreal]
     strategy:
       fail-fast: false

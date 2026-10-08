@@ -135,6 +135,16 @@ For more advanced handling, you can retrieve all objects of a specific type usin
    });
    ```
 
+   For a text search, [`FilterObjects`](@ref UArticyDatabase::FilterObjects) and [`FilterObjectsBasedOn`](@ref UArticyDatabase::FilterObjectsBasedOn) take a single filter string, which is either a hexadecimal object ID or a part of the technical name, display name or text (case-insensitive). An empty filter returns all objects.
+
+   ```cpp
+   // every object mentioning "hamster" in its name, display name or text
+   TArray<UArticyObject*> Matches = UArticyDatabase::Get(WorldContext)->FilterObjects("hamster");
+
+   // the same search restricted to items
+   TArray<UItem*> MatchingItems = UArticyDatabase::FilterObjectsBasedOn(AllItems, "hamster");
+   ```
+
    }
 
    @tab{ Blueprint | uebp |
@@ -144,6 +154,7 @@ For more advanced handling, you can retrieve all objects of a specific type usin
       
    2) **Filtering objects:**
       - You can filter the results by using **For Each Loop** nodes to iterate through the array and check for specific conditions.
+      - Alternatively use **Filter Objects** on the database, or **Filter Objects Based On** with an array you already have. Both take one filter string: a hexadecimal object ID, or a part of the technical name, display name or text. An empty filter returns all objects.
 
    ![Advanced access](bp_db_advanced_access.png)
 

@@ -11,6 +11,8 @@
 #include "ArticyAlternativeGlobalVariables.h"
 #include "AssetRegistry/AssetData.h"
 #include <ArticyPins.h>
+#include "ArticyGlobalVariablesWorldSubsystem.h"
+#include "Engine/World.h"
 
 /**
  * Constructor for FArticyGvName using full variable name.
@@ -124,6 +126,47 @@ void UArticyBaseVariableSet::BroadcastOnVariableChanged(UArticyVariable* Variabl
 //---------------------------------------------------------------------------//
 
 /**
+ * Makes the outer of a runtime GV clone keep it alive: the game instance for a persistent clone, the world's
+ * UArticyGlobalVariablesWorldSubsystem for a per-world one. The clone then lives exactly as long as its outer,
+ * so it survives garbage collection during play and is collected together with the outer: the game instance
+ * when play ends, the world when it is cleaned up on a level change.
+ * @param RuntimeClone The clone to keep alive.
+ */
+static void KeepRuntimeCloneAlive(UArticyGlobalVariables* RuntimeClone)
+{
+    if (UGameInstance* GameInstance = Cast<UGameInstance>(RuntimeClone->GetOuter()))
+    {
+        GameInstance->RegisterReferencedObject(RuntimeClone);
+    }
+    else if (UWorld* World = Cast<UWorld>(RuntimeClone->GetOuter()))
+    {
+        if (UArticyGlobalVariablesWorldSubsystem* Subsystem = World->GetSubsystem<UArticyGlobalVariablesWorldSubsystem>())
+        {
+            Subsystem->KeepAlive(RuntimeClone);
+        }
+    }
+}
+
+/**
+ * Undoes KeepRuntimeCloneAlive; does nothing for a clone that was never kept alive.
+ * @param RuntimeClone The clone to release.
+ */
+static void ReleaseRuntimeClone(UArticyGlobalVariables* RuntimeClone)
+{
+    if (UGameInstance* GameInstance = Cast<UGameInstance>(RuntimeClone->GetOuter()))
+    {
+        GameInstance->UnregisterReferencedObject(RuntimeClone);
+    }
+    else if (UWorld* World = Cast<UWorld>(RuntimeClone->GetOuter()))
+    {
+        if (UArticyGlobalVariablesWorldSubsystem* Subsystem = World->GetSubsystem<UArticyGlobalVariablesWorldSubsystem>())
+        {
+            Subsystem->Release(RuntimeClone);
+        }
+    }
+}
+
+/**
  * Retrieves the default global variables object, creating a clone if necessary.
  * @param WorldContext The context within which the object is retrieved.
  * @return A pointer to the default UArticyGlobalVariables object.
@@ -173,26 +216,25 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetDefault(const UObject* WorldC
         if (keepBetweenWorlds)
         {
             Clone = DuplicateObject<UArticyGlobalVariables>(assetPtr, Cast<UObject>(world->GetGameInstance()), TEXT("Persistent Runtime GV"));
-#if !WITH_EDITOR
-            Clone->AddToRoot();
-#endif
         }
         else
         {
             Clone = DuplicateObject<UArticyGlobalVariables>(assetPtr, Cast<UObject>(world), *FString::Printf(TEXT("%s GV"), *world->GetName()));
         }
 
-#if WITH_EDITOR
         // DuplicateObject copies the source asset's RF_Standalone flag onto the runtime clone,
-        // making the clone a GC root on its own. In the editor that rooted clone can survive
+        // making the clone a GC root on its own in the editor. That rooted clone can survive
         // Stop-PIE and pin the now-garbage PIE GameInstance/world it is outered to, tripping
-        // UE's strict PIE leak check (PlayLevel.cpp). Strip the flag so GC can reclaim the clone
-        // together with the world. Packaged builds still AddToRoot above and are unaffected.
+        // UE's strict PIE leak check (PlayLevel.cpp). Strip the flag, and let the outer own the
+        // clone instead: nothing else references it (Clone is a weak pointer, and an outer does
+        // not keep its inners alive), so without an owner GC would reset every variable on its
+        // next pass. Outside the editor RF_Standalone keeps nothing alive (see
+        // GARBAGE_COLLECTION_KEEPFLAGS), so a packaged game needs the owner just the same.
         if (Clone.IsValid())
         {
             Clone->ClearFlags(RF_Standalone);
+            KeepRuntimeCloneAlive(Clone.Get());
         }
-#endif
 
         ensureMsgf(Clone.IsValid(), TEXT("Cloning GV asset failed!"));
     }
@@ -272,7 +314,7 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
     // Check if we're keeping global variable objects between worlds
     bool keepBetweenWorlds = UArticyPluginSettings::Get()->bKeepGlobalVariablesBetweenWorlds;
 
-    // If so, duplicate and add to root
+    // If so, duplicate into the game instance
     UArticyGlobalVariables* NewClone = nullptr;
 
 #if ENGINE_MAJOR_VERSION >= 5
@@ -285,9 +327,6 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
     {
         FString NewName = TEXT("Persistent Runtime GV Clone of ") + Name;
         NewClone = DuplicateObject<UArticyGlobalVariables>(assetPtr, Cast<UObject>(world->GetGameInstance()), *NewName);
-#if !WITH_EDITOR
-        NewClone->AddToRoot();
-#endif
     }
     else
     {
@@ -295,14 +334,14 @@ UArticyGlobalVariables* UArticyGlobalVariables::GetRuntimeClone(const UObject* W
         NewClone = DuplicateObject(assetPtr, Cast<UObject>(world), *FString::Printf(TEXT("%s %s GV"), *world->GetName(), *Name));
     }
 
-#if WITH_EDITOR
     // See GetDefault: strip the RF_Standalone flag inherited from the asset so the runtime clone
-    // isn't a self-rooting object that survives Stop-PIE and trips UE's PIE leak check.
+    // isn't a self-rooting object that survives Stop-PIE and trips UE's PIE leak check, and let
+    // the outer own the clone instead.
     if (NewClone)
     {
         NewClone->ClearFlags(RF_Standalone);
+        KeepRuntimeCloneAlive(NewClone);
     }
-#endif
 
     // Store and return
     OtherClones.FindOrAdd(Key) = NewClone;
@@ -316,7 +355,8 @@ void UArticyGlobalVariables::UnloadGlobalVariables()
 {
     if (Clone.IsValid())
     {
-        Clone->RemoveFromRoot();
+        // Drop the outer's reference too, or the destroyed clone stays referenced until the outer dies
+        ReleaseRuntimeClone(Clone.Get());
         Clone->ConditionalBeginDestroy();
         Clone = NULL;
     }
