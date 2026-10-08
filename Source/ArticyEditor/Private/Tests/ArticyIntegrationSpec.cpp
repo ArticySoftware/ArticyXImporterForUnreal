@@ -11,6 +11,7 @@
 #include "ArticyTextExtension.h"
 #include "ArticyTypeSystem.h"
 #include "ArticyFlowPlayer.h"
+#include "ArticyHierarchyManager.h"
 #include "Interfaces/ArticyObjectWithDisplayName.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
@@ -242,6 +243,66 @@ void FArticyIntegrationSpec::Define()
 			// The property the object-property test reads must be described by the type.
 			TestEqual(TEXT("property is described"), Type.GetProperty(DemoEntityProperty).TechnicalName,
 				FString(DemoEntityProperty));
+		});
+	});
+
+	Describe("Hierarchy", [this]()
+	{
+		It("exposes the imported project tree", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB) || !TestNotNull(TEXT("project hierarchy"), DB->GetProjectHierarchy()))
+				return;
+
+			UArticyHierarchyNode* Root = DB->GetProjectHierarchy()->GetProjectNode();
+			if (!TestNotNull(TEXT("project node - has the project been reimported since hierarchy support was added?"), Root))
+				return;
+
+			TestEqual(TEXT("root type"), Root->GetArticyType(), FString(TEXT("Project")));
+			TestTrue(TEXT("root has no parent"), Root->GetParent().IsNull());
+			TestTrue(TEXT("root has children"), Root->GetChildren().Num() > 0);
+		});
+
+		It("resolves a known object and walks up to the project node", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Lobby = DB->GetObjectByName(FName(DemoFlowFragment));
+			if (!Lobby)
+			{
+				AddWarning(MissingContentMessage(DemoFlowFragment));
+				return;
+			}
+
+			UArticyHierarchyManager* Hierarchy = DB->GetProjectHierarchy();
+			UArticyHierarchyNode* Node = Hierarchy ? Hierarchy->GetHierarchyInfo(Lobby->GetId()) : nullptr;
+			if (!TestNotNull(TEXT("hierarchy node for the object"), Node))
+				return;
+
+			TestEqual(TEXT("technical name"), Node->GetTechnicalName(), FString(DemoFlowFragment));
+			TestEqual(TEXT("type"), Node->GetArticyType(), FString(TEXT("FlowFragment")));
+			TestTrue(TEXT("node resolves to the database object"), Node->GetObject() == Lobby);
+			TestTrue(TEXT("hierarchy parent matches object parent"), Node->GetParent() == Lobby->GetParentID());
+
+			// Every node's parent chain ends at the project node.
+			int32 Depth = 0;
+			UArticyHierarchyNode* Current = Node;
+			while (Current && !Current->GetParent().IsNull() && Depth < 1000)
+			{
+				Current = Hierarchy->GetHierarchyInfo(Current->GetParent());
+				++Depth;
+			}
+			TestTrue(TEXT("reached the project node"), Current == Hierarchy->GetProjectNode());
 		});
 	});
 

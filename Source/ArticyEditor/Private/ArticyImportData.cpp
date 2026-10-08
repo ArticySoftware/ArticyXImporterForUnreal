@@ -15,6 +15,7 @@
 #include "Misc/MessageDialog.h"
 #endif
 #include "ArticyArchiveReader.h"
+#include "ArticyHierarchyNode.h"
 #include "ISourceControlModule.h"
 #include "SourceControlHelpers.h"
 #include "StringTableGenerator.h"
@@ -526,6 +527,46 @@ void FADIHierarchy::ImportFromJson(UArticyImportData* ImportData, const TSharedP
 		return;
 
 	RootObject = UADIHierarchyObject::CreateFromJson(ImportData, Json);
+}
+
+namespace
+{
+	void AddRuntimeHierarchyNode(const UADIHierarchyObject* Object, const FArticyId& ParentId, TArray<FArticyHierarchyNodeData>& OutNodes)
+	{
+		const int32 NodeIndex = OutNodes.AddDefaulted();
+		FArticyHierarchyNodeData& Node = OutNodes[NodeIndex];
+		Node.Id = Object->Id;
+		Node.Parent = ParentId;
+		Node.TechnicalName = Object->TechnicalName;
+		Node.ArticyType = Object->Type;
+
+		// Count only the children actually written, so the list stays consistent with ChildCount.
+		int32 ChildCount = 0;
+		for (const UADIHierarchyObject* Child : Object->Children)
+		{
+			if (!Child)
+				continue;
+			AddRuntimeHierarchyNode(Child, Node.Id, OutNodes);
+			++ChildCount;
+		}
+		// OutNodes may have reallocated; don't use the Node reference past this point.
+		OutNodes[NodeIndex].ChildCount = ChildCount;
+	}
+}
+
+/**
+ * Flattens the hierarchy into the pre-order node list stored by UArticyHierarchyManager.
+ * The project (root) node gets a null parent id; every other node gets its parent's id.
+ *
+ * @param OutNodes Receives the nodes; empty if no hierarchy was imported.
+ */
+void FADIHierarchy::BuildRuntimeNodes(TArray<FArticyHierarchyNodeData>& OutNodes) const
+{
+	OutNodes.Reset();
+	if (RootObject)
+	{
+		AddRuntimeHierarchyNode(RootObject, FArticyId(), OutNodes);
+	}
 }
 
 /**
