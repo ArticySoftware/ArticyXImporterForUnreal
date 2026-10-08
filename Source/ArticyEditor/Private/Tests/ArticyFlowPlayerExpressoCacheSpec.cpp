@@ -25,7 +25,7 @@ namespace
 		return GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
 	}
 
-	FObjectProperty* FindExpressoCacheProperty()
+	FObjectProperty* FindFlowPlayerExpressoCacheProperty()
 	{
 		return CastField<FObjectProperty>(UArticyFlowPlayer::StaticClass()->FindPropertyByName(TEXT("CachedExpressoInstance")));
 	}
@@ -86,7 +86,7 @@ void FArticyFlowPlayerExpressoCacheSpec::Define()
 			if (!SetUpPlayer())
 				return;
 
-			FObjectProperty* Cache = FindExpressoCacheProperty();
+			FObjectProperty* Cache = FindFlowPlayerExpressoCacheProperty();
 			if (!TestNotNull(TEXT("CachedExpressoInstance is a UPROPERTY"), Cache))
 				return;
 
@@ -102,7 +102,7 @@ void FArticyFlowPlayerExpressoCacheSpec::Define()
 			if (!SetUpPlayer())
 				return;
 
-			FObjectProperty* Cache = FindExpressoCacheProperty();
+			FObjectProperty* Cache = FindFlowPlayerExpressoCacheProperty();
 			if (!TestNotNull(TEXT("CachedExpressoInstance is a UPROPERTY"), Cache))
 				return;
 
