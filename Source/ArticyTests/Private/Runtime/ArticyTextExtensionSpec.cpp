@@ -12,6 +12,7 @@
 #include "Internationalization/StringTable.h"
 #include "Internationalization/StringTableCore.h"
 #include "Internationalization/StringTableRegistry.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 #if WITH_AUTOMATION_TESTS
 
@@ -114,7 +115,12 @@ BEGIN_DEFINE_SPEC(FArticyTextExtensionSpec, "Articy.Runtime.TextExtension",
 		Table->SetNamespace(StringTableId.ToString());
 		for (const auto& Entry : Entries)
 		{
+			// UE 5.8 added a dev-notes argument to the editor-only overload.
+#if (ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)) && WITH_EDITORONLY_DATA
+			Table->SetSourceString(FTextKey(Entry.Key), Entry.Value, FString());
+#else
 			Table->SetSourceString(FTextKey(Entry.Key), Entry.Value);
+#endif
 		}
 		FStringTableRegistry::Get().RegisterStringTable(StringTableId, Table);
 		bStringTableRegistered = true;
