@@ -147,11 +147,6 @@ void UArticyFlowPlayer::FinishCurrentPausedObject(int PinIndex)
     {
         auto outputPins = outputPinOwner->GetOutputPinsPtr();
 
-        int numPins = outputPins->Num();
-        if (numPins > 0 && PinIndex < numPins)
-        {
-            (*outputPins)[PinIndex]->Execute(GetGVs(), GetMethodsProvider());
-        }
         if (outputPins->Num() > 0)
         {
             if (PinIndex < outputPins->Num())
@@ -219,7 +214,8 @@ UArticyGlobalVariables* UArticyFlowPlayer::GetGVs() const
  */
 UObject* UArticyFlowPlayer::GetMethodsProvider()
 {
-    if (!CachedExpressoInstance)
+    // IsValid rather than a null check: also re-fetches an instance that was marked as garbage
+    if (!IsValid(CachedExpressoInstance))
     {
         CachedExpressoInstance = GetDB()->GetExpressoInstance();
     }
