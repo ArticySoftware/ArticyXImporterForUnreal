@@ -22,7 +22,7 @@
 // runner ("Automation RunTests Articy") does not pick them up.
 namespace
 {
-	const TCHAR* DemoDialogue = TEXT("Dlg_TheTherapist");
+	const TCHAR* FinishDemoDialogue = TEXT("Dlg_TheTherapist");
 
 	UWorld* GetFlowPlayerWorld()
 	{
@@ -31,7 +31,7 @@ namespace
 
 	// The database caches its expresso instance in a private property without a setter, so the
 	// only way to observe executions is to swap that instance through reflection.
-	FObjectProperty* FindExpressoCacheProperty()
+	FObjectProperty* FindDatabaseExpressoCacheProperty()
 	{
 		return CastField<FObjectProperty>(UArticyDatabase::StaticClass()->FindPropertyByName(TEXT("CachedExpressoScripts")));
 	}
@@ -70,10 +70,10 @@ bool FArticyFlowPlayerFinishSpec::SetUpPausedPin()
 	if (!TestNotNull(TEXT("database"), DB))
 		return false;
 
-	UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+	UArticyObject* StartNode = DB->GetObjectByName(FName(FinishDemoDialogue));
 	if (!StartNode)
 	{
-		AddWarning(FString::Printf(TEXT("Skipped: '%s' is not in this project's imported articy content."), DemoDialogue));
+		AddWarning(FString::Printf(TEXT("Skipped: '%s' is not in this project's imported articy content."), FinishDemoDialogue));
 		return false;
 	}
 
@@ -110,7 +110,7 @@ bool FArticyFlowPlayerFinishSpec::SetUpPausedPin()
 	if (!TestNotNull(TEXT("pin database"), PinDB))
 		return false;
 
-	FObjectProperty* Cache = FindExpressoCacheProperty();
+	FObjectProperty* Cache = FindDatabaseExpressoCacheProperty();
 	if (!TestNotNull(TEXT("CachedExpressoScripts property"), Cache))
 		return false;
 
@@ -132,7 +132,7 @@ void FArticyFlowPlayerFinishSpec::TearDownPausedPin()
 
 	if (PinDB && Counting)
 	{
-		if (FObjectProperty* Cache = FindExpressoCacheProperty())
+		if (FObjectProperty* Cache = FindDatabaseExpressoCacheProperty())
 			Cache->SetObjectPropertyValue_InContainer(PinDB, OriginalExpresso);
 	}
 
