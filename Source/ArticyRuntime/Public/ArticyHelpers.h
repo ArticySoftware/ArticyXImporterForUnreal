@@ -196,6 +196,16 @@ namespace ArticyHelpers
 	}
 
 	/**
+	 * Whether articy object texts resolve their text extension tokens automatically
+	 * (the "Resolve strings" plugin setting).
+	 */
+	inline bool ShouldResolveStrings()
+	{
+		const UArticyPluginSettings* Settings = UArticyPluginSettings::Get();
+		return Settings ? Settings->bResolveStrings : true;
+	}
+
+	/**
 	 * Resolves variable interpolation inside an articy text through the localizer system.
 	 * If no localizer is available, returns SourceText unchanged.
 	 *
