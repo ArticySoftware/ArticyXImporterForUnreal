@@ -33,7 +33,7 @@ After defining `MyRef` as a public field, you can configure it directly in the U
 The picker offers two views, which you can switch between with the **Tiles** and **Tree** buttons next to the search field; the choice is remembered:
 
 - **Tiles** shows every matching object as a tile with its preview image.
-- **Tree** shows the objects in your articy project tree, similar to articy's navigator. Folders and other objects that can't be picked are shown greyed out as the path to the objects that can, and branches without any matching object are hidden. While searching, the tree is expanded to show every match. When opened, the tree reveals the currently referenced object. See \ref projectHierarchy for where this tree comes from.
+- **Tree** shows the objects in your articy project tree, similar to articy's navigator. Objects that can't be picked, such as folders, are greyed out. They stay visible so that you can navigate through them to the objects that can be picked. Branches that contain no matching object are hidden. While searching, the tree is expanded to show every match. When opened, the tree reveals the currently referenced object. See \ref projectHierarchy for where this tree comes from.
 
 ### Accessing ArticyRef in Code
 

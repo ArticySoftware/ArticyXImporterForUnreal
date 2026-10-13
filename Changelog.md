@@ -3,6 +3,8 @@
 - New Features:
     - Text extension parity with the Unity importer
     - Text extension settings "Resolve strings" and "Allow invalid tokens"
+    - Project hierarchy imported into the database, with `UArticyHierarchyManager` for navigating it
+    - Tree view in the Articy object picker, similar to articy's navigator
     - Runtime type system with feature and inherited property metadata
     - Database object filtering by ID, technical name, display name or text
     - Generated getters for non-localizable text properties
