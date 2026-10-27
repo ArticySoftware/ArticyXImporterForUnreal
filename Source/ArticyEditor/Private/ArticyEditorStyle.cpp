@@ -135,6 +135,12 @@ TSharedRef< FSlateStyleSet > FArticyEditorStyle::Create()
 	Style->Set("ArticyImporter.Button.RegenerateAssets", RegenerateAssetsButtonStyle);
 
 	// Define styles for various asset types and UI elements.
+	// Class icons, picked up for the flow player component and the flow debugger actor
+	Style->Set("ClassIcon.ArticyFlowPlayer", new IMAGE_BRUSH(TEXT("128/ArticyFlowPlayer_Asset"), Icon16x16));
+	Style->Set("ClassThumbnail.ArticyFlowPlayer", new IMAGE_BRUSH(TEXT("128/ArticyFlowPlayer_Asset"), Icon64x64));
+	Style->Set("ClassIcon.ArticyFlowDebugger", new IMAGE_BRUSH(TEXT("128/ArticyFlowPlayer_Asset"), Icon16x16));
+	Style->Set("ClassThumbnail.ArticyFlowDebugger", new IMAGE_BRUSH(TEXT("128/ArticyFlowPlayer_Asset"), Icon64x64));
+
 	Style->Set("ArticyImporter.AssetPicker.TileBackground.96", new IMAGE_BRUSH(TEXT("128/content_tile_fill"), Icon96x96));
 	Style->Set("ArticyImporter.AssetPicker.TileBorder.16", new BOX_BRUSH(TEXT("Border"), 4.f / 16.f));
 

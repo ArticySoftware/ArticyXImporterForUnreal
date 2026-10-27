@@ -50,7 +50,7 @@ public:
 };
 
 UCLASS(BlueprintType)
-class ARTICYRUNTIME_API UArticyOutgoingConnection : public UArticyConnection
+class ARTICYRUNTIME_API UArticyOutgoingConnection : public UArticyConnection, public IArticyFlowObject
 {
 	GENERATED_BODY()
 	
@@ -61,7 +61,14 @@ public:
 	/** Can be an InputPin (next node) or an OutputPin (emerge to parent node). */
 	UArticyFlowPin* GetTargetPin() const;
 	FArticyId GetTargetPinID() const { return TargetPin;  }
-	
+
+	//---------------------------------------------------------------------------//
+
+	EArticyPausableType GetType() override { return EArticyPausableType::Connection; }
+
+	/** Continues the exploration on the pin this connection targets. */
+	void Explore(UArticyFlowPlayer* Player, TArray<FArticyBranch>& OutBranches, const uint32& Depth) override;
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Articy", meta=(DisplayName="TargetPin"))
 	FArticyId TargetPin;

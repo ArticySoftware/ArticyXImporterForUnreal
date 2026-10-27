@@ -20,6 +20,39 @@ class IArticyNode;
 class IArticyFlowObject;
 
 /**
+ * The severity of a problem reported by UArticyFlowPlayer::ValidateSetup.
+ */
+UENUM(BlueprintType)
+enum class EArticyFlowPlayerIssueSeverity : uint8
+{
+    /** The flow player works, but probably not the way it was meant to. */
+    Warning,
+    /** The flow player cannot traverse the flow with this setup. */
+    Error
+};
+
+/**
+ * A problem found in a flow player's setup, as reported by UArticyFlowPlayer::ValidateSetup.
+ */
+USTRUCT(BlueprintType)
+struct ARTICYRUNTIME_API FArticyFlowPlayerSetupIssue
+{
+    GENERATED_BODY()
+
+    /** What is wrong and how to fix it. */
+    UPROPERTY(BlueprintReadOnly, Category = "Articy")
+    FText Message;
+
+    /** The property the issue is about, or NAME_None if it is about the setup as a whole. */
+    UPROPERTY(BlueprintReadOnly, Category = "Articy")
+    FName PropertyName;
+
+    /** How bad the issue is. */
+    UPROPERTY(BlueprintReadOnly, Category = "Articy")
+    EArticyFlowPlayerIssueSeverity Severity = EArticyFlowPlayerIssueSeverity::Warning;
+};
+
+/**
  * This component handles traversal of the flow, starting and halting at specific nodes.
  * The GlobalVariables instance and the UserMethodProvider used for this flow player
  * instance can be specified.
@@ -43,9 +76,21 @@ public:
      * Defaults to pausing on dialogue fragments, dialogues and flow fragments.
      */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup", meta = (Bitmask, BitmaskEnum = "/Script/ArticyRuntime.EArticyPausableType"))
-    uint8 PauseOn = 1 << uint8(EArticyPausableType::DialogueFragment)
+    int32 PauseOn = 1 << uint8(EArticyPausableType::DialogueFragment)
         | 1 << uint8(EArticyPausableType::Dialogue)
         | 1 << uint8(EArticyPausableType::FlowFragment);
+
+    /**
+     * Re-explores the available branches every ContinuouslyRecalculateInterval seconds, so branches
+     * that only become available or unavailable through a global variable change are picked up
+     * without having to play a branch first.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
+    bool bContinuouslyRecalculateBranches = false;
+
+    /** Seconds between two continuous branch recalculations. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup", meta = (ClampMin = 0, EditCondition = "bContinuouslyRecalculateBranches"))
+    float ContinuouslyRecalculateInterval = 0.5f;
 
     /**
      * Pushes a shadow state, executes the operation, then pops the shadow state back.
@@ -111,8 +156,22 @@ public:
      */
     TArray<FArticyBranch> Explore(IArticyFlowObject* Node, bool bShadowed, int32 Depth, bool IncludeCurrent = true);
 
+    /** Sets the flow player to pause on a single node type. */
+    UFUNCTION(BlueprintCallable, Category = "Setup")
+    void SetPauseOn(EArticyPausableType Type);
+
     /** Sets the bitmask of node types the flow player should pause on. */
-    void SetPauseOn(EArticyPausableType Types);
+    UFUNCTION(BlueprintCallable, Category = "Setup", meta = (DisplayName = "Set Pause On (Bitmask)"))
+    void SetPauseOnMask(UPARAM(meta = (Bitmask, BitmaskEnum = "/Script/ArticyRuntime.EArticyPausableType")) int32 Types);
+
+    /** Returns the bitmask of node types the flow player pauses on. */
+    UFUNCTION(BlueprintPure, Category = "Setup", meta = (DisplayName = "Get Pause On (Bitmask)"))
+    int32 GetPauseOn() const { return PauseOn; }
+
+    /** Returns true if the flow player pauses on this single node type. */
+    UFUNCTION(BlueprintPure, Category = "Setup")
+    bool PausesOnType(EArticyPausableType Type) const { return (PauseOn & ArticyPauseOnFlag(Type)) != 0; }
+
     /** Returns true if Node is one of the PauseOn types. */
     bool ShouldPauseOn(IArticyFlowObject* Node) const;
 
@@ -138,9 +197,45 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Flow")
     void UpdateAvailableBranches();
 
+    /**
+     * Re-explores the available branches from the current position without pausing again.
+     *
+     * Unlike UpdateAvailableBranches this only broadcasts OnBranchesUpdated, so it can be called
+     * while the flow player is already paused on a node. Continuous branch recalculation uses it.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Flow")
+    void RefreshBranches();
+
     /** Get the currently available branches. This does not re-explore the branches. */
     UFUNCTION(BlueprintCallable, Category = "Flow")
     const TArray<FArticyBranch>& GetAvailableBranches() const { return AvailableBranches; }
+
+    /** Broadcasts OnPlayerPaused for the current cursor without changing the flow position. */
+    UFUNCTION(BlueprintCallable, Category = "Flow")
+    void BroadcastPlayerPaused();
+
+    /** Broadcasts OnBranchesUpdated for the current branches without re-exploring them. */
+    UFUNCTION(BlueprintCallable, Category = "Flow")
+    void BroadcastBranchesUpdated();
+
+    //---------------------------------------------------------------------------//
+
+    /**
+     * Collects everything about this flow player's setup that looks wrong, for the details panel
+     * and for the log on BeginPlay.
+     *
+     * @return One issue per problem found, empty if the setup looks fine.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Setup")
+    TArray<FArticyFlowPlayerSetupIssue> ValidateSetup() const;
+
+    /**
+     * Advances the continuous recalculation timer.
+     *
+     * @param DeltaTime The time elapsed since the last tick.
+     * @return True if the interval elapsed and the branches should be recalculated.
+     */
+    bool AdvanceRecalculationTimer(float DeltaTime);
 
     //---------------------------------------------------------------------------//
 
@@ -253,6 +348,12 @@ private:
     UPROPERTY(Transient, VisibleAnywhere, Category = "Debug")
     mutable uint32 ShadowLevel = 0;
 
+    /** Seconds since the last continuous branch recalculation. */
+    float TimeSinceLastRecalculation = 0.f;
+
+    /** Set once the flow player paused with nothing bound to its callbacks. */
+    bool bPausedWithoutCallbacks = false;
+
     /** Branches queued for replay. Drained by the ticker one branch per tick. */
     TQueue<FArticyBranch> BranchQueue;
     /** Handle to the ticker that drains BranchQueue. */
@@ -274,8 +375,9 @@ private:
      *
      * Use Startup if this is the first time we're creating branches for a starting node.
      * This will make sure FastForward gets called and we end up on a valid PauseOn node.
+     * Clear bPause to only report the new branches, without pausing on the cursor again.
      */
-    void UpdateAvailableBranchesInternal(bool Startup);
+    void UpdateAvailableBranchesInternal(bool Startup, bool bPause = true);
 
     /** The current position in the flow. */
     UPROPERTY(Transient)
@@ -292,6 +394,18 @@ private:
 
     /** Returns a ptr to the unshadowed object of this node */
     IArticyFlowObject* GetUnshadowedNode(IArticyFlowObject* Node);
+
+    /** Returns the unshadowed counterpart of a pin, which the database cannot be asked for directly. */
+    UArticyFlowPin* GetUnshadowedPin(UArticyFlowPin* Pin);
+
+    /** Returns the unshadowed counterpart of a connection, matched by its position on the owning pin. */
+    UArticyOutgoingConnection* GetUnshadowedConnection(UArticyOutgoingConnection* Connection);
+
+    /** Returns the interface the project's script methods are declared on, or nullptr if there are none. */
+    UClass* GetScriptMethodProviderInterface() const;
+
+    /** Returns true if the flow player would find a script methods provider without UserMethodsProvider being set. */
+    bool HasScriptMethodProviderInReach(UClass* ProviderInterface) const;
 
     /** Returns the database the flow player is bound to. */
     UArticyDatabase* GetDB() const;
