@@ -27,6 +27,7 @@
 #include "Customizations/AssetActions/AssetTypeActions_ArticyGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyAlterativeGV.h"
 #include "Customizations/AssetActions/AssetTypeActions_ArticyImportData.h"
+#include "Customizations/Details/ArticyFlowPlayerCustomization.h"
 #include "Customizations/Details/ArticyGVCustomization.h"
 #include "Customizations/Details/ArticyPluginSettingsCustomization.h"
 #include "Customizations/Details/ArticyIdCustomization.h"
@@ -171,6 +172,7 @@ void FArticyEditorModule::RegisterDetailCustomizations() const
 	PropertyModule.RegisterCustomPropertyTypeLayout("ArticyRef", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FArticyRefCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout("ArticyPluginSettings", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyPluginSettingsCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout("ArticyGlobalVariables", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyGVCustomization::MakeInstance));
+	PropertyModule.RegisterCustomClassLayout("ArticyFlowPlayer", FOnGetDetailCustomizationInstance::CreateStatic(&FArticyFlowPlayerCustomization::MakeInstance));
 
 	PropertyModule.NotifyCustomizationModuleChanged();
 }

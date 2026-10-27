@@ -8,6 +8,23 @@
 #include "ArticyExpressoScripts.h"
 #include "ArticyFlowPlayer.h"
 
+namespace
+{
+	/**
+	 * Explores a pin's outgoing connection.
+	 *
+	 * The connection is only visited as a node of its own if the flow player pauses on connections,
+	 * so branch paths keep their shape for everyone else.
+	 */
+	TArray<FArticyBranch> ExploreConnection(UArticyFlowPlayer* Player, UArticyOutgoingConnection* Connection, bool bShadowed, const uint32& Depth)
+	{
+		if (Player->ShouldPauseOn(Connection))
+			return Player->Explore(Connection, bShadowed, Depth + 1);
+
+		return Player->Explore(Connection->GetTargetPin(), bShadowed, Depth + 1);
+	}
+}
+
 void UArticyFlowPin::InitFromJson(TSharedPtr<FJsonValue> Json) 
 {
 	Super::InitFromJson(Json);
@@ -72,8 +89,7 @@ void UArticyInputPin::Explore(UArticyFlowPlayer* Player, TArray<FArticyBranch>& 
 		//submerge
 		for(auto conn : Connections)
 		{
-			auto target = conn->GetTargetPin();
-			OutBranches.Append( Player->Explore(target, bShadowed, Depth + 1) );
+			OutBranches.Append( ExploreConnection(Player, conn, bShadowed, Depth) );
 		}
 	}
 	else
@@ -114,8 +130,7 @@ void UArticyOutputPin::Explore(UArticyFlowPlayer* Player, TArray<FArticyBranch>&
 		//branch out
 		for(auto conn : Connections)
 		{
-			auto target = conn->GetTargetPin();
-			OutBranches.Append( Player->Explore(target, bShadowed, Depth+1) );
+			OutBranches.Append( ExploreConnection(Player, conn, bShadowed, Depth) );
 		}
 	}
 	else

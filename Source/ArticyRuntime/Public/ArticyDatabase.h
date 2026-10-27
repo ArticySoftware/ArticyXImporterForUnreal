@@ -524,6 +524,13 @@ public:
 	void SetExpressoScriptsClass(TSubclassOf<UArticyExpressoScripts> NewClass);
 
 	/**
+	 * Gets the class an instance of which is used to execute script fragments.
+	 * @return The generated expresso scripts class, or nullptr if no code was generated yet.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy")
+	TSubclassOf<UArticyExpressoScripts> GetExpressoScriptsClass() const { return ExpressoScriptsClass; }
+
+	/**
 	 * Gets the project hierarchy: lightweight information about all objects of the articy project,
 	 * including objects that were excluded from the export or were never exported.
 	 * @return The hierarchy manager, whose project node is empty if no hierarchy was imported.
