@@ -7,10 +7,13 @@
 #include "Interfaces/ArticyFlowObject.h"
 #include "Interfaces/ArticyObjectWithSpeaker.h"
 #include "ArticyExpressoScripts.h"
+#include "ArticyAlternativeGlobalVariables.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Interfaces/ArticyInputPinsProvider.h"
 #include "Interfaces/ArticyOutputPinsProvider.h"
 #include "Engine/Texture2D.h"
+
+#define LOCTEXT_NAMESPACE "ArticyFlowPlayer"
 
 /**
  * Retrieves the target of this branch.
@@ -28,6 +31,15 @@ TScriptInterface<IArticyFlowObject> FArticyBranch::GetTarget() const
 void UArticyFlowPlayer::BeginPlay()
 {
     Super::BeginPlay();
+
+    //report a broken setup once, so it does not have to be hunted down from the symptoms
+    for (const auto& issue : ValidateSetup())
+    {
+        if (issue.Severity == EArticyFlowPlayerIssueSeverity::Error)
+            UE_LOG(LogArticyRuntime, Error, TEXT("ArticyFlowPlayer on %s: %s"), *GetNameSafe(GetOwner()), *issue.Message.ToString())
+        else
+            UE_LOG(LogArticyRuntime, Warning, TEXT("ArticyFlowPlayer on %s: %s"), *GetNameSafe(GetOwner()), *issue.Message.ToString())
+    }
 
     //update Cursor to object referenced by StartOn
     SetCursorToStartNode();
@@ -90,7 +102,7 @@ void UArticyFlowPlayer::SetCursorTo(TScriptInterface<IArticyFlowObject> Node)
 {
     if (!Node.GetObject())
     {
-        UE_LOG(LogArticyRuntime, Warning, TEXT("Could not set cursor in flow player of actor %s: invalid node"), *this->GetOwner()->GetName());
+        UE_LOG(LogArticyRuntime, Warning, TEXT("Could not set cursor in flow player of actor %s: invalid node"), *GetNameSafe(GetOwner()));
         return;
     }
 
@@ -274,38 +286,86 @@ UObject* UArticyFlowPlayer::GetMethodsProvider()
  */
 IArticyFlowObject* UArticyFlowPlayer::GetUnshadowedNode(IArticyFlowObject* Node)
 {
-    auto db = UArticyDatabase::Get(this);
-    UArticyPrimitive* UnshadowedObject = db->GetObjectUnshadowed(Cast<UArticyPrimitive>(Node)->GetId());
+    auto primitive = Cast<UArticyPrimitive>(Node);
+    if (!primitive)
+        return nullptr;
 
-    // Handle pins, because we can not request them directly from the db 
+    auto db = UArticyDatabase::Get(this);
+    UArticyPrimitive* UnshadowedObject = db ? db->GetObjectUnshadowed(primitive->GetId()) : nullptr;
+
+    // Handle pins and connections, because we can not request them directly from the db
     if (!UnshadowedObject)
     {
-        auto pinOwner = db->GetObjectUnshadowed(Cast<UArticyFlowPin>(Node)->GetOwner()->GetId());
-
-        TArray<UArticyFlowPin*> pins;
-        auto inputPinsOwner = Cast<IArticyInputPinsProvider>(pinOwner);
-        if (inputPinsOwner)
-        {
-            pins.Append(*inputPinsOwner->GetInputPinsPtr());
-        }
-        auto outputPinsOwner = Cast<IArticyOutputPinsProvider>(pinOwner);
-        if (outputPinsOwner)
-        {
-            pins.Append(*outputPinsOwner->GetOutputPinsPtr());
-        }
-
-        auto targetId = Cast<UArticyPrimitive>(Node)->GetId();
-        for (auto pin : pins)
-        {
-            if (pin->GetId() == targetId)
-            {
-                UnshadowedObject = pin;
-                break;
-            }
-        }
+        if (auto connection = Cast<UArticyOutgoingConnection>(primitive))
+            UnshadowedObject = GetUnshadowedConnection(connection);
+        else if (auto pin = Cast<UArticyFlowPin>(primitive))
+            UnshadowedObject = GetUnshadowedPin(pin);
     }
 
     return Cast<IArticyFlowObject>(UnshadowedObject);
+}
+
+/**
+ * Retrieves the unshadowed counterpart of a pin.
+ *
+ * @param Pin The pin to unshadow.
+ * @return The pin of the unshadowed owner that carries the same id, or nullptr.
+ */
+UArticyFlowPin* UArticyFlowPlayer::GetUnshadowedPin(UArticyFlowPin* Pin)
+{
+    auto db = UArticyDatabase::Get(this);
+    auto owner = Pin ? Pin->GetOwner() : nullptr;
+    if (!db || !owner)
+        return nullptr;
+
+    auto pinOwner = db->GetObjectUnshadowed(owner->GetId());
+
+    TArray<UArticyFlowPin*> pins;
+    auto inputPinsOwner = Cast<IArticyInputPinsProvider>(pinOwner);
+    if (inputPinsOwner)
+    {
+        pins.Append(*inputPinsOwner->GetInputPinsPtr());
+    }
+    auto outputPinsOwner = Cast<IArticyOutputPinsProvider>(pinOwner);
+    if (outputPinsOwner)
+    {
+        pins.Append(*outputPinsOwner->GetOutputPinsPtr());
+    }
+
+    const auto targetId = Pin->GetId();
+    for (auto pin : pins)
+    {
+        if (pin->GetId() == targetId)
+            return pin;
+    }
+
+    return nullptr;
+}
+
+/**
+ * Retrieves the unshadowed counterpart of a connection.
+ *
+ * Connections are not exported with an id, so they are matched by their position on the
+ * unshadowed owning pin, whose connections are in the same order.
+ *
+ * @param Connection The connection to unshadow.
+ * @return The connection at the same index of the unshadowed owning pin, or nullptr.
+ */
+UArticyOutgoingConnection* UArticyFlowPlayer::GetUnshadowedConnection(UArticyOutgoingConnection* Connection)
+{
+    auto ownerPin = Connection ? Cast<UArticyFlowPin>(Connection->GetOuter()) : nullptr;
+    if (!ownerPin)
+        return nullptr;
+
+    const int32 index = ownerPin->Connections.IndexOfByKey(Connection);
+    if (index == INDEX_NONE)
+        return nullptr;
+
+    auto unshadowedPin = GetUnshadowedPin(ownerPin);
+    if (!unshadowedPin || !unshadowedPin->Connections.IsValidIndex(index))
+        return nullptr;
+
+    return unshadowedPin->Connections[index];
 }
 
 //---------------------------------------------------------------------------//
@@ -425,20 +485,23 @@ TArray<FArticyBranch> UArticyFlowPlayer::Explore(IArticyFlowObject* Node, bool b
 }
 
 /**
+ * Sets the single node type the flow player should pause on.
+ *
+ * @param Type The type of node to pause on.
+ */
+void UArticyFlowPlayer::SetPauseOn(EArticyPausableType Type)
+{
+    PauseOn = ArticyPauseOnFlag(Type);
+}
+
+/**
  * Sets the nodes on which the flow player should pause.
  *
- * @param Types The types of nodes to pause on.
+ * @param Types Bitmask of EArticyPausableType values, as PauseOn stores it.
  */
-void UArticyFlowPlayer::SetPauseOn(EArticyPausableType Types)
+void UArticyFlowPlayer::SetPauseOnMask(int32 Types)
 {
-    PauseOn = 1 << uint8(Types & EArticyPausableType::DialogueFragment)
-        | 1 << uint8(Types & EArticyPausableType::Dialogue)
-        | 1 << uint8(Types & EArticyPausableType::FlowFragment)
-        | 1 << uint8(Types & EArticyPausableType::Hub)
-        | 1 << uint8(Types & EArticyPausableType::Jump)
-        | 1 << uint8(Types & EArticyPausableType::Condition)
-        | 1 << uint8(Types & EArticyPausableType::Instruction)
-        | 1 << uint8(Types & EArticyPausableType::Pin);
+    PauseOn = Types;
 }
 
 //---------------------------------------------------------------------------//
@@ -451,8 +514,175 @@ void UArticyFlowPlayer::UpdateAvailableBranches()
     UpdateAvailableBranchesInternal(false);
 }
 
+/**
+ * Re-explores the available branches without pausing on the cursor again.
+ */
+void UArticyFlowPlayer::RefreshBranches()
+{
+    UpdateAvailableBranchesInternal(false, false);
+}
+
+/**
+ * Broadcasts OnPlayerPaused for the current cursor.
+ */
+void UArticyFlowPlayer::BroadcastPlayerPaused()
+{
+    OnPlayerPaused.Broadcast(Cursor);
+}
+
+/**
+ * Broadcasts OnBranchesUpdated for the current branches.
+ */
+void UArticyFlowPlayer::BroadcastBranchesUpdated()
+{
+    OnBranchesUpdated.Broadcast(AvailableBranches);
+}
+
+/**
+ * Advances the continuous recalculation timer.
+ *
+ * @param DeltaTime The time elapsed since the last tick.
+ * @return True if the interval elapsed, in which case the timer starts over.
+ */
+bool UArticyFlowPlayer::AdvanceRecalculationTimer(float DeltaTime)
+{
+    if (!bContinuouslyRecalculateBranches)
+    {
+        TimeSinceLastRecalculation = 0.f;
+        return false;
+    }
+
+    TimeSinceLastRecalculation += DeltaTime;
+    if (TimeSinceLastRecalculation < ContinuouslyRecalculateInterval)
+        return false;
+
+    TimeSinceLastRecalculation = 0.f;
+    return true;
+}
+
+/**
+ * Collects everything about this flow player's setup that looks wrong.
+ *
+ * @return One issue per problem found, empty if the setup looks fine.
+ */
+TArray<FArticyFlowPlayerSetupIssue> UArticyFlowPlayer::ValidateSetup() const
+{
+    TArray<FArticyFlowPlayerSetupIssue> Issues;
+
+    const auto AddIssue = [&Issues](EArticyFlowPlayerIssueSeverity Severity, FName PropertyName, FText Message)
+    {
+        FArticyFlowPlayerSetupIssue Issue;
+        Issue.Severity = Severity;
+        Issue.PropertyName = PropertyName;
+        Issue.Message = MoveTemp(Message);
+        Issues.Add(MoveTemp(Issue));
+    };
+
+    if (StartOn.GetId().IsNull())
+    {
+        // Only a warning: plenty of projects leave this empty and call Set Start Node at runtime
+        AddIssue(EArticyFlowPlayerIssueSeverity::Warning, GET_MEMBER_NAME_CHECKED(UArticyFlowPlayer, StartOn),
+            LOCTEXT("NoStartOn", "Start On is not set, so the flow player starts nowhere. Pick the node the flow should start on, or call Set Start Node at runtime."));
+    }
+
+    if (PauseOn == 0)
+    {
+        AddIssue(EArticyFlowPlayerIssueSeverity::Error, GET_MEMBER_NAME_CHECKED(UArticyFlowPlayer, PauseOn),
+            LOCTEXT("NoPauseOn", "Pause On is empty. The flow player would not pause on any node, so the flow is not explored at all."));
+    }
+
+    if (OverrideGV && !IsValid(OverrideGV))
+    {
+        AddIssue(EArticyFlowPlayerIssueSeverity::Error, GET_MEMBER_NAME_CHECKED(UArticyFlowPlayer, OverrideGV),
+            LOCTEXT("InvalidOverrideGV", "Override GV references a missing asset. Clear it to use the shared global variables, or point it at an Articy Alternative Global Variables asset."));
+    }
+
+    // The interface the project's script methods are declared on; without it there is nothing to check against
+    if (UClass* ProviderInterface = GetScriptMethodProviderInterface())
+    {
+        const FText InterfaceName = FText::FromString(ProviderInterface->GetName());
+
+        if (UserMethodsProvider && !UserMethodsProvider->GetClass()->ImplementsInterface(ProviderInterface))
+        {
+            AddIssue(EArticyFlowPlayerIssueSeverity::Error, GET_MEMBER_NAME_CHECKED(UArticyFlowPlayer, UserMethodsProvider),
+                FText::Format(LOCTEXT("InvalidMethodsProvider", "User Methods Provider does not implement {0}, so script methods cannot be resolved from it. Implement the interface on it or clear the property to let the flow player search for a provider."), InterfaceName));
+        }
+        else if (!UserMethodsProvider && !HasScriptMethodProviderInReach(ProviderInterface))
+        {
+            AddIssue(EArticyFlowPlayerIssueSeverity::Warning, GET_MEMBER_NAME_CHECKED(UArticyFlowPlayer, UserMethodsProvider),
+                FText::Format(LOCTEXT("NoMethodsProvider", "Nothing on this actor implements {0}. Script methods authored in articy fall back to the default provider, which logs a warning for every call."), InterfaceName));
+        }
+    }
+
+    // Only reported once the flow player actually paused with nothing bound: at begin play
+    // the owner has not had its chance to bind yet
+    if (bPausedWithoutCallbacks && !OnPlayerPaused.IsBound() && !OnBranchesUpdated.IsBound())
+    {
+        AddIssue(EArticyFlowPlayerIssueSeverity::Warning, NAME_None,
+            LOCTEXT("NoCallbacks", "Nothing is bound to On Player Paused or On Branches Updated, so the traversed flow is not reported anywhere."));
+    }
+
+    return Issues;
+}
+
+/**
+ * Retrieves the interface the project's script methods are declared on.
+ *
+ * Resolved from the database asset rather than from a clone, so this is safe to call in the
+ * editor, outside of play.
+ *
+ * @return The generated methods provider interface, or nullptr if the project has no script methods.
+ */
+UClass* UArticyFlowPlayer::GetScriptMethodProviderInterface() const
+{
+    auto original = UArticyDatabase::GetMutableOriginal();
+    if (!original.IsValid())
+        return nullptr;
+
+    auto expressoClass = original->GetExpressoScriptsClass();
+    if (!expressoClass)
+        return nullptr;
+
+    auto expresso = expressoClass->GetDefaultObject<UArticyExpressoScripts>();
+    return expresso ? expresso->GetUserMethodsProviderInterface() : nullptr;
+}
+
+/**
+ * Checks whether the flow player would find a script methods provider on its own.
+ *
+ * Mirrors the search order of GetMethodsProvider, without the default provider fallback.
+ *
+ * @param ProviderInterface The interface a provider has to implement.
+ * @return True if the flow player, its owning actor or one of the actor's components implements it.
+ */
+bool UArticyFlowPlayer::HasScriptMethodProviderInReach(UClass* ProviderInterface) const
+{
+    if (!ProviderInterface)
+        return false;
+
+    if (GetClass()->ImplementsInterface(ProviderInterface))
+        return true;
+
+    auto actor = GetOwner();
+    if (!actor)
+        return false;
+
+    if (actor->GetClass()->ImplementsInterface(ProviderInterface))
+        return true;
+
+    for (auto comp : actor->GetComponents())
+    {
+        if (comp && comp->GetClass()->ImplementsInterface(ProviderInterface))
+            return true;
+    }
+
+    return false;
+}
+
 bool UArticyFlowPlayer::OnTick(float DeltaTime)
 {
+    bool bPlayedBranch = false;
+
     FArticyBranch Branch;
     while (BranchQueue.Dequeue(Branch))
     {
@@ -466,17 +696,27 @@ bool UArticyFlowPlayer::OnTick(float DeltaTime)
         {
             node->Execute(GetGVs(), GetMethodsProvider());
 
-            // update nodes visited
+            // update nodes visited - connections are exported without an id, so they are not tracked
             auto* GVs = GetGVs();
-            if (GVs)
+            auto* primitive = Cast<UArticyPrimitive>(node.GetObject());
+            if (GVs && primitive && !primitive->GetId().IsNull())
             {
                 GVs->IncrementSeenCounter(Cast<IArticyFlowObject>(node.GetObject()));
             }
         }
 
         Cursor = Branch.Path.Last();
+        bPlayedBranch = true;
         UpdateAvailableBranches();
     }
+
+    // Branches a GV change made available or unavailable are only picked up by re-exploring.
+    // Skipped right after a branch was played, which already explored from the new position.
+    if (AdvanceRecalculationTimer(DeltaTime) && !bPlayedBranch && Cursor)
+    {
+        RefreshBranches();
+    }
+
     return true;
 }
 
@@ -486,8 +726,9 @@ bool UArticyFlowPlayer::OnTick(float DeltaTime)
  * Updates the available branches from the current cursor position.
  *
  * @param Startup Whether this is a startup update.
+ * @param bPause Whether OnPlayerPaused should be broadcast along with the new branches.
  */
-void UArticyFlowPlayer::UpdateAvailableBranchesInternal(bool Startup)
+void UArticyFlowPlayer::UpdateAvailableBranchesInternal(bool Startup, bool bPause)
 {
     AvailableBranches.Reset();
 
@@ -529,8 +770,15 @@ void UArticyFlowPlayer::UpdateAvailableBranchesInternal(bool Startup)
             return;
         }
 
+        if (bPause && !bPausedWithoutCallbacks && !OnPlayerPaused.IsBound() && !OnBranchesUpdated.IsBound())
+        {
+            bPausedWithoutCallbacks = true;
+            UE_LOG(LogArticyRuntime, Warning, TEXT("ArticyFlowPlayer on %s paused, but nothing is bound to OnPlayerPaused or OnBranchesUpdated."), *GetNameSafe(GetOwner()))
+        }
+
         //broadcast and return result
-        OnPlayerPaused.Broadcast(Cursor);
+        if (bPause)
+            OnPlayerPaused.Broadcast(Cursor);
         OnBranchesUpdated.Broadcast(AvailableBranches);
     }
 }
@@ -646,3 +894,5 @@ AArticyFlowDebugger::AArticyFlowDebugger()
     ArticyImporterIcon->SetSprite(ImporterIconFinder.Object);
     FlowPlayer->SetIgnoreInvalidBranches(false);
 }
+
+#undef LOCTEXT_NAMESPACE

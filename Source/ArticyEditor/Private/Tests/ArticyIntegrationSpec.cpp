@@ -18,6 +18,8 @@
 #include "Interfaces/ArticyObjectWithStageDirections.h"
 #include "Interfaces/ArticyObjectWithText.h"
 #include "ArticyHierarchyManager.h"
+#include "ArticyBuiltinTypes.h"
+#include "ArticyTestIntegrationListener.h"
 #include "GameFramework/Actor.h"
 #include "Editor.h"
 #include "Engine/World.h"
@@ -517,6 +519,149 @@ void FArticyIntegrationSpec::Define()
 			const UObject* CursorAfter = Player->GetCursor().GetObject();
 			TestNotNull(TEXT("cursor after play"), CursorAfter);
 			TestTrue(TEXT("cursor advanced"), CursorAfter != CursorBefore);
+
+			Actor->Destroy();
+		});
+
+		It("pauses on the connections between nodes", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
+				return;
+			}
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+
+			// Connections are not nodes, so they are only visited when they are the pause type
+			Player->SetPauseOn(EArticyPausableType::Connection);
+			Player->SetStartNodeById(StartNode->GetId());
+
+			if (!TestTrue(TEXT("explored to a connection"), Player->GetAvailableBranches().Num() > 0))
+			{
+				Actor->Destroy();
+				return;
+			}
+
+			for (const FArticyBranch& Branch : Player->GetAvailableBranches())
+			{
+				TestNotNull(TEXT("branch target is a connection"), Cast<UArticyOutgoingConnection>(Branch.GetTarget().GetObject()));
+			}
+
+			// Playing it puts the cursor on the connection, which then has to carry on into its target
+			Player->Play(0);
+			Player->OnTick(0.0f);
+
+			TestNotNull(TEXT("cursor is a connection"), Cast<UArticyOutgoingConnection>(Player->GetCursor().GetObject()));
+			TestTrue(TEXT("exploration continues past the connection"), Player->GetAvailableBranches().Num() > 0);
+
+			Actor->Destroy();
+		});
+
+		It("reports the branches again on a continuous recalculation, without advancing the flow", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
+				return;
+			}
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+			Player->SetStartNodeById(StartNode->GetId());
+
+			// Setting the start node fast-forwards to the first pause node, which queues a branch
+			Player->OnTick(0.0f);
+
+			const UObject* Cursor = Player->GetCursor().GetObject();
+			const int32 BranchCount = Player->GetAvailableBranches().Num();
+			if (!TestTrue(TEXT("explored to branches"), BranchCount > 0))
+			{
+				Actor->Destroy();
+				return;
+			}
+
+			UArticyTestIntegrationListener* Listener = NewObject<UArticyTestIntegrationListener>(Actor);
+			Player->OnPlayerPaused.AddDynamic(Listener, &UArticyTestIntegrationListener::HandlePlayerPaused);
+			Player->OnBranchesUpdated.AddDynamic(Listener, &UArticyTestIntegrationListener::HandleBranchesUpdated);
+
+			Player->bContinuouslyRecalculateBranches = true;
+			Player->ContinuouslyRecalculateInterval = 0.1f;
+			Player->OnTick(1.0f);
+
+			TestEqual(TEXT("branches reported once"), Listener->BranchesUpdatedCount, 1);
+			TestEqual(TEXT("reported all of them"), Listener->LastBranchCount, BranchCount);
+			TestEqual(TEXT("without pausing again"), Listener->PausedCount, 0);
+			TestTrue(TEXT("cursor stayed put"), Player->GetCursor().GetObject() == Cursor);
+			TestEqual(TEXT("same branches"), Player->GetAvailableBranches().Num(), BranchCount);
+
+			Actor->Destroy();
+		});
+
+		It("broadcasts the paused and branches-updated callbacks on demand", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
+				return;
+			}
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+			Player->SetStartNodeById(StartNode->GetId());
+
+			UArticyTestIntegrationListener* Listener = NewObject<UArticyTestIntegrationListener>(Actor);
+			Player->OnPlayerPaused.AddDynamic(Listener, &UArticyTestIntegrationListener::HandlePlayerPaused);
+			Player->OnBranchesUpdated.AddDynamic(Listener, &UArticyTestIntegrationListener::HandleBranchesUpdated);
+
+			// A UI that was created after the flow player already paused can ask for the state again
+			Player->BroadcastPlayerPaused();
+			Player->BroadcastBranchesUpdated();
+
+			TestEqual(TEXT("paused once"), Listener->PausedCount, 1);
+			TestTrue(TEXT("on the current cursor"), Listener->LastPausedOn.GetObject() == Player->GetCursor().GetObject());
+			TestEqual(TEXT("branches reported once"), Listener->BranchesUpdatedCount, 1);
+			TestEqual(TEXT("with the current branches"), Listener->LastBranchCount, Player->GetAvailableBranches().Num());
 
 			Actor->Destroy();
 		});
