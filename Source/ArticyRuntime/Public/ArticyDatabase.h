@@ -19,6 +19,18 @@ class UArticyGlobalVariables;
 class UArticyAlternativeGlobalVariables;
 
 /**
+ * The clone ids with a meaning of their own in the cloning API of UArticyDatabase.
+ */
+namespace ArticyCloneId
+{
+	/** The object as it was imported from articy. It always exists and cannot be removed. */
+	constexpr int32 Original = 0;
+
+	/** Pass in place of a clone id to use the lowest clone id that is not in use yet. */
+	constexpr int32 NextFree = -1;
+}
+
+/**
  * Structure representing a shadow of an Articy object.
  */
 USTRUCT(BlueprintType)
@@ -134,6 +146,45 @@ public:
 	 * @return A pointer to the newly created clone or nullptr if creation failed.
 	 */
 	UArticyObject* Clone(const IShadowStateManager* ShadowManager, int32 CloneId, bool bFailIfExists = true);
+
+	/**
+	 * Clone the original object and assign it the clone id after the highest one in use.
+	 * @param ShadowManager The manager for shadow states.
+	 * @return A pointer to the newly created clone, or nullptr if creation failed.
+	 */
+	UArticyObject* CloneWithConsecutiveId(const IShadowStateManager* ShadowManager);
+
+	/**
+	 * Removes the clone with this id, freeing the id for reuse.
+	 * ArticyCloneId::Original cannot be removed, as it is the imported object itself.
+	 * @param CloneId The clone to remove.
+	 * @return True if a clone was removed.
+	 */
+	bool RemoveClone(int32 CloneId);
+
+	/**
+	 * Removes every clone of this object, keeping the original.
+	 * @return The number of clones that were removed.
+	 */
+	int32 RemoveAllClones();
+
+	/**
+	 * Get the ids of the original and of every clone, in ascending order.
+	 * @return The clone ids in use, always including ArticyCloneId::Original.
+	 */
+	TArray<int32> GetCloneIds() const;
+
+	/**
+	 * Get the highest clone id in use.
+	 * @return The highest clone id, or ArticyCloneId::Original if there are no clones.
+	 */
+	int32 GetHighestCloneId() const;
+
+	/**
+	 * Get the lowest clone id that is not in use yet, which is what ArticyCloneId::NextFree resolves to.
+	 * @return The lowest free clone id.
+	 */
+	int32 GetNextFreeCloneId() const;
 
 private:
 
@@ -452,9 +503,11 @@ public:
 	/**
 	 * Clone an existing object, and assign the NewCloneId to it.
 	 * If the clone already exists, nullptr is returned!
-	 * If NewCloneId is -1, the next free clone Id will be used.
+	 * With ArticyCloneId::NextFree (-1) the lowest clone id that is not in use yet is assigned,
+	 * which fills gaps left by removed clones. Use CloneWithConsecutiveInstanceIdFrom to always
+	 * get the id after the highest one instead.
 	 * @param Id The ID of the object to clone.
-	 * @param NewCloneId The clone ID for the new instance.
+	 * @param NewCloneId The clone ID for the new instance, or ArticyCloneId::NextFree.
 	 * @param CastTo The class to cast the clone to.
 	 * @return A pointer to the newly created clone, or nullptr if creation failed.
 	 */
@@ -466,9 +519,11 @@ public:
 	/**
 	 * Clone an existing object, and assign the NewCloneId to it.
 	 * If the clone already exists, nullptr is returned!
-	 * If NewCloneId is -1, the next free clone Id will be used.
+	 * With ArticyCloneId::NextFree (-1) the lowest clone id that is not in use yet is assigned,
+	 * which fills gaps left by removed clones. Use CloneWithConsecutiveInstanceIdFromByName to
+	 * always get the id after the highest one instead.
 	 * @param TechnicalName The technical name of the object to clone.
-	 * @param NewCloneId The clone ID for the new instance.
+	 * @param NewCloneId The clone ID for the new instance, or ArticyCloneId::NextFree.
 	 * @param CastTo The class to cast the clone to.
 	 * @return A pointer to the newly created clone, or nullptr if creation failed.
 	 */
@@ -478,7 +533,8 @@ public:
 	T* CloneFrom(FName TechnicalName, int32 NewCloneId = -1) { return Cast<T>(CloneFromByName(TechnicalName, NewCloneId)); }
 
 	/**
-	 * Clone an existing object, and assign the NewCloneId to it.
+	 * Get the clone with the NewCloneId, cloning the object if it does not exist yet.
+	 * ArticyCloneId::NextFree names no existing clone, so it always creates a new one.
 	 * @param Id The ID of the object to retrieve or clone.
 	 * @param NewCloneId The clone ID for the new instance.
 	 * @return A pointer to the retrieved or newly created clone, or nullptr if not found.
@@ -489,7 +545,8 @@ public:
 	T* GetOrClone(FArticyId Id, int32 NewCloneId) { return Cast<T>(GetOrClone(Id, NewCloneId)); }
 
 	/**
-	 * Clone an existing object, and assign the NewCloneId to it.
+	 * Get the clone with the NewCloneId, cloning the object if it does not exist yet.
+	 * ArticyCloneId::NextFree names no existing clone, so it always creates a new one.
 	 * @param TechnicalName The technical name of the object to retrieve or clone.
 	 * @param NewCloneId The clone ID for the new instance.
 	 * @return A pointer to the retrieved or newly created clone, or nullptr if not found.
@@ -498,6 +555,97 @@ public:
 	UArticyObject* GetOrCloneByName(const FName& TechnicalName, int32 NewCloneId);
 	template<typename T>
 	T* GetOrClone(const FName& TechnicalName, int32 NewCloneId) { return Cast<T>(GetOrCloneByName(TechnicalName, NewCloneId)); }
+
+	//---------------------------------------------------------------------------//
+
+	/**
+	 * Clone an existing object, and assign it the clone id after the highest one in use.
+	 * Unlike ArticyCloneId::NextFree this does not fill the gaps left by removed clones, it
+	 * only ever goes past the highest clone id still in use.
+	 * @param Id The ID of the object to clone.
+	 * @param CastTo The class to cast the clone to.
+	 * @return A pointer to the newly created clone, or nullptr if creation failed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy", meta = (DeterminesOutputType = "CastTo"))
+	UArticyObject* CloneWithConsecutiveInstanceIdFrom(FArticyId Id, TSubclassOf<class UArticyObject> CastTo = NULL);
+	template<typename T>
+	T* CloneWithConsecutiveInstanceIdFrom(FArticyId Id) { return Cast<T>(CloneWithConsecutiveInstanceIdFrom(Id)); }
+
+	/**
+	 * Clone an existing object, and assign it the clone id after the highest one in use.
+	 * Unlike ArticyCloneId::NextFree this does not fill the gaps left by removed clones, it
+	 * only ever goes past the highest clone id still in use.
+	 * @param TechnicalName The technical name of the object to clone.
+	 * @param CastTo The class to cast the clone to.
+	 * @return A pointer to the newly created clone, or nullptr if creation failed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy", meta = (DeterminesOutputType = "CastTo"))
+	UArticyObject* CloneWithConsecutiveInstanceIdFromByName(FName TechnicalName, TSubclassOf<class UArticyObject> CastTo = NULL);
+	template<typename T>
+	T* CloneWithConsecutiveInstanceIdFrom(FName TechnicalName) { return Cast<T>(CloneWithConsecutiveInstanceIdFromByName(TechnicalName)); }
+
+	//---------------------------------------------------------------------------//
+
+	/**
+	 * Remove a clone of an object, freeing its clone id for reuse by ArticyCloneId::NextFree.
+	 * The original object cannot be removed, and nothing is removed while a flow player is
+	 * exploring, as the branches it is building point at the clones.
+	 * @param Id The ID of the cloned object.
+	 * @param CloneId The clone to remove.
+	 * @return True if a clone was removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	bool RemoveClone(FArticyId Id, int32 CloneId);
+
+	/**
+	 * Remove a clone of an object, freeing its clone id for reuse by ArticyCloneId::NextFree.
+	 * The original object cannot be removed, and nothing is removed while a flow player is
+	 * exploring, as the branches it is building point at the clones.
+	 * @param TechnicalName The technical name of the cloned object.
+	 * @param CloneId The clone to remove.
+	 * @return True if a clone was removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	bool RemoveCloneByName(FName TechnicalName, int32 CloneId);
+
+	/**
+	 * Remove every clone of an object, keeping the original.
+	 * @param Id The ID of the cloned object.
+	 * @return The number of clones that were removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	int32 RemoveAllClones(FArticyId Id);
+
+	/**
+	 * Remove every clone of an object, keeping the original.
+	 * @param TechnicalName The technical name of the cloned object.
+	 * @return The number of clones that were removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	int32 RemoveAllClonesByName(FName TechnicalName);
+
+	/**
+	 * Remove every clone of every loaded object, keeping the originals.
+	 * @return The number of clones that were removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Articy")
+	int32 RemoveAllClonesInDatabase();
+
+	/**
+	 * Get the ids of an object's original and of every clone of it, in ascending order.
+	 * @param Id The ID of the object.
+	 * @return The clone ids in use, or an empty array if the object is not loaded.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy")
+	TArray<int32> GetCloneIds(FArticyId Id) const;
+
+	/**
+	 * Get the ids of an object's original and of every clone of it, in ascending order.
+	 * @param TechnicalName The technical name of the object.
+	 * @return The clone ids in use, or an empty array if the object is not loaded.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy")
+	TArray<int32> GetCloneIdsByName(FName TechnicalName) const;
 
 	//---------------------------------------------------------------------------//
 
@@ -567,6 +715,15 @@ private:
 	TSubclassOf<UArticyExpressoScripts> ExpressoScriptsClass;
 
 	UArticyObject* GetObjectInternal(FArticyId Id, int32 CloneId = 0, bool bForceUnshadowed = false) const;
+
+	/** Returns the entry holding an object and its clones, or nullptr if it is not loaded. */
+	UArticyCloneableObject* FindCloneable(FArticyId Id) const;
+
+	/** Returns the entry holding an object and its clones, or nullptr if it is not loaded. */
+	UArticyCloneableObject* FindCloneableByName(FName TechnicalName) const;
+
+	/** Returns true if clones may be removed right now, logging a warning if they may not. */
+	bool CanRemoveClones() const;
 
 	/** Get the original asset (on disk) of the database.
 	 * @param bLoadDefaultPackages If true, loads all packages.
