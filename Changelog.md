@@ -8,6 +8,8 @@
     - Runtime type system with feature and inherited property metadata
     - Database object filtering by ID, technical name, display name or text
     - Generated getters for non-localizable text properties
+    - Cloning with a consecutive instance ID
+    - Removing a single clone or all clones of an object
 - Changes:
     - Invalid text extension tokens resolve to an empty string instead of their source name
 - Fixes:
@@ -19,6 +21,7 @@
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix localizable and non-localizable text properties being imported with the same type
+    - Fix ShadowedOperation not linking outside the runtime module
     
 ## Unreal Importer v1.6.1 Changelog :
 

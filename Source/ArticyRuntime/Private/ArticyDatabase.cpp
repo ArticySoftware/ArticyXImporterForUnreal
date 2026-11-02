@@ -132,20 +132,96 @@ void UArticyCloneableObject::AddClone(UArticyObject* Clone, int32 CloneId)
 	if (!ensure(Clone))
 		return;
 
-	if (CloneId == -1)
-	{
-		//find the first free clone id
-		for (int i = 0; i != -1; ++i)
-		{
-			if (!Clones.Find(i))
-			{
-				CloneId = i;
-				break;
-			}
-		}
-	}
+	if (CloneId == ArticyCloneId::NextFree)
+		CloneId = GetNextFreeCloneId();
 
 	Clones.Add(CloneId, FArticyShadowableObject{ Clone, CloneId });
+}
+
+/**
+ * Clones the Articy object with the clone id after the highest one in use.
+ * @param ShadowManager The manager for shadow states.
+ * @return A pointer to the newly created clone, or nullptr if creation failed.
+ */
+UArticyObject* UArticyCloneableObject::CloneWithConsecutiveId(const IShadowStateManager* ShadowManager)
+{
+	return Clone(ShadowManager, GetHighestCloneId() + 1);
+}
+
+/**
+ * Removes a clone, freeing its clone id for reuse.
+ * @param CloneId The clone to remove.
+ * @return True if a clone was removed.
+ */
+bool UArticyCloneableObject::RemoveClone(int32 CloneId)
+{
+	if (CloneId == ArticyCloneId::Original)
+	{
+		UE_LOG(LogArticyRuntime, Warning, TEXT("Cannot remove clone id %d, it is the object imported from articy."), ArticyCloneId::Original);
+		return false;
+	}
+
+	return Clones.Remove(CloneId) > 0;
+}
+
+/**
+ * Removes every clone of this object, keeping the original.
+ * @return The number of clones that were removed.
+ */
+int32 UArticyCloneableObject::RemoveAllClones()
+{
+	// Over a copy of the keys, as removing from a map while walking it is not safe
+	int32 Removed = 0;
+	for (int32 CloneId : GetCloneIds())
+	{
+		if (CloneId != ArticyCloneId::Original && Clones.Remove(CloneId) > 0)
+			++Removed;
+	}
+
+	return Removed;
+}
+
+/**
+ * Retrieves the ids of the original and of every clone.
+ * @return The clone ids in use, in ascending order.
+ */
+TArray<int32> UArticyCloneableObject::GetCloneIds() const
+{
+	TArray<int32> Ids;
+	Clones.GetKeys(Ids);
+	Ids.Sort();
+
+	return Ids;
+}
+
+/**
+ * Retrieves the highest clone id in use.
+ * @return The highest clone id, or ArticyCloneId::Original if there are no clones.
+ */
+int32 UArticyCloneableObject::GetHighestCloneId() const
+{
+	int32 Highest = ArticyCloneId::Original;
+	for (const auto& Pair : Clones)
+	{
+		Highest = FMath::Max(Highest, Pair.Key);
+	}
+
+	return Highest;
+}
+
+/**
+ * Retrieves the lowest clone id that is not in use yet.
+ * @return The lowest free clone id.
+ */
+int32 UArticyCloneableObject::GetNextFreeCloneId() const
+{
+	int32 Candidate = ArticyCloneId::Original;
+	while (Clones.Contains(Candidate))
+	{
+		++Candidate;
+	}
+
+	return Candidate;
 }
 
 //---------------------------------------------------------------------------//
@@ -838,8 +914,8 @@ bool UArticyDatabase::MatchesFilter(const UArticyObject* Object, const FString& 
  */
 UArticyObject* UArticyDatabase::CloneFrom(FArticyId Id, int32 NewCloneId, TSubclassOf<class UArticyObject> CastTo)
 {
-	auto info = LoadedObjectsById.Find(Id);
-	return info ? (*info)->Clone(this, NewCloneId, true) : nullptr;
+	auto info = FindCloneable(Id);
+	return info ? info->Clone(this, NewCloneId, true) : nullptr;
 }
 
 /**
@@ -869,8 +945,8 @@ UArticyObject* UArticyDatabase::CloneFromByName(FName TechnicalName, int32 NewCl
  */
 UArticyObject* UArticyDatabase::GetOrClone(FArticyId Id, int32 NewCloneId)
 {
-	auto info = LoadedObjectsById.Find(Id);
-	return info ? (*info)->Clone(this, NewCloneId, false) : nullptr;
+	auto info = FindCloneable(Id);
+	return info ? info->Clone(this, NewCloneId, false) : nullptr;
 }
 
 /**
@@ -887,6 +963,164 @@ UArticyObject* UArticyDatabase::GetOrCloneByName(const FName& TechnicalName, int
 
 	auto info = arr->Objects[0];
 	return info ? Cast<UArticyObject>(info->Clone(this, NewCloneId, false)) : nullptr;
+}
+
+//---------------------------------------------------------------------------//
+
+/**
+ * Retrieves the entry holding an object and its clones.
+ * @param Id The ID of the object.
+ * @return The cloneable object, or nullptr if it is not loaded.
+ */
+UArticyCloneableObject* UArticyDatabase::FindCloneable(FArticyId Id) const
+{
+	UArticyCloneableObject* const* info = LoadedObjectsById.Find(Id);
+	return info ? *info : nullptr;
+}
+
+/**
+ * Retrieves the entry holding an object and its clones.
+ * @param TechnicalName The technical name of the object.
+ * @return The cloneable object, or nullptr if it is not loaded.
+ */
+UArticyCloneableObject* UArticyDatabase::FindCloneableByName(FName TechnicalName) const
+{
+	auto arr = LoadedObjectsByName.Find(TechnicalName);
+	if (!arr || arr->Objects.Num() <= 0)
+		return nullptr;
+
+	return arr->Objects[0];
+}
+
+/**
+ * Checks whether clones may be removed right now.
+ *
+ * A shadow copy taken during exploration registers a callback that writes back into the entry
+ * holding it, so removing entries while a shadow state is open would leave those callbacks
+ * pointing at freed memory - and the branches being explored at the clones themselves.
+ *
+ * @return True if clones may be removed.
+ */
+bool UArticyDatabase::CanRemoveClones() const
+{
+	if (GetShadowLevel() > 0)
+	{
+		UE_LOG(LogArticyRuntime, Warning, TEXT("Cannot remove clones while a shadow state is open, i.e. while a flow player is exploring branches."));
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Clones an Articy object with the clone id after the highest one in use.
+ * @param Id The ID of the object to clone.
+ * @param CastTo The class to cast the clone to.
+ * @return A pointer to the newly created clone, or nullptr if creation failed.
+ */
+UArticyObject* UArticyDatabase::CloneWithConsecutiveInstanceIdFrom(FArticyId Id, TSubclassOf<class UArticyObject> CastTo)
+{
+	auto info = FindCloneable(Id);
+	return info ? info->CloneWithConsecutiveId(this) : nullptr;
+}
+
+/**
+ * Clones an Articy object with the clone id after the highest one in use.
+ * @param TechnicalName The technical name of the object to clone.
+ * @param CastTo The class to cast the clone to.
+ * @return A pointer to the newly created clone, or nullptr if creation failed.
+ */
+UArticyObject* UArticyDatabase::CloneWithConsecutiveInstanceIdFromByName(FName TechnicalName, TSubclassOf<class UArticyObject> CastTo)
+{
+	auto info = FindCloneableByName(TechnicalName);
+	return info ? info->CloneWithConsecutiveId(this) : nullptr;
+}
+
+/**
+ * Removes a clone of an Articy object.
+ * @param Id The ID of the cloned object.
+ * @param CloneId The clone to remove.
+ * @return True if a clone was removed.
+ */
+bool UArticyDatabase::RemoveClone(FArticyId Id, int32 CloneId)
+{
+	auto info = FindCloneable(Id);
+	return info && CanRemoveClones() ? info->RemoveClone(CloneId) : false;
+}
+
+/**
+ * Removes a clone of an Articy object.
+ * @param TechnicalName The technical name of the cloned object.
+ * @param CloneId The clone to remove.
+ * @return True if a clone was removed.
+ */
+bool UArticyDatabase::RemoveCloneByName(FName TechnicalName, int32 CloneId)
+{
+	auto info = FindCloneableByName(TechnicalName);
+	return info && CanRemoveClones() ? info->RemoveClone(CloneId) : false;
+}
+
+/**
+ * Removes every clone of an Articy object, keeping the original.
+ * @param Id The ID of the cloned object.
+ * @return The number of clones that were removed.
+ */
+int32 UArticyDatabase::RemoveAllClones(FArticyId Id)
+{
+	auto info = FindCloneable(Id);
+	return info && CanRemoveClones() ? info->RemoveAllClones() : 0;
+}
+
+/**
+ * Removes every clone of an Articy object, keeping the original.
+ * @param TechnicalName The technical name of the cloned object.
+ * @return The number of clones that were removed.
+ */
+int32 UArticyDatabase::RemoveAllClonesByName(FName TechnicalName)
+{
+	auto info = FindCloneableByName(TechnicalName);
+	return info && CanRemoveClones() ? info->RemoveAllClones() : 0;
+}
+
+/**
+ * Removes every clone of every loaded object, keeping the originals.
+ * @return The number of clones that were removed.
+ */
+int32 UArticyDatabase::RemoveAllClonesInDatabase()
+{
+	if (!CanRemoveClones())
+		return 0;
+
+	int32 Removed = 0;
+	for (const auto& Pair : LoadedObjectsById)
+	{
+		if (Pair.Value)
+			Removed += Pair.Value->RemoveAllClones();
+	}
+
+	return Removed;
+}
+
+/**
+ * Retrieves the ids of an object's original and of every clone of it.
+ * @param Id The ID of the object.
+ * @return The clone ids in use, or an empty array if the object is not loaded.
+ */
+TArray<int32> UArticyDatabase::GetCloneIds(FArticyId Id) const
+{
+	auto info = FindCloneable(Id);
+	return info ? info->GetCloneIds() : TArray<int32>();
+}
+
+/**
+ * Retrieves the ids of an object's original and of every clone of it.
+ * @param TechnicalName The technical name of the object.
+ * @return The clone ids in use, or an empty array if the object is not loaded.
+ */
+TArray<int32> UArticyDatabase::GetCloneIdsByName(FName TechnicalName) const
+{
+	auto info = FindCloneableByName(TechnicalName);
+	return info ? info->GetCloneIds() : TArray<int32>();
 }
 
 /**

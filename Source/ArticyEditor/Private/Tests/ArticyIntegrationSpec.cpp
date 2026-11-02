@@ -522,6 +522,160 @@ void FArticyIntegrationSpec::Define()
 		});
 	});
 
+	Describe("Clones", [this]()
+	{
+		// The database clone is shared by every test in this run, so each test starts from a
+		// known state rather than from whatever the previous one left behind.
+		It("hands out consecutive instance ids, skipping the gaps that next-free fills", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			DB->RemoveAllClonesByName(FName(DemoEntity));
+
+			UArticyObject* First = DB->CloneWithConsecutiveInstanceIdFromByName(FName(DemoEntity));
+			UArticyObject* Second = DB->CloneWithConsecutiveInstanceIdFromByName(FName(DemoEntity));
+
+			if (!TestNotNull(TEXT("first clone"), First) || !TestNotNull(TEXT("second clone"), Second))
+				return;
+
+			TestEqual(TEXT("first instance id"), static_cast<int32>(First->GetCloneId()), 1);
+			TestEqual(TEXT("second instance id"), static_cast<int32>(Second->GetCloneId()), 2);
+
+			// The freed id 1 is filled by ArticyCloneId::NextFree, but not by a consecutive clone
+			TestTrue(TEXT("first clone removed"), DB->RemoveCloneByName(FName(DemoEntity), 1));
+
+			UArticyObject* Third = DB->CloneWithConsecutiveInstanceIdFromByName(FName(DemoEntity));
+			TestEqual(TEXT("consecutive id skips the gap"), static_cast<int32>(Third ? Third->GetCloneId() : 0), 3);
+
+			UArticyObject* Gap = DB->CloneFromByName(FName(DemoEntity), ArticyCloneId::NextFree);
+			TestEqual(TEXT("next free id fills the gap"), static_cast<int32>(Gap ? Gap->GetCloneId() : 0), 1);
+
+			DB->RemoveAllClonesByName(FName(DemoEntity));
+		});
+
+		It("stops resolving a clone once it is removed", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			DB->RemoveAllClonesByName(FName(DemoEntity));
+
+			UArticyObject* Clone = DB->CloneFromByName(FName(DemoEntity), 42);
+			if (!TestNotNull(TEXT("clone"), Clone))
+				return;
+
+			TestNotNull(TEXT("clone is resolvable"), DB->GetObjectByName(FName(DemoEntity), 42));
+			TestEqual(TEXT("clone ids"), DB->GetCloneIdsByName(FName(DemoEntity)).Num(), 2);
+
+			TestTrue(TEXT("removed"), DB->RemoveCloneByName(FName(DemoEntity), 42));
+
+			TestNull(TEXT("clone is gone"), DB->GetObjectByName(FName(DemoEntity), 42));
+			TestNotNull(TEXT("original is untouched"), DB->GetObjectByName(FName(DemoEntity)));
+			TestEqual(TEXT("clone ids"), DB->GetCloneIdsByName(FName(DemoEntity)).Num(), 1);
+		});
+
+		It("removes every clone of an object and every clone in the database", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			UArticyObject* Fragment = DB->GetObjectByName(FName(DemoFlowFragment));
+			if (!Entity || !Fragment)
+			{
+				AddWarning(MissingContentMessage(Entity ? DemoFlowFragment : DemoEntity));
+				return;
+			}
+
+			DB->RemoveAllClonesInDatabase();
+
+			DB->CloneFromByName(FName(DemoEntity), 1);
+			DB->CloneFromByName(FName(DemoEntity), 2);
+			TestEqual(TEXT("clones of the entity went"), DB->RemoveAllClonesByName(FName(DemoEntity)), 2);
+			TestEqual(TEXT("only the original is left"), DB->GetCloneIdsByName(FName(DemoEntity)).Num(), 1);
+
+			DB->CloneFromByName(FName(DemoEntity), 1);
+			DB->CloneFromByName(FName(DemoFlowFragment), 1);
+			TestEqual(TEXT("clones across the database went"), DB->RemoveAllClonesInDatabase(), 2);
+			TestEqual(TEXT("entity has only its original"), DB->GetCloneIdsByName(FName(DemoEntity)).Num(), 1);
+			TestEqual(TEXT("fragment has only its original"), DB->GetCloneIdsByName(FName(DemoFlowFragment)).Num(), 1);
+		});
+
+		It("refuses to remove clones while a flow player is exploring", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			DB->RemoveAllClonesByName(FName(DemoEntity));
+			if (!TestNotNull(TEXT("clone"), DB->CloneFromByName(FName(DemoEntity), 1)))
+				return;
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+
+			AddExpectedError(TEXT("Cannot remove clones while a shadow state is open"), EAutomationExpectedErrorFlags::Contains, 2);
+
+			// A shadow copy taken in here registers a callback into the entry that holds it, so
+			// removing entries now would leave that callback pointing at freed memory.
+			Player->ShadowedOperation([&]()
+			{
+				TestFalse(TEXT("remove clone is refused"), DB->RemoveCloneByName(FName(DemoEntity), 1));
+				TestEqual(TEXT("remove all clones is refused"), DB->RemoveAllClonesByName(FName(DemoEntity)), 0);
+			});
+
+			TestNotNull(TEXT("clone survived"), DB->GetObjectByName(FName(DemoEntity), 1));
+			TestTrue(TEXT("and can be removed afterwards"), DB->RemoveCloneByName(FName(DemoEntity), 1));
+
+			Actor->Destroy();
+		});
+	});
+
 	Describe("Object filtering", [this]()
 	{
 		It("returns every object for an empty filter", [this]()

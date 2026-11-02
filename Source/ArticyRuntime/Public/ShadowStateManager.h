@@ -45,8 +45,9 @@ private:
 
 	friend class UArticyFlowPlayer;
 
-	void PushState(uint32 NewShadowLevel);
-	void PopState(uint32 CurrShadowLevel);
+	// Exported so UArticyFlowPlayer::ShadowedOperation, a public inline template, links from other modules
+	ARTICYRUNTIME_API void PushState(uint32 NewShadowLevel);
+	ARTICYRUNTIME_API void PopState(uint32 CurrShadowLevel);
 };
 
 template <typename LambdaType>
