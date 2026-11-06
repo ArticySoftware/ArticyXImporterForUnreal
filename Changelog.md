@@ -27,6 +27,7 @@
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix localizable and non-localizable text properties being imported with the same type
     - Fix SetPauseOn only ever setting the first pausable type
+    - Fix editor crash when clicking "Show selected object in articy:draft"
     
 ## Unreal Importer v1.6.1 Changelog :
 
