@@ -14,6 +14,7 @@
 #include "ArticyDatabase.generated.h"
 
 class UArticyExpressoScripts;
+class UArticyObjectNotificationManager;
 struct FArticyId;
 class UArticyGlobalVariables;
 class UArticyAlternativeGlobalVariables;
@@ -686,6 +687,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Articy|Hierarchy")
 	UArticyHierarchyManager* GetProjectHierarchy() const { return Hierarchy; }
 
+	/**
+	 * Gets the manager notifying about property changes on the objects of this database.
+	 * @return The notification manager, created on first use.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Articy|Notifications")
+	UArticyObjectNotificationManager* GetObjectNotifications() const;
+
+	/**
+	 * Gets the notification manager without creating it.
+	 * @return The notification manager, or nullptr if it was not used yet.
+	 */
+	UArticyObjectNotificationManager* FindObjectNotifications() const { return ObjectNotifications; }
+
 protected:
 
 	/** A list of all packages that were imported from articy:draft. */
@@ -716,6 +730,10 @@ private:
 
 	UPROPERTY()
 	mutable UArticyExpressoScripts* CachedExpressoScripts;
+
+	/** Holds the listeners for property changes of this database's objects. */
+	UPROPERTY(Transient, DuplicateTransient)
+	mutable UArticyObjectNotificationManager* ObjectNotifications = nullptr;
 
 	/** An instance of this class will be used to execute script fragments. */
 	UPROPERTY(Config, VisibleAnywhere, Category = "Articy")

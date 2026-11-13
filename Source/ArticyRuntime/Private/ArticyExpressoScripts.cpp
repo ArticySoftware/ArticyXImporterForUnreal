@@ -786,7 +786,10 @@ void ExpressoType::SetValue(UArticyBaseObject* Object, FString Property) const
 	auto setter = GetDefinition(type).Setter;
 
 	if (ensureMsgf(setter, TEXT("Property %s has unknown type %s!"), *Property, *type.ToString()))
+	{
 		setter(Object, prop, *this);
+		Object->NotifyPropertyChanged(*Property);
+	}
 }
 
 /**

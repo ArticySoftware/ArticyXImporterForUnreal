@@ -8,6 +8,7 @@
 #include "ArticyGlobalVariables.h"
 #include "ArticyPluginSettings.h"
 #include "ArticyExpressoScripts.h"
+#include "ArticyObjectNotificationManager.h"
 #include "Interfaces/ArticyObjectWithDisplayName.h"
 #include "Interfaces/ArticyObjectWithText.h"
 #include "Misc/Paths.h"
@@ -1139,6 +1140,18 @@ UArticyExpressoScripts* UArticyDatabase::GetExpressoInstance() const
 	}
 
 	return CachedExpressoScripts;
+}
+
+/**
+ * Retrieves the notification manager, creating it on first use.
+ * @return A pointer to the UArticyObjectNotificationManager instance.
+ */
+UArticyObjectNotificationManager* UArticyDatabase::GetObjectNotifications() const
+{
+	if (!ObjectNotifications)
+		ObjectNotifications = NewObject<UArticyObjectNotificationManager>(const_cast<UArticyDatabase*>(this));
+
+	return ObjectNotifications;
 }
 
 /**
