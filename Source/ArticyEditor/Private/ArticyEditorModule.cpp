@@ -8,6 +8,7 @@
 #include "ArticyEditorFunctionLibrary.h"
 #include "ArticyEditorStyle.h"
 #include "ArticyFlowClasses.h"
+#include "ArticyPluginUpdateChecker.h"
 #include "CodeGeneration/CodeGenerator.h"
 #include "Customizations/ArticyIdPropertyWidgetCustomizations/DefaultArticyIdPropertyWidgetCustomizations.h"
 #include "Developer/Settings/Public/ISettingsModule.h"
@@ -34,6 +35,7 @@
 #include "Customizations/Details/ArticyRefCustomization.h"
 #include "Settings/EditorLoadingSavingSettings.h"
 #include "Slate/GV/SArticyGlobalVariablesDebugger.h"
+#include "Slate/DatabaseView/SArticyDatabaseView.h"
 
 #if ENGINE_MAJOR_VERSION >= 5
 // In UE5, you use the ToolMenus API to extend the UI
@@ -49,6 +51,7 @@ DEFINE_LOG_CATEGORY(LogArticyEditor)
 #define LOCTEXT_NAMESPACE "FArticyImporterModule"
 static const FName ArticyWindowTabID("ArticyWindowTab");
 static const FName ArticyGVDebuggerTabID("ArticyGVDebuggerTab");
+static const FName ArticyDatabaseTabID("ArticyDatabaseTab");
 
 /**
  * Initialize the Articy editor module by registering customizations, commands, and toolbars.
@@ -220,6 +223,7 @@ void FArticyEditorModule::RegisterArticyToolbar()
 		auto Placeholder = TAttribute<FText>();
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.40"));
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.Type.Document.64"));
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyDatabase, PluginCommands, Placeholder, Placeholder, FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyDraft.32"));
 	}
 #else
 	UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.LevelToolbarQuickSettings");
@@ -231,6 +235,7 @@ void FArticyEditorModule::RegisterArticyToolbar()
 		// Add buttons
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyImporter, PluginCommands);
 		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyGvDebugger, PluginCommands);
+		Section.AddMenuEntryWithCommandList(FArticyEditorCommands::Get().OpenArticyDatabase, PluginCommands);
 	}
 #endif
 
@@ -259,6 +264,7 @@ TSharedRef<SWidget> FArticyEditorModule::OnGenerateArticyToolsMenu() const
 	MenuBuilder.BeginSection("ArticyTools", LOCTEXT("ArticyTools", "Articy Tools"));
 	MenuBuilder.AddMenuEntry(FArticyEditorCommands::Get().OpenArticyImporter);
 	MenuBuilder.AddMenuEntry(FArticyEditorCommands::Get().OpenArticyGVDebugger);
+	MenuBuilder.AddMenuEntry(FArticyEditorCommands::Get().OpenArticyDatabase);
 	MenuBuilder.EndSection();
 
 	return MenuBuilder.MakeWidget();
@@ -292,6 +298,10 @@ void FArticyEditorModule::RegisterPluginCommands()
 	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyGvDebugger,
 		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyGVDebugger),
 		FCanExecuteAction());
+
+	PluginCommands->MapAction(FArticyEditorCommands::Get().OpenArticyDatabase,
+		FExecuteAction::CreateRaw(this, &FArticyEditorModule::OpenArticyDatabase),
+		FCanExecuteAction());
 }
 
 /**
@@ -306,6 +316,11 @@ void FArticyEditorModule::RegisterToolTabs()
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ArticyGVDebuggerTabID, FOnSpawnTab::CreateRaw(this, &FArticyEditorModule::OnSpawnArticyGVDebuggerTab))
 		.SetDisplayName(LOCTEXT("ArticyGVDebuggerTitle", "Articy GV Debugger"))
+		.SetIcon(FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.16", "ArticyImporter.ArticyImporter.8"))
+		.SetMenuType(ETabSpawnerMenuType::Hidden);
+
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(ArticyDatabaseTabID, FOnSpawnTab::CreateRaw(this, &FArticyEditorModule::OnSpawnArticyDatabaseTab))
+		.SetDisplayName(LOCTEXT("ArticyDatabaseTitle", "Articy Database"))
 		.SetIcon(FSlateIcon(FArticyEditorStyle::GetStyleSetName(), "ArticyImporter.ArticyImporter.16", "ArticyImporter.ArticyImporter.8"))
 		.SetMenuType(ETabSpawnerMenuType::Hidden);
 }
@@ -386,6 +401,33 @@ void FArticyEditorModule::OpenArticyGVDebugger()
 #else
 	FGlobalTabmanager::Get()->TryInvokeTab(ArticyGVDebuggerTabID);
 #endif
+}
+
+/**
+ * Open the Articy database view tab.
+ */
+void FArticyEditorModule::OpenArticyDatabase()
+{
+#if ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION < 26
+	FGlobalTabmanager::Get()->InvokeTab(ArticyDatabaseTabID);
+#else
+	FGlobalTabmanager::Get()->TryInvokeTab(ArticyDatabaseTabID);
+#endif
+}
+
+/**
+ * Get the checker looking for newer releases of the plugin.
+ *
+ * @return The update checker.
+ */
+TSharedRef<FArticyPluginUpdateChecker> FArticyEditorModule::GetUpdateChecker()
+{
+	if (!UpdateChecker.IsValid())
+	{
+		UpdateChecker = MakeShared<FArticyPluginUpdateChecker>();
+	}
+
+	return UpdateChecker.ToSharedRef();
 }
 
 /**
@@ -585,6 +627,21 @@ TSharedRef<SDockTab> FArticyEditorModule::OnSpawnArticyGVDebuggerTab(const FSpaw
 		.TabRole(ETabRole::NomadTab)
 		[
 			SNew(SArticyGlobalVariablesRuntimeDebugger).bInitiallyCollapsed(true)
+		];
+}
+
+/**
+ * Spawn the Articy database view tab.
+ *
+ * @param SpawnTabArgs The arguments for spawning the tab.
+ * @return The created dock tab widget.
+ */
+TSharedRef<SDockTab> FArticyEditorModule::OnSpawnArticyDatabaseTab(const FSpawnTabArgs& SpawnTabArgs) const
+{
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		[
+			SNew(SArticyDatabaseView)
 		];
 }
 

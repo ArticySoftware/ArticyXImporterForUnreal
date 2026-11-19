@@ -18,6 +18,8 @@
 #include "Interfaces/ArticyObjectWithStageDirections.h"
 #include "Interfaces/ArticyObjectWithText.h"
 #include "ArticyHierarchyManager.h"
+#include "ArticyImportStatus.h"
+#include "Slate/DatabaseView/SArticyDatabaseView.h"
 #include "ArticyBuiltinTypes.h"
 #include "ArticyTestIntegrationListener.h"
 #include "GameFramework/Actor.h"
@@ -818,6 +820,47 @@ void FArticyIntegrationSpec::Define()
 			TestTrue(TEXT("and can be removed afterwards"), DB->RemoveCloneByName(FName(DemoEntity), 1));
 
 			Actor->Destroy();
+		});
+	});
+
+	Describe("Database view", [this]()
+	{
+		It("finds the import of the project complete", [this]()
+		{
+			const FArticyImportFacts Facts = FArticyImportFacts::Gather();
+			if (!Facts.bHasImportData)
+			{
+				AddWarning(MissingContentMessage(TEXT("import data")));
+				return;
+			}
+
+			TestTrue(TEXT("was imported"), Facts.bHasPriorImport);
+			TestTrue(TEXT("has generated code"), Facts.bHasGeneratedCode);
+			TestTrue(TEXT("has generated assets"), Facts.bHasGeneratedAssets);
+			TestFalse(TEXT("project name is empty"), Facts.ProjectName.IsEmpty());
+			TestTrue(TEXT("is not reported as broken"), !FArticyImportStatus::Evaluate(Facts).IsError());
+		});
+
+		It("lists the imported objects and filters them", [this]()
+		{
+			UArticyObject* Entity = UArticyObject::FindAsset(FString(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			// Filled by hand, so the test does not ask GitHub for updates
+			const TSharedRef<SArticyDatabaseView> View = SNew(SArticyDatabaseView).bLiveData(false);
+			View->Refresh();
+			TestTrue(TEXT("lists objects"), View->GetNumObjects() > 0);
+
+			View->SetFilterText(FText::FromString(DemoEntity));
+			TestTrue(TEXT("finds the entity"), View->GetNumVisibleObjects() >= 1);
+			TestTrue(TEXT("hides other objects"), View->GetNumVisibleObjects() < View->GetNumObjects());
+
+			View->SelectObject(Entity);
+			TestTrue(TEXT("selects the entity"), View->GetSelectedObject() == Entity);
 		});
 	});
 

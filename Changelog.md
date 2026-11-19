@@ -15,6 +15,10 @@
     - Manual triggering of the flow player callbacks
     - Flow player setup validation
     - Class icons for the flow player and the flow debugger
+    - Database view with object list, filter and property inspector
+    - Import help box with import button in the database view
+    - Plugin update label for GitHub and Fab installs
+    - Extra localization settings
 - Changes:
     - Invalid text extension tokens resolve to an empty string instead of their source name
     - Flow player details panel hides fields that only apply while playing

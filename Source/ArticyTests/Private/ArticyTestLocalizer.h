@@ -24,4 +24,11 @@ public:
 
 	/** Pretends the articy string table has (or has not) been loaded. */
 	void SetDataLoaded(bool bLoaded) { bDataLoaded = bLoaded; }
+
+	/** Stands in for the setting and the PIE session missing texts are reported in. */
+	bool bReportMissingTexts = false;
+
+protected:
+
+	virtual bool ShouldReportMissingTexts() const override { return bReportMissingTexts; }
 };

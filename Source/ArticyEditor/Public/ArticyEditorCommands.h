@@ -32,4 +32,7 @@ public:
 
 	/** Command for opening the Articy Global Variables Debugger. */
 	TSharedPtr<FUICommandInfo> OpenArticyGvDebugger;
+
+	/** Command for opening the Articy database view. */
+	TSharedPtr<FUICommandInfo> OpenArticyDatabase;
 };
