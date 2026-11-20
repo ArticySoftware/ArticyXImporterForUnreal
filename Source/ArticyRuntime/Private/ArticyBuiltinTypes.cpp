@@ -6,6 +6,7 @@
 #include "ArticyAsset.h"
 #include "ArticyHelpers.h"
 #include "ArticyDatabase.h"
+#include "ArticyFlowPlayer.h"
 
 void UArticyPreviewImage::InitFromJson(TSharedPtr<FJsonValue> Json)
 {
@@ -68,6 +69,12 @@ void UArticyOutgoingConnection::InitFromJson(TSharedPtr<FJsonValue> Json)
 	auto obj = Json->AsObject();
 	JSON_TRY_HEX_ID(obj, Target);
 	JSON_TRY_HEX_ID(obj, TargetPin);
+}
+
+void UArticyOutgoingConnection::Explore(UArticyFlowPlayer* Player, TArray<FArticyBranch>& OutBranches, const uint32& Depth)
+{
+	// A connection has a single target, so there is nothing to branch out into and no shadowing needed
+	OutBranches.Append(Player->Explore(GetTargetPin(), false, Depth + 1));
 }
 
 UArticyPrimitive* UArticyIncomingConnection::GetSource() const

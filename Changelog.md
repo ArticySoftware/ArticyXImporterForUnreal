@@ -10,8 +10,15 @@
     - Generated getters for non-localizable text properties
     - Cloning with a consecutive instance ID
     - Removing a single clone or all clones of an object
+    - Flow player pauses on connections
+    - Continuous branch recalculation on the flow player
+    - Manual triggering of the flow player callbacks
+    - Flow player setup validation
+    - Class icons for the flow player and the flow debugger
 - Changes:
     - Invalid text extension tokens resolve to an empty string instead of their source name
+    - Flow player details panel hides fields that only apply while playing
+    - `EArticyPausableType` no longer carries flag operators; use `ArticyPauseOnFlag`
 - Fixes:
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
@@ -22,6 +29,8 @@
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix localizable and non-localizable text properties being imported with the same type
     - Fix ShadowedOperation not linking outside the runtime module
+    - Fix SetPauseOn only ever setting the first pausable type
+    - Fix editor crash when clicking "Show selected object in articy:draft"
     
 ## Unreal Importer v1.6.1 Changelog :
 

@@ -370,33 +370,20 @@ const bool UserInterfaceHelperFunctions::ShowObjectInArticy(const UArticyObject*
  */
 const bool UserInterfaceHelperFunctions::ShowObjectInArticy(const FArticyId ArticyId, bool bNewTab)
 {
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-
-	TArray<FAssetData> OutAssetData;
-
-#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >0
-	AssetRegistryModule.Get().GetAssetsByClass(UArticyPackage::StaticClass()->GetClassPathName(), OutAssetData, false);
-#else
-	AssetRegistryModule.Get().GetAssetsByClass(UArticyImportData::StaticClass()->GetFName(), OutAssetData, false);
-#endif
-
-	FString TabURL = bNewTab ? FString("new") : FString("current");
-	if (OutAssetData.Num() == 1)
+	const TWeakObjectPtr<UArticyImportData> ImportData = UArticyImportData::GetImportData();
+	if (!ImportData.IsValid())
 	{
-		UArticyImportData* ImportData = Cast<UArticyImportData>(OutAssetData[0].GetAsset());
-		FString ProjectGuid = ImportData->GetProject().Guid;
-
-		// restore the original Id in decimal
-		const int32 High = ArticyId.High;
-		const int32 Low = ArticyId.Low;
-		const uint64 HighOriginal = (uint64)High << 32;
-		const uint64 LowOriginal = Low;
-		const uint64 OriginalId = HighOriginal + LowOriginal;
-
-		FString ArticyObjectId = FString::Printf(TEXT("%llu"), OriginalId);
-		FString ArticyURL = FString::Printf(TEXT("articy://localhost/view/%s/%s?window=main&pane=first&tab=%s"), *ProjectGuid, *ArticyObjectId, *TabURL);
-		UKismetSystemLibrary::LaunchURL(ArticyURL);
+		return false;
 	}
+
+	const FString ProjectGuid = ImportData->GetProject().Guid;
+	const FString TabURL = bNewTab ? FString("new") : FString("current");
+
+	const uint64 OriginalId = ArticyId.Get();
+
+	const FString ArticyObjectId = FString::Printf(TEXT("%llu"), OriginalId);
+	const FString ArticyURL = FString::Printf(TEXT("articy://localhost/view/%s/%s?window=main&pane=first&tab=%s"), *ProjectGuid, *ArticyObjectId, *TabURL);
+	UKismetSystemLibrary::LaunchURL(ArticyURL);
 
 	return true;
 }

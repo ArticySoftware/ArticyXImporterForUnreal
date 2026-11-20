@@ -52,6 +52,19 @@ You may want the `ArticyFlowPlayer` to pause on specific node types, such as `Di
   ```
 
   This tells the `ArticyFlowPlayer` to pause when it encounters `DialogueFragment` nodes during traversal.
+
+  To pause on more than one type, pass the bitmask of the types you want:
+
+  ```cpp
+  FlowPlayer->SetPauseOnMask(
+      ArticyPauseOnFlag(EArticyPausableType::DialogueFragment)
+      | ArticyPauseOnFlag(EArticyPausableType::Hub));
+  ```
+
+  Besides the node types, the flow player can also pause on the `Connection`s between two
+  nodes, which lets you react to the link that was taken rather than to the node it leads to.
+  Connections are only part of the traversed path while you pause on them, so turning this on
+  does not change the branches anything else sees.
 }
 
 @tab{ Blueprint | uebp |
@@ -101,6 +114,21 @@ void MyClass::HandleFlowPaused(TScriptInterface<IArticyFlowObject> PausedOn)
 
   ![On Player Paused and On Branches Updated events](bp_flow_player_events.png)
 
+}
+}
+
+Both callbacks can also be triggered on demand, which is what a widget created after the flow
+player already paused needs to catch up on the current state:
+
+@tabs{
+@tab{ C++ | cpp |
+```cpp
+FlowPlayer->BroadcastPlayerPaused();
+FlowPlayer->BroadcastBranchesUpdated();
+```
+}
+@tab{ Blueprint | uebp |
+- Use the **Broadcast Player Paused** and **Broadcast Branches Updated** functions.
 }
 }
 
@@ -194,5 +222,40 @@ if (GlobalVars)
 
 }
 }
+
+#### Recalculating Branches
+
+Which branches are available can depend on global variables, so a variable changed outside of the
+flow can make a branch appear or disappear while the flow player sits paused on a node. Calling
+`RefreshBranches` re-explores from the current position and reports the result through
+`OnBranchesUpdated`, without pausing on the current node again.
+
+To have the flow player do that on its own, enable `bContinuouslyRecalculateBranches` and set
+`ContinuouslyRecalculateInterval` to how many seconds should pass between two recalculations:
+
+@tabs{
+@tab{ C++ | cpp |
+```cpp
+FlowPlayer->bContinuouslyRecalculateBranches = true;
+FlowPlayer->ContinuouslyRecalculateInterval = 0.5f;
+```
+}
+@tab{ Blueprint | uebp |
+- Tick **Continuously Recalculate Branches** in the **Details** panel and set the interval below it.
+}
+}
+
+> [!note]
+> Branch exploration runs every node's conditions in a shadow state, so recalculating has no
+> side-effects on the global variables - but it is not free either. Keep the interval as long as
+> your UI can live with.
+
+#### Checking the Setup
+
+A flow player that is set up incompletely usually fails silently: without a start node there is
+nothing to traverse, with an empty `PauseOn` the flow is never explored, and a user methods
+provider that does not implement the project's methods interface cannot resolve any script method.
+The component reports all of that in its **Details** panel, and logs it once when it begins play.
+`ValidateSetup` returns the same list, in case you want to check it yourself.
 
 The `ArticyFlowPlayer` in Unreal Engine makes it easy to traverse and interact with flows from *articy:draft*. By pausing at key nodes and using delegates in C++ or events in Blueprints, you can control how your game handles dialogues, choices, and other flow-based interactions. With built-in support for scripting and global variables, the `ArticyFlowPlayer` simplifies managing complex branching flows and dynamic game narratives.
