@@ -7,7 +7,7 @@
 #include "Modules/ModuleInterface.h"
 #include "Modules/ModuleManager.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogArticyRuntime, Log, All)
+ARTICYRUNTIME_API DECLARE_LOG_CATEGORY_EXTERN(LogArticyRuntime, Log, All)
 
 /**
  * Module for the Articy Runtime.

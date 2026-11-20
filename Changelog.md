@@ -8,6 +8,8 @@
     - Runtime type system with feature and inherited property metadata
     - Database object filtering by ID, technical name, display name or text
     - Generated getters for non-localizable text properties
+    - Cloning with a consecutive instance ID
+    - Removing a single clone or all clones of an object
     - Flow player pauses on connections
     - Continuous branch recalculation on the flow player
     - Manual triggering of the flow player callbacks
@@ -26,6 +28,7 @@
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name
     - Fix localizable and non-localizable text properties being imported with the same type
+    - Fix ShadowedOperation not linking outside the runtime module
     - Fix SetPauseOn only ever setting the first pausable type
     - Fix editor crash when clicking "Show selected object in articy:draft"
     

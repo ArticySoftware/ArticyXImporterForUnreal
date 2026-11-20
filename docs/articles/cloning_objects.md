@@ -61,6 +61,85 @@ In Unreal, cloning is handled similarly to Unity, with instance IDs used to diff
 
 ---
 
+### Choosing the Instance ID
+
+There are three ways to decide which instance ID a new clone gets:
+
+- Pass the ID yourself. [`CloneFrom`](@ref UArticyDatabase::CloneFrom) returns `nullptr` if that
+  instance already exists, while [`GetOrClone`](@ref UArticyDatabase::GetOrClone) returns the
+  existing instance instead of creating one.
+- Pass `ArticyCloneId::NextFree` (`-1`), which uses the **lowest** instance ID that is not in use
+  yet. It therefore fills the gaps left behind by removed clones, and can hand out the same ID
+  twice over the lifetime of a session.
+- Call [`CloneWithConsecutiveInstanceIdFrom`](@ref UArticyDatabase::CloneWithConsecutiveInstanceIdFrom),
+  which always uses the instance ID **after the highest one in use**. Gaps left by removed clones
+  are skipped rather than filled.
+
+@tabs{
+@tab{ C++ | cpp |
+```cpp
+UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+
+// Explicit: fails if instance 1 already exists
+DB->CloneFromByName(TEXT("Chr_Manfred"), 1);
+
+// Lowest free instance ID, filling gaps
+DB->CloneFromByName(TEXT("Chr_Manfred"), ArticyCloneId::NextFree);
+
+// One past the highest instance ID, never reusing one
+UArticyObject* Next = DB->CloneWithConsecutiveInstanceIdFromByName(TEXT("Chr_Manfred"));
+
+// Which instance IDs exist right now, original (ArticyCloneId::Original) included
+TArray<int32> Ids = DB->GetCloneIdsByName(TEXT("Chr_Manfred"));
+```
+}
+@tab{ Blueprint | uebp |
+- **Clone From** / **Clone From By Name** take the instance ID, where `-1` means the lowest free one.
+- **Clone With Consecutive Instance Id From** / **... By Name** take no ID and count up from the highest.
+- **Get Clone Ids** / **Get Clone Ids By Name** list the instance IDs that exist.
+}
+}
+
+---
+
+### Removing Clones
+
+Clones live in the database until they are removed, so a system that clones per encounter should
+clean up after itself.
+
+@tabs{
+@tab{ C++ | cpp |
+```cpp
+UArticyDatabase* DB = UArticyDatabase::Get(WorldContext);
+
+// A single clone
+DB->RemoveCloneByName(TEXT("Chr_Manfred"), 1);
+
+// Every clone of one object
+DB->RemoveAllClonesByName(TEXT("Chr_Manfred"));
+
+// Every clone in the database
+DB->RemoveAllClonesInDatabase();
+```
+}
+@tab{ Blueprint | uebp |
+- **Remove Clone** / **Remove Clone By Name** remove one instance and return whether there was one.
+- **Remove All Clones** / **Remove All Clones By Name** remove every instance of one object.
+- **Remove All Clones In Database** removes every instance of every loaded object.
+}
+}
+
+> [!note]
+> The original object (`ArticyCloneId::Original`, instance ID `0`) is the data imported from
+> *articy:draft* and cannot be removed. Clones also cannot be removed while a flow player is
+> exploring branches, because the branches being built point at them; the call is refused with a
+> warning in that case.
+
+After removing a clone, retrieving it returns `nullptr`, and its instance ID becomes available to
+`ArticyCloneId::NextFree` again.
+
+---
+
 ### Cloning with ArticyRef in Unreal
 
 The `FArticyRef` type in Unreal also supports cloning. When dealing with references, you can configure how the reference should behave when cloning objects.
