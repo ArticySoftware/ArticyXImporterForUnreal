@@ -132,6 +132,21 @@ FlowPlayer->BroadcastBranchesUpdated();
 }
 }
 
+Outside of the callbacks, the flow player can be asked for the object it currently points to.
+[`GetCurrentObject`](@ref UArticyFlowPlayer::GetCurrentObject) returns it as an `ArticyRef`; if the
+flow player is on a pin or a connection, that is the node the pin or connection belongs to.
+
+@tabs{
+@tab{ C++ | cpp |
+```cpp
+UArticyObject* Current = FlowPlayer->GetCurrentObject().GetObject(this);
+```
+}
+@tab{ Blueprint | uebp |
+- Use **Get Current Object** on the flow player, and **Get Object** on the returned reference.
+}
+}
+
 #### Handling Branches
 
 When the flow player pauses, it gathers all the possible branches (i.e., paths) from the current node. You can handle these branches to display options to the player or make decisions in your game.

@@ -478,6 +478,39 @@ void FArticyIntegrationSpec::Define()
 			Actor->Destroy();
 		});
 
+		It("reports the object the cursor is on as the current object", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* StartNode = DB->GetObjectByName(FName(DemoDialogue));
+			if (!StartNode)
+			{
+				AddWarning(MissingContentMessage(DemoDialogue));
+				return;
+			}
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+			TestTrue(TEXT("empty before the start node is set"), Player->GetCurrentObject().GetId().IsNull());
+
+			Player->SetStartNodeById(StartNode->GetId());
+
+			UObject* CursorObject = Player->GetCursor().GetObject();
+			TestTrue(TEXT("resolves to the object of the cursor"), CursorObject != nullptr && Player->GetCurrentObject().GetObject(World) == CursorObject);
+
+			Actor->Destroy();
+		});
+
 		It("advances the cursor by playing a branch", [this]()
 		{
 			UWorld* World = GetIntegrationWorld();
