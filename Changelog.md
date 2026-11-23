@@ -31,6 +31,7 @@
     - Fix ShadowedOperation not linking outside the runtime module
     - Fix SetPauseOn only ever setting the first pausable type
     - Fix editor crash when clicking "Show selected object in articy:draft"
+    - Fix nested tags not being bundled by the rich text conversion
     
 ## Unreal Importer v1.6.1 Changelog :
 
