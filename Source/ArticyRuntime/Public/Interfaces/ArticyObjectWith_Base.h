@@ -71,6 +71,12 @@ protected:
 		return ArticyHelpers::GetTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName), ArticyHelpers::ShouldResolveStrings(), BackupText);
 	}
 
+	/** Whether a string property has text: a non-empty table entry for an FText, a non-empty FString. */
+	bool HasStringText(const FName& PropName)
+	{
+		return ArticyHelpers::HasTextPropertyValue(GetReflectedObject(), GetStringProperty(PropName));
+	}
+
 	/** Raw value of a string property: the string table key of an FText, or the FString itself. */
 	FString GetStringKey(const FName& PropName)
 	{

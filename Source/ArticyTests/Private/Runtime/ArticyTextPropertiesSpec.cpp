@@ -68,6 +68,31 @@ void FArticyTextPropertiesSpec::Define()
 			TestEqual(TEXT("backup"), Value.ToString(), FString(TEXT("...")));
 		});
 
+		It("reports whether a plain string has text", [this]()
+		{
+			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
+			const FProperty* Property = Object->GetClass()->FindPropertyByName(TEXT("DisplayName"));
+			TestFalse(TEXT("empty"), ArticyHelpers::HasTextPropertyValue(Object, Property));
+
+			Object->DisplayName = TEXT("Questions");
+			TestTrue(TEXT("set"), ArticyHelpers::HasTextPropertyValue(Object, Property));
+		});
+
+		It("reports no text for a key without a string table entry", [this]()
+		{
+			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
+			Object->Text = FText::FromString(TEXT("Articy.Tests.Obj.Text"));
+			TestFalse(TEXT("no entry"), ArticyHelpers::HasTextPropertyValue(Object, Object->GetClass()->FindPropertyByName(TEXT("Text"))));
+		});
+
+		It("reports no text for a missing or non-text property", [this]()
+		{
+			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
+			TestFalse(TEXT("missing"), ArticyHelpers::HasTextPropertyValue(Object, nullptr));
+			TestFalse(TEXT("number"), ArticyHelpers::HasTextPropertyValue(Object, Object->GetClass()->FindPropertyByName(TEXT("Number"))));
+			TestFalse(TEXT("no object"), ArticyHelpers::HasTextPropertyValue(nullptr, Object->GetClass()->FindPropertyByName(TEXT("DisplayName"))));
+		});
+
 		It("returns empty text for a missing property", [this]()
 		{
 			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
@@ -146,6 +171,17 @@ void FArticyTextPropertiesSpec::Define()
 			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
 
 			IArticyObjectWithMenuText* WithMenu = Object;
+			TestEqual(TEXT("backup"), WithMenu->GetMenuText().ToString(), FString(TEXT("...")));
+		});
+
+		It("has no menu text when it falls back to the backup text", [this]()
+		{
+			UArticyTestTextObject* Object = NewObject<UArticyTestTextObject>();
+			IArticyObjectWithMenuText* WithMenu = Object;
+			TestFalse(TEXT("empty key"), WithMenu->HasMenuText());
+
+			Object->MenuText = FText::FromString(TEXT("Articy.Tests.Obj.MenuText"));
+			TestFalse(TEXT("key without entry"), WithMenu->HasMenuText());
 			TestEqual(TEXT("backup"), WithMenu->GetMenuText().ToString(), FString(TEXT("...")));
 		});
 

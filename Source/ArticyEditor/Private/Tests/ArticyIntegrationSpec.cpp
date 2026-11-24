@@ -14,6 +14,7 @@
 #include "ArticyFlowPlayer.h"
 #include "ArticyPluginSettings.h"
 #include "Interfaces/ArticyObjectWithDisplayName.h"
+#include "Interfaces/ArticyObjectWithMenuText.h"
 #include "Interfaces/ArticyObjectWithSpeaker.h"
 #include "Interfaces/ArticyObjectWithStageDirections.h"
 #include "Interfaces/ArticyObjectWithText.h"
@@ -41,6 +42,8 @@ namespace
 	const TCHAR* DemoEntityProperty = TEXT("ZIndex");
 	const TCHAR* DemoTextObject = TEXT("FFr_Cell");
 	const TCHAR* DemoTextPart = TEXT("padded cell");
+	const TCHAR* DemoFragmentWithMenuText = TEXT("DFr_077D21C0");
+	const TCHAR* DemoFragmentWithoutMenuText = TEXT("DFr_0092C8D0");
 	const TCHAR* DemoVarNamespace = TEXT("GameState");
 	const TCHAR* DemoVarName = TEXT("awake");
 
@@ -1027,6 +1030,36 @@ void FArticyIntegrationSpec::Define()
 
 			// The demo ships no voice-over, so the lookup must come back empty rather than crash.
 			TestNull(TEXT("no VO asset"), Cast<IArticyObjectWithText>(Fragment)->GetVOAsset(World));
+		});
+
+		It("tells a dialogue fragment with a menu text from one without", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* With = DB->GetObjectByName(FName(DemoFragmentWithMenuText));
+			UArticyObject* Without = DB->GetObjectByName(FName(DemoFragmentWithoutMenuText));
+			IArticyObjectWithMenuText* WithMenu = Cast<IArticyObjectWithMenuText>(With);
+			IArticyObjectWithMenuText* WithoutMenu = Cast<IArticyObjectWithMenuText>(Without);
+			if (!WithMenu || !WithoutMenu)
+			{
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("%s and %s"), DemoFragmentWithMenuText, DemoFragmentWithoutMenuText)));
+				return;
+			}
+
+			const FString Key = ArticyHelpers::GetTextPropertyKey(With, With->GetProperty(FName(TEXT("MenuText"))));
+			const FString Shown = WithMenu->GetMenuText().ToString();
+			TestTrue(TEXT("has a menu text"), WithMenu->HasMenuText());
+			TestNotEqual(TEXT("localized, not the key"), Shown, Key);
+			TestNotEqual(TEXT("not the backup"), Shown, FString(TEXT("...")));
+
+			TestFalse(TEXT("has no menu text"), WithoutMenu->HasMenuText());
+			TestEqual(TEXT("backup"), WithoutMenu->GetMenuText().ToString(), FString(TEXT("...")));
 		});
 
 		// NOTE: UArticyBaseObject::ArticyType is not a UPROPERTY, so the export type recorded at

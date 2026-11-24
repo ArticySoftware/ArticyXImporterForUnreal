@@ -34,6 +34,19 @@ public:
 	{
 		return const_cast<IArticyObjectWithMenuText*>(this)->GetMenuText();
 	}
+
+	/** Whether there is a menu text; GetMenuText() returns "..." if there is none. */
+	UFUNCTION(BlueprintCallable, Category="ArticyObjectWithMenuText")
+	virtual bool HasMenuText()
+	{
+		static const auto& PropName = FName("MenuText");
+		return HasStringText(PropName);
+	}
+
+	virtual bool HasMenuText() const
+	{
+		return const_cast<IArticyObjectWithMenuText*>(this)->HasMenuText();
+	}
 	
 	//---------------------------------------------------------------------------//
 

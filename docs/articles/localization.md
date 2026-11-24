@@ -11,6 +11,8 @@ The **ArticyImporter** plugin for Unreal Engine processes localization data from
 
 **articy:draft X** exports a text property either as `ArticyMultiLanguageString` (localizable) or as `ArticyString` (localization turned off for that property). The importer maps the first onto an `FText` holding the string table key and the second onto a plain `FString`. Accessors such as `GetDisplayName()`, `GetText()`, `GetMenuText()` and `GetStageDirections()` check the property type at runtime and work for both kinds: an `FText` is looked up in the string table, an `FString` is returned as is. Text extension tokens are resolved for both. The articy type of a property is also recorded in the type system (`FArticyPropertyInfo::PropertyType`).
 
+`GetMenuText()` returns `...` for an object without menu text. Check `HasMenuText()` first to show a text of your own instead.
+
 #### Accessing Localized Properties
 
 In Unreal, when accessing a property that supports localization, the **ArticyImporter** plugin automatically loads the appropriate localized text based on the current language setting.
@@ -65,6 +67,8 @@ Localized properties can be accessed directly within Blueprints. For example, to
 
 1. Drag and drop the **Articy Object** node (e.g., **UManiacManfredCharacter**).
 2. Use the **Get Display Name (Localized)** function to retrieve the localized text.
+
+**Get Menu Text** returns `...` for an object without menu text. Check **Has Menu Text** first to show a text of your own instead.
 
 #### Custom Localized Properties in Blueprint
 
