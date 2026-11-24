@@ -248,6 +248,28 @@ FString CreateOpenTag(const TArray<TagInfo>& currentTags)
 }
 
 /**
+ * Appends a run of text, wrapped into one Unreal tag for all the tags open around it.
+ *
+ * @param Output The string to append to.
+ * @param Text The text between two tags.
+ * @param currentTags The list of current tags.
+ */
+void AppendTextRun(FString& Output, const FString& Text, const TArray<TagInfo>& currentTags)
+{
+	if (Text.IsEmpty()) { return; }
+
+	// Unreal's tags cannot be nested, so a run carries all of its styles in a single tag
+	if (HasAnyTags(currentTags))
+	{
+		Output += CreateOpenTag(currentTags) + Text + TEXT("</>");
+	}
+	else
+	{
+		Output += Text;
+	}
+}
+
+/**
  * Converts Unity markup to Unreal markup by transforming tag syntax.
  *
  * @param Input The input string with Unity markup.
@@ -278,7 +300,7 @@ FString ConvertUnityMarkupToUnreal(const FString& Input)
 		int End = Matcher.GetMatchEnding();
 
 		// Append any text preceding the current tag.
-		Output += Input.Mid(LastPosition, Start - LastPosition);
+		AppendTextRun(Output, Input.Mid(LastPosition, Start - LastPosition), CurrentTags);
 
 		// Determine if this match is an opening tag or a closing tag.
 		FString OpenTagName = Matcher.GetCaptureGroup(2); // Opening tag name (if any)
@@ -294,12 +316,6 @@ FString ConvertUnityMarkupToUnreal(const FString& Input)
 
 			TagInfo NewTag(OpenTagName, Attributes);
 			CurrentTags.Add(NewTag);
-
-			// If not a dummy tag, output the corresponding Unreal open tag.
-			if (!NewTag.dummy)
-			{
-				Output += CreateOpenTag(CurrentTags);
-			}
 		}
 		else
 		{
@@ -321,23 +337,17 @@ FString ConvertUnityMarkupToUnreal(const FString& Input)
 
 			// Pop the matching tag from our stack.
 			CurrentTags.Pop();
-
-			// If the popped tag is not a dummy tag, output the Unreal closing tag.
-			if (!LastTag.dummy)
-			{
-				Output += TEXT("</>");
-			}
-
-			// Reopen any still-open tags to maintain correct nested formatting.
-			if (CurrentTags.Num() > 0)
-			{
-				Output += CreateOpenTag(CurrentTags);
-			}
 		}
 
 		LastPosition = End;
 
 	} while (Matcher.FindNext());
+
+	// A tag that is never closed is a syntax error, too.
+	if (CurrentTags.Num() > 0)
+	{
+		return Input;
+	}
 
 	// Append any remaining text after the last tag.
 	if (LastPosition < Input.Len())

@@ -45,6 +45,47 @@ void FArticyPredefinedTypesSpec::Define()
 			TestEqual(TEXT("bold"), ConvertUnityMarkupToUnreal(TEXT("<b>Hello</b>")), FString(TEXT("<b>Hello</>")));
 		});
 
+		It("converts a Unity bold and italic text to Unreal markup", [this]()
+		{
+			TestEqual(TEXT("bold and italic"), ConvertUnityMarkupToUnreal(TEXT("<b><i>Greetings</i></b>")), FString(TEXT("<bi>Greetings</>")));
+		});
+
+		It("converts a Unity bold, italic and underlined text to Unreal markup", [this]()
+		{
+			TestEqual(TEXT("bold, italic and underlined"), ConvertUnityMarkupToUnreal(TEXT("<b><i><u>Greetings</u></i></b>")), FString(TEXT("<biu>Greetings</>")));
+		});
+
+		It("bundles the tags alphabetically, whatever their nesting order", [this]()
+		{
+			TestEqual(TEXT("underlined, italic and bold"), ConvertUnityMarkupToUnreal(TEXT("<u><i><b>Greetings</b></i></u>")), FString(TEXT("<biu>Greetings</>")));
+		});
+
+		It("gives every run of a partly nested text its own tag", [this]()
+		{
+			TestEqual(TEXT("italic inside bold"), ConvertUnityMarkupToUnreal(TEXT("<b>A <i>B</i> C</b>")), FString(TEXT("<b>A </><bi>B</><b> C</>")));
+		});
+
+		It("bundles a color with the style around it", [this]()
+		{
+			TestEqual(TEXT("bold and colored"), ConvertUnityMarkupToUnreal(TEXT("<b><color=#FF0000>Red</color></b>")), FString(TEXT("<b color=\"#FF0000\">Red</>")));
+		});
+
+		It("emits no tag for an element without text", [this]()
+		{
+			TestEqual(TEXT("empty bold"), ConvertUnityMarkupToUnreal(TEXT("<b></b>Hi")), FString(TEXT("Hi")));
+		});
+
+		It("leaves text with mismatched or unclosed tags unchanged", [this]()
+		{
+			TestEqual(TEXT("mismatched"), ConvertUnityMarkupToUnreal(TEXT("<b>Hi</i>")), FString(TEXT("<b>Hi</i>")));
+			TestEqual(TEXT("unclosed"), ConvertUnityMarkupToUnreal(TEXT("<b>Hi")), FString(TEXT("<b>Hi")));
+		});
+
+		It("leaves Unreal markup unchanged", [this]()
+		{
+			TestEqual(TEXT("already converted"), ConvertUnityMarkupToUnreal(TEXT("<bi>Greetings</>")), FString(TEXT("<bi>Greetings</>")));
+		});
+
 		It("drops the align tag (unsupported in Unreal)", [this]()
 		{
 			TestEqual(TEXT("align dropped"), ConvertUnityMarkupToUnreal(TEXT("<align=left>Hi</align>")), FString(TEXT("Hi")));
