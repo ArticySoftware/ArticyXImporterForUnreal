@@ -9,11 +9,31 @@
 #include "ArticyTestFlowListener.h"
 #include "ArticyBuiltinTypes.h"
 #include "ArticyPins.h"
+#include "ArticyFlowClasses.h"
+#include "ArticyRef.h"
 #include "UObject/GarbageCollection.h"
 #include "UObject/UnrealType.h"
 #include "UObject/UObjectGlobals.h"
 
 #if WITH_AUTOMATION_TESTS
+
+namespace
+{
+	/** Puts the cursor on an object without exploring from it, which would need a database. */
+	void SetCursor(UArticyFlowPlayer* Player, UObject* Object)
+	{
+		FInterfaceProperty* Cursor = CastField<FInterfaceProperty>(UArticyFlowPlayer::StaticClass()->FindPropertyByName(TEXT("Cursor")));
+		Cursor->SetPropertyValue_InContainer(Player, FScriptInterface(Object, Cast<IArticyFlowObject>(Object)));
+	}
+
+	/** A node with an id, like an imported one. */
+	UArticyHub* MakeNode(uint64 Id)
+	{
+		UArticyHub* Node = NewObject<UArticyHub>(GetTransientPackage());
+		static_cast<UArticyBaseObject*>(Node)->SetProp<FArticyId>(TEXT("Id"), FArticyId(Id));
+		return Node;
+	}
+}
 
 // Everything the flow player can be checked on without imported articy content: the shape of
 // its setup, the callbacks it broadcasts and the garbage collection of the expresso instance it
@@ -117,6 +137,68 @@ void FArticyFlowPlayerSpec::Define()
 
 			Player->SetPauseOn(EArticyPausableType::Connection);
 			TestTrue(TEXT("paused on once requested"), Player->ShouldPauseOn(Connection));
+		});
+	});
+
+	Describe("GetCurrentObject", [this]()
+	{
+		It("is empty while the cursor is not set", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+
+			TestTrue(TEXT("no object"), Player->GetCurrentObject().GetId().IsNull());
+		});
+
+		It("references the node the cursor is on", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+			UArticyHub* Node = MakeNode(0x100);
+			SetCursor(Player, Node);
+
+			const FArticyRef Current = Player->GetCurrentObject();
+
+			TestTrue(TEXT("id of the node"), Current.GetId() == Node->GetId());
+			TestTrue(TEXT("references the base object"), Current.bReferenceBaseObject);
+		});
+
+		It("references the node a pin belongs to", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+			UArticyHub* Node = MakeNode(0x100);
+			SetCursor(Player, NewObject<UArticyOutputPin>(Node));
+
+			TestTrue(TEXT("id of the node"), Player->GetCurrentObject().GetId() == Node->GetId());
+		});
+
+		It("references the node a connection leaves from", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+			UArticyHub* Node = MakeNode(0x100);
+			UArticyOutputPin* Pin = NewObject<UArticyOutputPin>(Node);
+			SetCursor(Player, NewObject<UArticyOutgoingConnection>(Pin));
+
+			TestTrue(TEXT("id of the node"), Player->GetCurrentObject().GetId() == Node->GetId());
+		});
+
+		It("references the clone the cursor is on, not the original", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+			UArticyHub* Clone = MakeNode(0x100);
+			Clone->SetCloneID(3);
+			SetCursor(Player, Clone);
+
+			const FArticyRef Current = Player->GetCurrentObject();
+
+			TestTrue(TEXT("id of the node"), Current.GetId() == Clone->GetId());
+			TestEqual(TEXT("clone id"), static_cast<int32>(Current.GetEffectiveCloneId()), 3);
+		});
+
+		It("is empty for a flow object that is no articy object", [this]()
+		{
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(GetTransientPackage());
+			SetCursor(Player, NewObject<UArticyOutgoingConnection>(GetTransientPackage()));
+
+			TestTrue(TEXT("no object"), Player->GetCurrentObject().GetId().IsNull());
 		});
 	});
 

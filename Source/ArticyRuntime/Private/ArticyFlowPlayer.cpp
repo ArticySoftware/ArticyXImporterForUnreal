@@ -111,6 +111,31 @@ void UArticyFlowPlayer::SetCursorTo(TScriptInterface<IArticyFlowObject> Node)
 }
 
 /**
+ * Gets a reference to the object the cursor points to.
+ *
+ * @return The object, or an empty reference if the cursor is on no articy object.
+ */
+FArticyRef UArticyFlowPlayer::GetCurrentObject() const
+{
+    // A pin belongs to the node it is outered to, a connection to its pin
+    UObject* Object = Cursor.GetObject();
+    while (Object && (Object->IsA<UArticyFlowPin>() || Object->IsA<UArticyOutgoingConnection>()))
+    {
+        Object = Object->GetOuter();
+    }
+
+    FArticyRef Ref;
+    if (UArticyObject* ArticyObject = Cast<UArticyObject>(Object))
+    {
+        Ref.SetReference(ArticyObject);
+        Ref.CloneId = static_cast<int32>(ArticyObject->GetCloneId());
+        Ref.bReferenceBaseObject = Ref.CloneId == 0;
+    }
+
+    return Ref;
+}
+
+/**
  * Plays a specified branch by index.
  *
  * @param BranchIndex The index of the branch to play.

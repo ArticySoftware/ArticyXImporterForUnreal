@@ -14,6 +14,7 @@
     - Continuous branch recalculation on the flow player
     - Manual triggering of the flow player callbacks
     - Flow player setup validation
+    - Getting the current object of the flow player
     - Class icons for the flow player and the flow debugger
 - Changes:
     - Invalid text extension tokens resolve to an empty string instead of their source name

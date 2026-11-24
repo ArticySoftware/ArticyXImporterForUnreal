@@ -132,6 +132,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Flow")
     const TScriptInterface<IArticyFlowObject> GetCursor() const { return Cursor; }
 
+    /** Get the object the Cursor points to; for a pin or a connection, the node it belongs to. */
+    UFUNCTION(BlueprintPure, Category = "Flow")
+    FArticyRef GetCurrentObject() const;
+
     /** Play a branch, identified by its index in the AvailableBranches array. */
     UFUNCTION(BlueprintCallable, Category = "Flow")
     void Play(int Index = 0);
