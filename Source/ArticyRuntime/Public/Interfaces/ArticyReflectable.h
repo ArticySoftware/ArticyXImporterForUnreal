@@ -75,7 +75,11 @@ public:
 
 	virtual UClass* GetObjectClass() const { return GetReflectedObject()->GetClass(); }
 
+	/** Broadcast when a property of this object was set. See also UArticyObjectNotificationManager. */
 	FReportChangedDelegate ReportChanged;
+
+	/** Broadcasts ReportChanged and notifies the listeners of UArticyObjectNotificationManager. */
+	ARTICYRUNTIME_API void NotifyPropertyChanged(FName Property);
 
 protected:
 	UObject* GetReflectedObject() const { return Cast<UObject>(const_cast<IArticyReflectable*>(this)); }
@@ -114,13 +118,9 @@ TValue IArticyReflectable::SetProp(FName Property, TValue Value, int32 ArrayInde
 	TValue* valPtr = GetPropPtr<TValue>(Property, ArrayIndex);
 	if(valPtr)
 	{
-		FArticyChangedProperty ChangedProperty;
-		ChangedProperty.Property = Property;
-		ChangedProperty.SetObjectReference(this);
-
 		(*valPtr) = Value;
 
-		ReportChanged.Broadcast(ChangedProperty);
+		NotifyPropertyChanged(Property);
 		return (*valPtr);
 	}
 

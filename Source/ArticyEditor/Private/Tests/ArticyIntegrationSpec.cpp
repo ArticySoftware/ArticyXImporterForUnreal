@@ -12,6 +12,8 @@
 #include "ArticyTextExtension.h"
 #include "ArticyTypeSystem.h"
 #include "ArticyFlowPlayer.h"
+#include "ArticyExpressoScripts.h"
+#include "ArticyObjectNotificationManager.h"
 #include "ArticyPluginSettings.h"
 #include "Interfaces/ArticyObjectWithDisplayName.h"
 #include "Interfaces/ArticyObjectWithSpeaker.h"
@@ -817,6 +819,106 @@ void FArticyIntegrationSpec::Define()
 			TestNotNull(TEXT("clone survived"), DB->GetObjectByName(FName(DemoEntity), 1));
 			TestTrue(TEXT("and can be removed afterwards"), DB->RemoveCloneByName(FName(DemoEntity), 1));
 
+			Actor->Destroy();
+		});
+	});
+
+	Describe("Object notifications", [this]()
+	{
+		// The tests write the value a property already has, to leave the shared database as it is
+		It("tells listeners for an object, its class and its type metadata about a property set by a script", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			if (!Entity)
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			UArticyObjectNotificationManager* Notifications = UArticyObjectNotificationManager::Get(World);
+			if (!TestNotNull(TEXT("notification manager"), Notifications))
+				return;
+			TestTrue(TEXT("is the one of the database"), Notifications == DB->GetObjectNotifications());
+
+			int32 ForObject = 0;
+			int32 ForClass = 0;
+			int32 ForType = 0;
+			int32 ForOtherProperty = 0;
+			UArticyBaseObject* Reported = nullptr;
+
+			TArray<FArticyListenerHandle> Handles;
+			Handles.Add(Notifications->AddListener(Entity, DemoEntityProperty, [&](const FArticyChangedProperty& Changed) { ++ForObject; Reported = Changed.ObjectReference; }));
+			Handles.Add(Notifications->AddListener(Entity->GetClass(), DemoEntityProperty, [&](const FArticyChangedProperty&) { ++ForClass; }));
+			Handles.Add(Notifications->AddListener(Entity, TEXT("NoSuchProperty"), [&](const FArticyChangedProperty&) { ++ForOtherProperty; }));
+
+			// Only projects imported since the type system was added have type metadata
+			const FArticyType EntityType = Entity->GetArticyType();
+			const bool bHasTypeMetadata = !EntityType.CPPType.IsEmpty();
+			if (bHasTypeMetadata)
+				Handles.Add(Notifications->AddListener(EntityType, DemoEntityProperty, [&](const FArticyChangedProperty&) { ++ForType; }));
+			else
+				AddWarning(MissingContentMessage(FString::Printf(TEXT("type metadata of %s"), DemoEntity)));
+
+			ExpressoType(Entity, DemoEntityProperty).SetValue(Entity, DemoEntityProperty);
+
+			TestEqual(TEXT("object listener calls"), ForObject, 1);
+			TestEqual(TEXT("class listener calls"), ForClass, 1);
+			TestEqual(TEXT("type metadata listener calls"), ForType, bHasTypeMetadata ? 1 : 0);
+			TestEqual(TEXT("calls for another property"), ForOtherProperty, 0);
+			TestTrue(TEXT("reported object"), Reported == Entity);
+
+			for (const FArticyListenerHandle& Handle : Handles)
+				TestTrue(TEXT("listener removed"), Notifications->RemoveListener(Handle));
+		});
+
+		It("stays silent while a flow player explores", [this]()
+		{
+			UWorld* World = GetIntegrationWorld();
+			if (!TestNotNull(TEXT("editor world"), World))
+				return;
+
+			UArticyDatabase* DB = UArticyDatabase::Get(World);
+			if (!TestNotNull(TEXT("database"), DB))
+				return;
+
+			if (!DB->GetObjectByName(FName(DemoEntity)))
+			{
+				AddWarning(MissingContentMessage(DemoEntity));
+				return;
+			}
+
+			AActor* Actor = World->SpawnActor<AActor>();
+			if (!TestNotNull(TEXT("actor"), Actor))
+				return;
+
+			UArticyFlowPlayer* Player = NewObject<UArticyFlowPlayer>(Actor);
+			Player->RegisterComponent();
+
+			int32 Calls = 0;
+			UArticyObjectNotificationManager* Notifications = DB->GetObjectNotifications();
+			const FArticyListenerHandle Handle = Notifications->AddListener(DemoEntityProperty, [&Calls](const FArticyChangedProperty&) { ++Calls; });
+
+			// The database hands out shadow copies in here
+			Player->ShadowedOperation([&]()
+			{
+				UArticyObject* Shadow = DB->GetObjectByName(FName(DemoEntity));
+				ExpressoType(Shadow, DemoEntityProperty).SetValue(Shadow, DemoEntityProperty);
+			});
+			TestEqual(TEXT("calls while exploring"), Calls, 0);
+
+			UArticyObject* Entity = DB->GetObjectByName(FName(DemoEntity));
+			ExpressoType(Entity, DemoEntityProperty).SetValue(Entity, DemoEntityProperty);
+			TestEqual(TEXT("calls afterwards"), Calls, 1);
+
+			Notifications->RemoveListener(Handle);
 			Actor->Destroy();
 		});
 	});

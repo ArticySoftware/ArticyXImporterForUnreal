@@ -10,6 +10,10 @@
     - Generated getters for non-localizable text properties
     - Cloning with a consecutive instance ID
     - Removing a single clone or all clones of an object
+    - Type-based object notifications
+    - Object notifications for properties set by scripts
+    - Object notifications in Blueprint
+    - Removing all object notification listeners
     - Flow player pauses on connections
     - Continuous branch recalculation on the flow player
     - Manual triggering of the flow player callbacks
@@ -19,6 +23,9 @@
     - Invalid text extension tokens resolve to an empty string instead of their source name
     - Flow player details panel hides fields that only apply while playing
     - `EArticyPausableType` no longer carries flag operators; use `ArticyPauseOnFlag`
+    - Object notification listeners are kept by the notification manager
+    - Object notification filter matches properties, as in the Unity importer
+    - `UArticyObjectNotificationManager::Get` takes a world context
 - Fixes:
     - Fix type metadata not available at runtime
     - Fix packaging for projects upgraded from the Articy Importer plugin name

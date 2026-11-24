@@ -15,6 +15,7 @@ Find a list of articles here:
 - \subpage globalVariables
 - \subpage localization
 - \subpage objectHandlingArticyRef
+- \subpage objectNotifications
 - \subpage objectTemplates
 - \subpage projectHierarchy
 - \subpage scripting
