@@ -80,8 +80,8 @@ Two settings, also found in the project settings, control how texts are looked u
 - **Clear on language switch** (on by default): the texts of the previous language are forgotten
   when the language changes. If turned off, a text that was looked up before is kept for keys the
   new language has no text for.
-- **Error on missing text (PIE)** (off by default): a text without an entry in the articy string
-  table is reported as an error in the log and in the message log while playing in the editor,
-  once per key and language.
+- **Error on missing text (PIE)** (off by default): an object's text whose key has no entry in the
+  articy string table is reported as an error in the log and in the message log while playing in
+  the editor, once per key and language.
 
 **Clear Database** reloads the articy string tables and forgets the kept texts.

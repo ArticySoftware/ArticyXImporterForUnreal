@@ -233,9 +233,10 @@ namespace ArticyHelpers
 	 * @param Key The string table key to look up.
 	 * @param ResolveTextExtension Whether to resolve variable interpolation on the result.
 	 * @param BackupText Optional fallback text used when the localizer is unavailable or the key is missing.
+	 * @param bReportMissing Whether a missing key is a missing text, reported if the plugin settings ask for it.
 	 * @return The localized FText.
 	 */
-	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
+	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr, bool bReportMissing = false)
 	{
 		UArticyLocalizerSystem* ArticyLocalizerSystem = UArticyLocalizerSystem::Get();
 		if (!ArticyLocalizerSystem)
@@ -246,7 +247,7 @@ namespace ArticyHelpers
 			}
 			return Key;
 		}
-		return ArticyLocalizerSystem->LocalizeString(Outer, Key, ResolveTextExtension, BackupText);
+		return ArticyLocalizerSystem->LocalizeString(Outer, Key, ResolveTextExtension, BackupText, bReportMissing);
 	}
 
 	/**
@@ -323,7 +324,7 @@ namespace ArticyHelpers
 		}
 		if (Kind == EArticyTextPropertyKind::LocalizedText)
 		{
-			return LocalizeString(Object, *Property->ContainerPtrToValuePtr<FText>(Object), ResolveTextExtension, BackupText);
+			return LocalizeString(Object, *Property->ContainerPtrToValuePtr<FText>(Object), ResolveTextExtension, BackupText, true);
 		}
 
 		FText Plain = FText::FromString(*Property->ContainerPtrToValuePtr<FString>(Object));

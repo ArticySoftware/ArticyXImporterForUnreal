@@ -36,7 +36,7 @@ public:
 		return UArticyTextExtension::Get()->Resolve(Outer, SourceText);
 	}
 
-	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
+	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr, bool bReportMissing = false)
 	{
 		if (!bDataLoaded)
 		{
@@ -88,7 +88,11 @@ public:
 				return ResolveTextExtension ? ResolveText(Outer, Retained) : *Retained;
 			}
 
-			ReportMissingText(Key);
+			// Only where a text is expected; other callers just try whether a name is a key
+			if (bReportMissing)
+			{
+				ReportMissingText(Key);
+			}
 		}
 
 		// The key has no usable table entry, so fall back to the backup text if the caller

@@ -221,8 +221,8 @@ void FArticyLocalizerSystemSpec::Define()
 			Localizer->SetDataLoaded(true);
 			Localizer->bReportMissingTexts = true;
 
-			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false);
-			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false);
+			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false, nullptr, true);
+			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false, nullptr, true);
 		});
 
 		It("is reported again after a language switch", [this]()
@@ -234,9 +234,9 @@ void FArticyLocalizerSystemSpec::Define()
 			Localizer->SetDataLoaded(true);
 			Localizer->bReportMissingTexts = true;
 
-			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false);
+			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false, nullptr, true);
 			Localizer->OnLanguageChanged();
-			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false);
+			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false, nullptr, true);
 		});
 
 		It("is not reported unless asked for", [this]()
@@ -245,7 +245,7 @@ void FArticyLocalizerSystemSpec::Define()
 			UArticyTestLocalizer* Localizer = NewObject<UArticyTestLocalizer>();
 			Localizer->SetDataLoaded(true);
 
-			TestEqual(TEXT("key"), Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false).ToString(), FString(MissingKey));
+			TestEqual(TEXT("key"), Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false, nullptr, true).ToString(), FString(MissingKey));
 		});
 
 		It("is not reported for a text that is found, or that is no key", [this]()
@@ -255,9 +255,19 @@ void FArticyLocalizerSystemSpec::Define()
 			Localizer->SetDataLoaded(true);
 			Localizer->bReportMissingTexts = true;
 
-			Localizer->LocalizeString(nullptr, FText::FromString(TableKey), false);
-			Localizer->LocalizeString(nullptr, FText::FromString(TEXT("A plain sentence")), false);
-			Localizer->LocalizeString(nullptr, FText::GetEmpty(), false);
+			Localizer->LocalizeString(nullptr, FText::FromString(TableKey), false, nullptr, true);
+			Localizer->LocalizeString(nullptr, FText::FromString(TEXT("A plain sentence")), false, nullptr, true);
+			Localizer->LocalizeString(nullptr, FText::GetEmpty(), false, nullptr, true);
+		});
+
+		It("is not reported for a lookup that only tries whether a name is a key", [this]()
+		{
+			RegisterArticyTable({});
+			UArticyTestLocalizer* Localizer = NewObject<UArticyTestLocalizer>();
+			Localizer->SetDataLoaded(true);
+			Localizer->bReportMissingTexts = true;
+
+			Localizer->LocalizeString(nullptr, FText::FromString(MissingKey), false);
 		});
 	});
 }
