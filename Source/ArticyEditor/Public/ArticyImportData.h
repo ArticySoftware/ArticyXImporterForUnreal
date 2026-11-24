@@ -500,6 +500,7 @@ public:
 	const FAdiSettings& GetSettings() const { return Settings; }
 	FAdiSettings& GetSettings() { return Settings; }
 	const FArticyProjectDef& GetProject() const { return Project; }
+	const FString& GetLastImporterPluginVersion() const { return LastImporterPluginVersion; }
 	const FArticyGVInfo& GetGlobalVars() const { return GlobalVariables; }
 	const FADIHierarchy& GetHierarchy() const { return Hierarchy; }
 	const FArticyObjectDefinitions& GetObjectDefs() const { return ObjectDefinitions; }

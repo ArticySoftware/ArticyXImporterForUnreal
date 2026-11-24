@@ -53,6 +53,12 @@ private:
 	/** Handle to the deferred OnPostEngineInit callback used to run the first Reload(). */
 	FDelegateHandle PostEngineInitHandle;
 
+	/** Handle to the culture-changed callback. */
+	FDelegateHandle CultureChangedHandle;
+
+	/** Tells the localizer that the language changed. */
+	void HandleCultureChanged();
+
 	/** Creates the generated localizer (if not already created) and performs the initial Reload(). */
 	void InitializeLocalizer();
 	/**

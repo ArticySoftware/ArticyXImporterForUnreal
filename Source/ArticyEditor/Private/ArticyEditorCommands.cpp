@@ -15,6 +15,7 @@ void FArticyEditorCommands::RegisterCommands()
 	// FInputChord can be modified for default shortcuts, but they don't seem to work inside the level editor by default
 	UI_COMMAND(OpenArticyImporter, "Articy X Importer", "Bring up ArticyImporter window", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(OpenArticyGvDebugger, "Articy GV Debugger", "Bring up the runtime Global Variables debugger", EUserInterfaceActionType::Button, FInputChord());
+	UI_COMMAND(OpenArticyDatabase, "Articy Database", "Bring up the database view with the import state and all imported objects", EUserInterfaceActionType::Button, FInputChord());
 }
 
 #undef LOCTEXT_NAMESPACE

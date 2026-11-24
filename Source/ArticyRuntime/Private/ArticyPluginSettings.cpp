@@ -22,6 +22,9 @@ UArticyPluginSettings::UArticyPluginSettings()
 	bUseLegacyImporter = false;
 	bResolveStrings = true;
 	bAllowInvalidTokens = true;
+	bClearLocalizationOnLanguageSwitch = true;
+	bErrorOnMissingText = false;
+	bCheckForPluginUpdates = true;
 
 	bSortChildrenAtGeneration = false;
 	ArticyDirectory = TEXT("/Game");

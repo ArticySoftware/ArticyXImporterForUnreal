@@ -6,6 +6,7 @@
 #include "ArticyLocalizerSystem.h"
 #include "ArticyRuntimeModule.h"
 #include "Engine/Engine.h"
+#include "Internationalization/Internationalization.h"
 #include "Misc/CoreDelegates.h"
 #include "Misc/EngineVersionComparison.h"
 #include "UObject/UObjectIterator.h"
@@ -25,6 +26,9 @@ UArticyLocalizationSubsystem* UArticyLocalizationSubsystem::Get()
 void UArticyLocalizationSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
+
+    CultureChangedHandle = FInternationalization::Get().OnCultureChanged().AddUObject(
+        this, &UArticyLocalizationSubsystem::HandleCultureChanged);
 
     // Defer to OnPostEngineInit: engine subsystems init before the project
     // module, string-table and culture infrastructure is ready, and a broken
@@ -48,8 +52,22 @@ void UArticyLocalizationSubsystem::Deinitialize()
         PostEngineInitHandle.Reset();
     }
 
+    if (CultureChangedHandle.IsValid())
+    {
+        FInternationalization::Get().OnCultureChanged().Remove(CultureChangedHandle);
+        CultureChangedHandle.Reset();
+    }
+
     Localizer = nullptr;
     Super::Deinitialize();
+}
+
+void UArticyLocalizationSubsystem::HandleCultureChanged()
+{
+    if (Localizer)
+    {
+        Localizer->OnLanguageChanged();
+    }
 }
 
 UArticyLocalizerSystem* UArticyLocalizationSubsystem::GetLocalizer() const

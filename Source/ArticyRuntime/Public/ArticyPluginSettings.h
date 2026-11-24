@@ -99,6 +99,25 @@ public:
 	bool bConvertUnityToUnrealRichText;
 
 	/**
+	 * If true, texts looked up before a language switch are forgotten. If false, they are
+	 * kept for the keys the new language has no text for.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = Localization, meta = (DisplayName = "Clear localization database on language switch"))
+	bool bClearLocalizationOnLanguageSwitch;
+
+	/**
+	 * If true, a text without a string table entry is reported as an error while playing in the editor.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = Localization, meta = (DisplayName = "Error on missing text (PIE)"))
+	bool bErrorOnMissingText;
+
+	/**
+	 * If true, the Articy database view asks GitHub for the latest release of the plugin.
+	 */
+	UPROPERTY(EditAnywhere, config, Category = EditorSettings, meta = (DisplayName = "Check for plugin updates"))
+	bool bCheckForPluginUpdates;
+
+	/**
 	 * Explicit per-user overrides of bIsDefaultPackage. Absence means "follow manifest".
 	 */
 	UPROPERTY(config)

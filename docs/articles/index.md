@@ -10,6 +10,7 @@ Find a list of articles here:
 - \subpage codeReference
 - \subpage commonIssues
 - \subpage customizations
+- \subpage databaseView
 - \subpage demoProjectManiacManfred
 - \subpage dialoguesFlowTraversal
 - \subpage globalVariables

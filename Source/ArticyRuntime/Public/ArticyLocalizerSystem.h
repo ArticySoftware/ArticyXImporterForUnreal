@@ -36,7 +36,7 @@ public:
 		return UArticyTextExtension::Get()->Resolve(Outer, SourceText);
 	}
 
-	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr)
+	inline FText LocalizeString(UObject* Outer, const FText& Key, bool ResolveTextExtension = true, const FText* BackupText = nullptr, bool bReportMissing = false)
 	{
 		if (!bDataLoaded)
 		{
@@ -54,6 +54,7 @@ public:
 		const FString TableName = TEXT("ARTICY");
 
 		// Find the table
+		bool bHasEntry = false;
 		FStringTableConstPtr TablePtr = FStringTableRegistry::Get().FindStringTable(FName(TableName));
 		if (TablePtr.IsValid())
 		{
@@ -64,16 +65,34 @@ public:
 			{
 				const FStringTableEntry* TableEntry = EntryPtr.Get();
 				SourceString = FText::FromString(TableEntry->GetSourceString());
+				bHasEntry = true;
 			}
 		}
 
 		if (!SourceString.IsEmpty() && !SourceString.EqualTo(MissingEntry) && !SourceString.EqualTo(Key))
 		{
+			RetainText(Key, SourceString);
+
 			if (ResolveTextExtension)
 			{
 				return ResolveText(Outer, &SourceString);
 			}
 			return FText(SourceString);
+		}
+
+		if (!bHasEntry)
+		{
+			// A text of the previous language stands in, if those are kept
+			if (const FText* Retained = FindRetainedText(Key))
+			{
+				return ResolveTextExtension ? ResolveText(Outer, Retained) : *Retained;
+			}
+
+			// Only where a text is expected; other callers just try whether a name is a key
+			if (bReportMissing)
+			{
+				ReportMissingText(Key);
+			}
 		}
 
 		// The key has no usable table entry, so fall back to the backup text if the caller
@@ -88,7 +107,33 @@ public:
 		return Fallback;
 	}
 
+	/** @brief Gets the name of the culture the texts are loaded for, e.g. "en". */
+	static FString GetCurrentLanguage();
+
+	/** @brief Called when the language changed. */
+	void OnLanguageChanged();
+
+	/** @brief Reloads the string tables and forgets the retained texts. */
+	void ClearLocalizationDatabase();
+
+	/** @brief Gets the number of texts kept from before a language switch. */
+	int32 GetNumRetainedTexts() const { return RetainedTexts.Num(); }
+
 protected:
+	/** @brief Returns true if missing texts are reported: the setting is on and a PIE session is running. */
+	virtual bool ShouldReportMissingTexts() const;
+
 	bool bDataLoaded = false;
 	bool bListenerSet = false;
+
+private:
+	/** Remembers a text, unless texts are cleared on a language switch. */
+	void RetainText(const FText& Key, const FText& Text);
+	/** Returns the remembered text of a key, or nullptr. */
+	const FText* FindRetainedText(const FText& Key) const;
+	/** Reports a key without a string table entry, once per key and language. */
+	void ReportMissingText(const FText& Key);
+
+	TMap<FString, FText> RetainedTexts;
+	TSet<FString> ReportedMissingKeys;
 };

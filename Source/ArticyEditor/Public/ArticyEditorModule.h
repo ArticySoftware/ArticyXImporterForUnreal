@@ -58,6 +58,9 @@ public:
 	 */
 	TSharedPtr<FArticyEditorCustomizationManager> GetCustomizationManager() const { return CustomizationManager; }
 
+	/** Gets the checker looking for newer releases of the plugin. */
+	TSharedRef<class FArticyPluginUpdateChecker> GetUpdateChecker();
+
 	/**
 	 * Retrieve all Articy packages in the project.
 	 *
@@ -108,6 +111,8 @@ private:
 	void OpenArticyWindow();
 	/** Opens the Articy global variables debugger dock tab. */
 	void OpenArticyGVDebugger();
+	/** Opens the Articy database view dock tab. */
+	void OpenArticyDatabase();
 
 	/** Checks the validity of the current import state and returns an EImportStatusValidity describing it. */
 	EImportStatusValidity CheckImportStatusValidity() const;
@@ -154,6 +159,13 @@ private:
 	 * @return The spawned dock tab.
 	 */
 	TSharedRef<class SDockTab> OnSpawnArticyGVDebuggerTab(const class FSpawnTabArgs& SpawnTabArgs) const;
+	/**
+	 * Spawns the Articy database view dock tab.
+	 *
+	 * @param SpawnTabArgs The tab spawn arguments forwarded from the tab manager.
+	 * @return The spawned dock tab.
+	 */
+	TSharedRef<class SDockTab> OnSpawnArticyDatabaseTab(const class FSpawnTabArgs& SpawnTabArgs) const;
 
 private:
 	/** True if an import has been queued via QueueImport and not yet triggered. */
@@ -168,6 +180,8 @@ private:
 	TSharedPtr<FUICommandList> PluginCommands;
 	/** The CustomizationManager registers and owns all customization factories */
 	TSharedPtr<FArticyEditorCustomizationManager> CustomizationManager = nullptr;
+	/** Looks for newer releases of the plugin; created on first use. */
+	TSharedPtr<class FArticyPluginUpdateChecker> UpdateChecker;
 
 	/** The CustomizationManager has ownership of the factories. These here are cached for removal at shutdown */
 	TArray<const IArticyIdPropertyWidgetCustomizationFactory*> DefaultArticyRefWidgetCustomizationFactories;
