@@ -15,6 +15,7 @@
     - Manual triggering of the flow player callbacks
     - Flow player setup validation
     - Class icons for the flow player and the flow debugger
+    - `HasMenuText` to check for empty menu text
 - Changes:
     - Invalid text extension tokens resolve to an empty string instead of their source name
     - Flow player details panel hides fields that only apply while playing
@@ -38,6 +39,8 @@
   - Fix initial import doesn't trigger code generation
   - Fix editor crashes on stop PIE due to standalone-rooted runtime GV clone
   - Fix cook failure due to outdated Blueprint references
+- Changes:
+    - `GetMenuText` returns `...` for empty menu text
 
 ## Unreal Importer 1.6.0 Changelog :
 

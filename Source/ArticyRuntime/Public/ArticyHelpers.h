@@ -335,6 +335,27 @@ namespace ArticyHelpers
 	}
 
 	/**
+	 * Checks whether a string property has text to show: a localized text needs a non-empty
+	 * string table entry, a plain string must not be empty.
+	 *
+	 * @param Object The object owning the property.
+	 * @param Property The reflected property.
+	 * @return True if the property has text.
+	 */
+	inline bool HasTextPropertyValue(UObject* Object, const FProperty* Property)
+	{
+		const FString Key = GetTextPropertyKey(Object, Property);
+		if (Key.IsEmpty() || GetTextPropertyKind(Property) == EArticyTextPropertyKind::PlainString)
+		{
+			return !Key.IsEmpty();
+		}
+
+		// Without a backup text, a lookup that finds nothing returns the key
+		const FString Value = LocalizeString(Object, FText::FromString(Key), false).ToString();
+		return !Value.IsEmpty() && !Value.Equals(Key);
+	}
+
+	/**
 	 * Writes display text into a string property of either kind.
 	 *
 	 * @param Object The object owning the property.
